@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production Builds
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.production.local
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# Vendored Agent Skills & Assistant Workspaces
+.agents/
+**/.agents/
+.impeccable/
+.ua/
+graphify-out/
+.zcode/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript Cache
+*.tsbuildinfo
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local Database Migrations (Kept locally, not committed)
+supabase/
