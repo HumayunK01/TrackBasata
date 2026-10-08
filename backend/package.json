@@ -1,0 +1,32 @@
+{
+    "name":  "trackbasata-backend",
+    "version":  "1.0.0",
+    "private":  true,
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "tsx watch src/server.ts",
+                    "build":  "tsc",
+                    "start":  "node dist/server.js",
+                    "typecheck":  "tsc --noEmit",
+                    "test":  "node test/boot.test.mjs \u0026\u0026 node test/security.test.mjs"
+                },
+    "dependencies":  {
+                         "@supabase/supabase-js":  "^2.49.1",
+                         "@upstash/ratelimit":  "^2.0.5",
+                         "@upstash/redis":  "^1.34.4",
+                         "cors":  "^2.8.5",
+                         "dotenv":  "^16.4.7",
+                         "express":  "^4.21.2",
+                         "helmet":  "^8.0.0",
+                         "swagger-ui-express":  "^5.0.1",
+                         "zod":  "^3.24.2"
+                     },
+    "devDependencies":  {
+                            "@types/cors":  "^2.8.17",
+                            "@types/express":  "^4.17.21",
+                            "@types/node":  "^22.13.9",
+                            "@types/swagger-ui-express":  "^4.1.8",
+                            "tsx":  "^4.19.3",
+                            "typescript":  "^5.8.2"
+                        }
+}
