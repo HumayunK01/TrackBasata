@@ -353,25 +353,24 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* ── Top Header & Visual Tab Switcher ── */}
+      {/* ── Top Header & Tab Switcher ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border/70 rounded-2xl p-4 sm:p-5 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-heading text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
               <PieIcon className="size-4 text-primary" />
-              <span>Category Workload & Attribution Visualizer</span>
+              <span>Who Worked On What</span>
             </h3>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold flex items-center gap-1">
-              <Sparkles className="size-3" />
-              <span>100% Charts & Circles</span>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold">
+              100% Breakdown
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Interactive circular donuts, 100% stacked workload graphs, and contributor progress rings.
+            See who handled each category and each person's share of the work.
           </p>
         </div>
 
-        {/* Visual Tab Switcher */}
+        {/* Tab Switcher */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <div className="inline-flex items-center rounded-xl bg-muted/40 p-1 border border-border/50 text-xs">
             <button
@@ -385,7 +384,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               )}
             >
               <PieIcon className="size-3.5" />
-              <span>Category Donut</span>
+              <span>By Category</span>
             </button>
             <button
               type="button"
@@ -398,7 +397,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               )}
             >
               <BarChart3 className="size-3.5" />
-              <span>Team Workload Graph</span>
+              <span>By Team Member</span>
             </button>
             <button
               type="button"
@@ -411,7 +410,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               )}
             >
               <LayoutGrid className="size-3.5" />
-              <span>All Circles Matrix</span>
+              <span>All Categories</span>
             </button>
           </div>
         </div>
@@ -614,10 +613,10 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               <div>
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <BarChart3 className="size-4 text-primary" />
-                  <span>Team Workload Distribution Graph</span>
+                  <span>Work Split by Team Member</span>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Category breakdown per team member showing full throughput volume.
+                  See how each person's completed documents were divided across categories.
                 </p>
               </div>
               <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded-lg bg-muted/50 border border-border/50">

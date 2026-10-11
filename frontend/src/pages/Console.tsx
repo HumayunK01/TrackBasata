@@ -153,7 +153,7 @@ const Console = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: sectionEase, delay: 0.05 }}
             >
-              <FigHeader title="Workload & Attribution" sub="Contributor distribution by category" />
+              <FigHeader title="Team Work Breakdown" sub="See who worked on each category and how much each person completed" />
               <CategoryContributionMatrix
                 categories={visibleCategories}
                 logs={effectiveLogs}
