@@ -4,13 +4,13 @@
     "private":  true,
     "description":  "TrackBasata - High-performance productivity tracker for AR document processing",
     "scripts":  {
-                    "install:all":  "npm install --prefix backend \u0026\u0026 npm install --prefix frontend",
+                    "install:all":  "npm install --prefix backend && npm install --prefix frontend",
                     "dev:backend":  "npm run dev --prefix backend",
                     "dev:frontend":  "npm run dev --prefix frontend",
                     "build:backend":  "npm run build --prefix backend",
                     "build:frontend":  "npm run build --prefix frontend",
-                    "build":  "npm run build:backend \u0026\u0026 npm run build:frontend",
-                    "typecheck":  "npm run typecheck --prefix backend \u0026\u0026 npm run typecheck --prefix frontend",
-                    "test":  "npm run test --prefix backend \u0026\u0026 npm run test --prefix frontend"
+                    "build":  "npm run build:backend && npm run build:frontend",
+                    "typecheck":  "npm run typecheck --prefix backend && npm run typecheck --prefix frontend",
+                    "test":  "npm run test --prefix backend && npm run test --prefix frontend"
                 }
 }
