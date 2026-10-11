@@ -134,32 +134,25 @@ export function CategoryStatCard({
   sparkline?: number[];
   todayCount?: number;
 }) {
-  const patternId = `cat-grid-${label.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
   return (
     <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-4.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5">
-      {/* Ambient corner glow matching category color */}
+      {/* Ambient corner glow matching category color (pure CSS radial gradient, 0 blur GPU cost) */}
       <div
-        className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-xl transition-opacity duration-300 group-hover:opacity-40"
-        style={{ background: color, opacity: 0.16 }}
+        className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full transition-opacity duration-300 group-hover:opacity-40"
+        style={{
+          background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
+          opacity: 0.2,
+        }}
       />
 
-      {/* Subtle dot matrix matching ProgressMetricCard */}
+      {/* Subtle dot matrix */}
       <div
-        className="pointer-events-none absolute inset-0 text-foreground/[0.04]"
+        className="pointer-events-none absolute inset-0 text-foreground/[0.03] opacity-60"
         style={{
-          WebkitMaskImage: "linear-gradient(to right, transparent, black 70%)",
-          maskImage: "linear-gradient(to right, transparent, black 70%)",
+          backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
+          backgroundSize: "10px 10px",
         }}
-      >
-        <svg className="h-full w-full" aria-hidden>
-          <defs>
-            <pattern id={patternId} width="10" height="10" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.8" fill="currentColor" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#${patternId})`} />
-        </svg>
-      </div>
+      />
 
       {/* Header: Label and share badge */}
       <div className="relative z-10 flex items-center justify-between gap-2 min-w-0">

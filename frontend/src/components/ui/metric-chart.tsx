@@ -185,6 +185,7 @@ export function MetricChart({
                 dataKey={s.name}
                 stackId={stacked || (series.length > 1 && stacked !== false) ? "stack" : undefined}
                 fill={s.color}
+                isAnimationActive={false}
                 radius={
                   stacked || series.length > 1
                     ? idx === series.length - 1
@@ -231,6 +232,7 @@ export function MetricChart({
                 stroke={s.color}
                 strokeWidth={2.5}
                 fillOpacity={1}
+                isAnimationActive={false}
                 fill={`url(#gradient-${chartId}-${idx})`}
               />
             ))}

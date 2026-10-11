@@ -1,5 +1,4 @@
 import { lazy, Suspense, useMemo } from "react";
-import { motion, type Easing } from "motion/react";
 import { LineChart } from "@/components/ui/icons";
 import Skeleton from "react-loading-skeleton";
 import { useDailyLogs } from "@/hooks/useDailyLogs";
@@ -15,8 +14,6 @@ import { FigHeader, Panel, CategoryStatCard, EmptyState } from "@/components/ar/
 import { CategoryContributionMatrix, isConsoleExcludedCategory } from "@/components/ar/dashboard/CategoryContributionMatrix";
 
 const Charts = lazy(() => import("@/components/ar/Charts").then((m) => ({ default: m.Charts })));
-
-const sectionEase: Easing = [0.23, 1, 0.32, 1];
 
 const Console = () => {
   const { user } = useAuth();
@@ -105,8 +102,8 @@ const Console = () => {
   const isEmpty = !isLoading && logs.length === 0;
 
   return (
-    <div className="flex flex-col min-h-full">
-      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1]">
+    <div className="flex-1 min-h-0 flex flex-col">
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1] [overscroll-behavior-y:contain]">
         <div className="w-full space-y-6 sm:space-y-8">
 
           {/* ── Category breakdown ── */}
@@ -148,11 +145,7 @@ const Console = () => {
 
           {/* ── Team Category Contributor Attribution ── */}
           {!isEmpty && (
-            <motion.section
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: sectionEase, delay: 0.05 }}
-            >
+            <section>
               <FigHeader title="Team Work Breakdown" sub="See who worked on each category and how much each person completed" />
               <CategoryContributionMatrix
                 categories={visibleCategories}
@@ -160,15 +153,11 @@ const Console = () => {
                 profiles={effectiveProfiles}
                 currentUserId={user?.id}
               />
-            </motion.section>
+            </section>
           )}
 
           {/* ── Charts ── */}
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: sectionEase, delay: 0.1 }}
-          >
+          <section>
             <FigHeader title="Trends & Breakdown" />
             {isLoading ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -189,7 +178,7 @@ const Console = () => {
             ) : (
               <Suspense fallback={null}><Charts logs={logs} categories={visibleCategories.filter((c) => stats.categoryTotals.some((t) => t.key === c.key))} /></Suspense>
             )}
-          </motion.section>
+          </section>
 
         </div>
       </main>

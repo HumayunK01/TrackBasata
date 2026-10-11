@@ -31,7 +31,7 @@ export function AnimatedPage({ children }: { children: React.ReactNode }) {
       initial={reduce ? { opacity: 1 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.22, ease: pageEase }}
-      className="flex-1 flex flex-col min-w-0 overflow-hidden will-change-transform"
+      className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden"
     >
       {children}
     </motion.div>

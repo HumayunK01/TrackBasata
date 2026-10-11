@@ -125,7 +125,7 @@ export const Charts = memo(function Charts({ logs, categories }: Props) {
       </div>
 
       {/* Row 2: Weekly totals + Day-of-week avg */}
-      <div className="cv-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ProgressMetricCard
           title="Weekly Totals"
           unit="docs"
@@ -158,7 +158,7 @@ export const Charts = memo(function Charts({ logs, categories }: Props) {
       </div>
 
       {/* Row 3: Category area trend */}
-      <div className="cv-auto">
+      <div>
         <ProgressMetricCard
           title="Category Trends"
           unit="docs"
@@ -175,7 +175,7 @@ export const Charts = memo(function Charts({ logs, categories }: Props) {
       </div>
 
       {/* Row 4: Full-width stacked bar breakdown */}
-      <div id="breakdown" className="cv-auto">
+      <div id="breakdown">
         <ProgressMetricCard
           title="Document Breakdown"
           unit="docs"

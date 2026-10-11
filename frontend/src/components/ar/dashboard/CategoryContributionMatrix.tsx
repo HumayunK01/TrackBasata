@@ -124,7 +124,7 @@ export function CirclePercentRing({
       className={cn("relative flex items-center justify-center shrink-0", className)}
       style={{ width: size, height: size }}
     >
-      <svg width={size} height={size} className="-rotate-90 transform">
+      <svg width={size} height={size} className="-rotate-90 transform pointer-events-none">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -214,8 +214,9 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
   };
 
   const handlePillWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (pillBarRef.current && e.deltaY !== 0) {
-      pillBarRef.current.scrollLeft += e.deltaY;
+    if (!pillBarRef.current) return;
+    if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      pillBarRef.current.scrollLeft += e.deltaX || e.deltaY;
     }
   };
 
@@ -565,8 +566,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                           outerRadius={105}
                           paddingAngle={categoryPieData.length > 1 ? 3 : 0}
                           dataKey="value"
-                          isAnimationActive={true}
-                          animationDuration={600}
+                          isAnimationActive={false}
                         >
                           {categoryPieData.map((entry) => (
                             <Cell
@@ -607,7 +607,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {currentCategory.contributors.map((contrib, rank) => {
                     const isMe = contrib.userId === currentUserId;
                     const isHovered = hoveredSlice === contrib.userId;
@@ -738,6 +738,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                       name={cat.label}
                       stackId="workload"
                       fill={cat.color}
+                      isAnimationActive={false}
                       radius={idx === activeCategoryKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                     />
                   ))}
@@ -819,6 +820,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                             outerRadius={68}
                             paddingAngle={memberPieData.length > 1 ? 3 : 0}
                             dataKey="value"
+                            isAnimationActive={false}
                           >
                             {memberPieData.map((entry, idx) => (
                               <Cell key={`mem-slice-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
@@ -914,6 +916,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                           outerRadius={68}
                           paddingAngle={pieData.length > 1 ? 3 : 0}
                           dataKey="value"
+                          isAnimationActive={false}
                         >
                           {pieData.map((entry, idx) => (
                             <Cell key={`cat-cell-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
