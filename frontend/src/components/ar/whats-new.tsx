@@ -25,6 +25,30 @@ export interface WhatsNewEntry {
 // ── Entries (newest first) ────────────────────────────────────────────────
 export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
   {
+    id: "version-3-0-0-major",
+    date: "2026-10-11",
+    title: "TrackBasata 3.0",
+    description:
+      "Major architecture upgrade featuring interactive circular donut charts, workload distribution graphs, and a dedicated backend API service.",
+    body: [
+      (
+        <>
+          <strong className="text-foreground font-semibold">Interactive Donut & Circle Visualizations:</strong> Graphical category attribution with centered metric donuts, contributor percentage gauges, and 100% throughput distribution.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Drag & Slide Category Navigation:</strong> Smooth mouse-drag, horizontal wheel scroll, and quick slide arrows for browsing document categories.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Dedicated Backend API:</strong> High-performance Node.js service with transactional integrity, rate limiting, and secure audit logging.
+        </>
+      ),
+    ],
+  },
+  {
     id: "version-2-0-1-mini",
     date: "2026-09-22",
     title: "Inbox Process Guide",
