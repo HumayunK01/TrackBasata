@@ -1,10 +1,23 @@
 import React, { useMemo, useState } from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import type { DailyLog } from "@/types/log";
 import type { Category } from "@/hooks/useCategories";
 import type { Profile } from "@/hooks/useProfile";
 import { colorForKey } from "@/lib/cat-colors";
 import { cn } from "@/lib/utils";
-import { Users, Search, Shield, LayoutGrid, Trophy, CheckCheck } from "@/components/ui/icons";
+import { Users, Search, CheckCheck } from "@/components/ui/icons";
+import { PieChart as PieIcon, BarChart3, LayoutGrid, Trophy, Sparkles } from "lucide-react";
 
 interface Props {
   categories: Category[];
@@ -20,7 +33,8 @@ export interface ContributorStat {
   initials: string;
   role: string;
   count: number;
-  sharePercent: number; // Percentage out of 100% of this category
+  sharePercent: number; // Share of category total (0-100)
+  color: string;
 }
 
 export interface CategoryWorkloadItem {
@@ -32,21 +46,113 @@ export interface CategoryWorkloadItem {
   contributors: ContributorStat[];
 }
 
+export interface MemberCategoryShare {
+  key: string;
+  label: string;
+  short: string;
+  color: string;
+  count: number;
+  sharePercent: number; // Share of member's total work (0-100)
+}
+
 export interface MemberWorkloadItem {
   userId: string;
   name: string;
   initials: string;
   role: string;
   totalDocs: number;
-  categories: {
-    key: string;
-    label: string;
-    short: string;
-    color: string;
-    count: number;
-    sharePercent: number; // Share of this member's total work out of 100%
-  }[];
+  categories: MemberCategoryShare[];
 }
+
+// Curated vibrant colors for team member donut slices
+const MEMBER_COLORS = [
+  "#38bdf8", // Sky blue
+  "#10b981", // Emerald
+  "#f59e0b", // Amber
+  "#a855f7", // Purple
+  "#ec4899", // Pink
+  "#06b6d4", // Cyan
+  "#f97316", // Orange
+  "#14b8a6", // Teal
+  "#6366f1", // Indigo
+  "#e11d48", // Rose
+];
+
+/**
+ * Reusable Circular SVG Progress Ring Gauge
+ */
+export function CirclePercentRing({
+  value,
+  size = 52,
+  strokeWidth = 4.5,
+  color = "hsl(var(--primary))",
+  className,
+  children,
+}: {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  const safePct = Math.min(100, Math.max(0, value));
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (safePct / 100) * circumference;
+
+  return (
+    <div
+      className={cn("relative flex items-center justify-center shrink-0", className)}
+      style={{ width: size, height: size }}
+    >
+      <svg width={size} height={size} className="-rotate-90 transform">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-muted/20"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-mono font-bold text-foreground">
+        {children ?? `${Math.round(safePct)}%`}
+      </div>
+    </div>
+  );
+}
+
+// Custom tooltip for Recharts donut charts
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div className="bg-popover/95 border border-popover-border px-3 py-2 rounded-xl shadow-xl backdrop-blur-md text-xs z-50">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="size-2.5 rounded-full" style={{ backgroundColor: data.color }} />
+        <span className="font-semibold text-foreground">{data.name}</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 font-mono text-[11px] text-muted-foreground">
+        <span>{data.value?.toLocaleString()} docs</span>
+        <span className="font-bold text-foreground">{data.percent}% of 100%</span>
+      </div>
+    </div>
+  );
+};
 
 export const CategoryContributionMatrix = React.memo(function CategoryContributionMatrix({
   categories,
@@ -55,14 +161,15 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
   currentUserId,
   className,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"by-category" | "by-member">("by-category");
-  const [selectedCatKey, setSelectedCatKey] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"donut-focus" | "team-graph" | "all-donuts">("donut-focus");
+  const [selectedCatKey, setSelectedCatKey] = useState<string>("");
+  const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const profileMap = useMemo(() => new Map<string, Profile>(profiles.map((p) => [p.id, p])), [profiles]);
   const catMap = useMemo(() => new Map<string, Category>(categories.map((c) => [c.key, c])), [categories]);
 
-  // Aggregate category workload: Who worked on which category & share out of 100%
+  // Aggregate category workload: Category -> contributors & share of 100%
   const categoryWorkload: CategoryWorkloadItem[] = useMemo(() => {
     const workingLogs = logs.filter((l) => !l.is_off_day);
     const catTotals: Record<string, number> = {};
@@ -87,7 +194,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
         const userCounts = catUserTotals[key] || {};
         const contributors: ContributorStat[] = Object.entries(userCounts)
           .filter(([_, count]) => count > 0)
-          .map(([uid, count]) => {
+          .map(([uid, count], idx) => {
             const prof = profileMap.get(uid);
             const name = prof
               ? `${prof.first_name || ""} ${prof.last_name || ""}`.trim() || "Team Member"
@@ -103,6 +210,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               role: prof?.role || "user",
               count,
               sharePercent: totalDocs > 0 ? Math.round((count / totalDocs) * 1000) / 10 : 0,
+              color: MEMBER_COLORS[idx % MEMBER_COLORS.length],
             };
           })
           .sort((a, b) => b.count - a.count);
@@ -119,7 +227,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
       .sort((a, b) => b.totalDocs - a.totalDocs);
   }, [categories, logs, profiles, catMap, profileMap]);
 
-  // Aggregate member workload: For each member, their category distribution totaling 100%
+  // Aggregate member workload: Member -> category shares of 100%
   const memberWorkload: MemberWorkloadItem[] = useMemo(() => {
     const workingLogs = logs.filter((l) => !l.is_off_day);
     const userTotals: Record<string, number> = {};
@@ -150,7 +258,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
             : "?";
 
         const catCounts = userCatTotals[uid] || {};
-        const catList = Object.entries(catCounts)
+        const catList: MemberCategoryShare[] = Object.entries(catCounts)
           .filter(([_, count]) => count > 0)
           .map(([k, count]) => {
             const cat = catMap.get(k);
@@ -177,32 +285,47 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
       .sort((a, b) => b.totalDocs - a.totalDocs);
   }, [categories, logs, profiles, catMap, profileMap]);
 
-  // Filtered views based on search query and category chip
-  const filteredCategories = useMemo(() => {
-    let list = categoryWorkload;
-    if (selectedCatKey !== "all") {
-      list = list.filter((c) => c.key === selectedCatKey);
-    }
-    const q = search.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (c) =>
-        c.label.toLowerCase().includes(q) ||
-        c.short.toLowerCase().includes(q) ||
-        c.key.toLowerCase().includes(q) ||
-        c.contributors.some((u) => u.name.toLowerCase().includes(q))
-    );
-  }, [categoryWorkload, selectedCatKey, search]);
+  // Selected category in Donut view (default to top category)
+  const currentCategory = useMemo(() => {
+    if (!categoryWorkload.length) return null;
+    return categoryWorkload.find((c) => c.key === selectedCatKey) || categoryWorkload[0];
+  }, [categoryWorkload, selectedCatKey]);
 
-  const filteredMembers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return memberWorkload;
-    return memberWorkload.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.categories.some((c) => c.label.toLowerCase().includes(q) || c.short.toLowerCase().includes(q))
-    );
-  }, [memberWorkload, search]);
+  // Pie chart dataset for the current category focus donut
+  const categoryPieData = useMemo(() => {
+    if (!currentCategory) return [];
+    return currentCategory.contributors.map((c) => ({
+      name: c.name,
+      userId: c.userId,
+      value: c.count,
+      percent: c.sharePercent,
+      color: c.color,
+    }));
+  }, [currentCategory]);
+
+  // Team stacked bar dataset
+  const stackedBarData = useMemo(() => {
+    return memberWorkload.map((m) => {
+      const entry: Record<string, any> = {
+        name: m.name.split(" ")[0] || m.name,
+        fullName: m.name,
+        totalDocs: m.totalDocs,
+      };
+      m.categories.forEach((c) => {
+        entry[c.key] = c.count;
+      });
+      return entry;
+    });
+  }, [memberWorkload]);
+
+  // Active category keys for stacked bar
+  const activeCategoryKeys = useMemo(() => {
+    return categoryWorkload.map((c) => ({
+      key: c.key,
+      label: c.label,
+      color: c.color,
+    }));
+  }, [categoryWorkload]);
 
   if (categoryWorkload.length === 0) {
     return null;
@@ -210,315 +333,409 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* ── Header & Mode Controls ── */}
+      {/* ── Top Header & Visual Tab Switcher ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border/70 rounded-2xl p-4 sm:p-5 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-heading text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
-              <Users className="size-4 text-primary" />
-              <span>Team Category Attribution</span>
+              <PieIcon className="size-4 text-primary" />
+              <span>Category Workload & Attribution Visualizer</span>
             </h3>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold">
-              100% Breakdown
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold flex items-center gap-1">
+              <Sparkles className="size-3" />
+              <span>100% Charts & Circles</span>
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            See who worked on each document category and their exact percentage share of throughput.
+            Interactive circular donuts, 100% stacked workload graphs, and contributor progress rings.
           </p>
         </div>
 
-        {/* Tab switcher: By Category vs By Member */}
+        {/* Visual Tab Switcher */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <div className="inline-flex items-center rounded-xl bg-muted/40 p-1 border border-border/50 text-xs">
             <button
               type="button"
-              onClick={() => setActiveTab("by-category")}
+              onClick={() => setActiveTab("donut-focus")}
               className={cn(
                 "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                activeTab === "by-category"
+                activeTab === "donut-focus"
+                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <PieIcon className="size-3.5" />
+              <span>Category Donut</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("team-graph")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                activeTab === "team-graph"
+                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <BarChart3 className="size-3.5" />
+              <span>Team Workload Graph</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("all-donuts")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                activeTab === "all-donuts"
                   ? "bg-background text-foreground shadow-2xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               <LayoutGrid className="size-3.5" />
-              <span>By Category</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("by-member")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                activeTab === "by-member"
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Users className="size-3.5" />
-              <span>By Member</span>
+              <span>All Circles Matrix</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Sub-toolbar: Category filter chips & quick search ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {activeTab === "by-category" && (
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* ── VIEW 1: CATEGORY DONUT CIRCLE & CONTRIBUTOR RINGS ── */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {activeTab === "donut-focus" && currentCategory && (
+        <div className="space-y-4">
+          {/* Category Chips Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-            <button
-              type="button"
-              onClick={() => setSelectedCatKey("all")}
-              className={cn(
-                "px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer shrink-0 border",
-                selectedCatKey === "all"
-                  ? "bg-primary text-primary-foreground font-semibold border-primary shadow-2xs"
-                  : "bg-card border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              )}
-            >
-              All Categories ({categoryWorkload.length})
-            </button>
-            {categoryWorkload.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => setSelectedCatKey(c.key)}
-                className={cn(
-                  "px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer shrink-0 border flex items-center gap-1.5",
-                  selectedCatKey === c.key
-                    ? "bg-card text-foreground font-semibold shadow-2xs border-primary"
-                    : "bg-card border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
-                <span>{c.short}</span>
-                <span className="text-[10px] opacity-70 font-mono">({c.contributors.length})</span>
-              </button>
-            ))}
+            {categoryWorkload.map((c) => {
+              const isSelected = (selectedCatKey || categoryWorkload[0].key) === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setSelectedCatKey(c.key)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer shrink-0 border flex items-center gap-2",
+                    isSelected
+                      ? "bg-card text-foreground font-semibold shadow-xs border-primary scale-[1.02]"
+                      : "bg-card/60 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <span className="size-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: c.color }} />
+                  <span>{c.label}</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-muted/60 text-foreground/80 font-bold">
+                    {c.totalDocs.toLocaleString()}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        {/* Search */}
-        <div className="relative min-w-[220px] max-w-xs ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={activeTab === "by-category" ? "Search category or member…" : "Search member name…"}
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-card border border-border/60 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
-          />
-        </div>
-      </div>
+          {/* Main Visual Card: Donut Chart on Left, Contributor Circular Gauges on Right */}
+          <div className="bg-card border border-border/70 rounded-2xl p-5 shadow-2xs">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              {/* Left Column: Big Interactive Donut Chart with Center Metric Circle */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 relative">
+                <div className="relative w-full max-w-[280px] aspect-square flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip content={<CustomPieTooltip />} />
+                      <Pie
+                        data={categoryPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={72}
+                        outerRadius={105}
+                        paddingAngle={categoryPieData.length > 1 ? 3 : 0}
+                        dataKey="value"
+                        isAnimationActive={true}
+                        animationDuration={600}
+                      >
+                        {categoryPieData.map((entry) => (
+                          <Cell
+                            key={`slice-${entry.userId}`}
+                            fill={entry.color}
+                            stroke="hsl(var(--card))"
+                            strokeWidth={hoveredSlice === entry.userId ? 4 : 2}
+                            className="transition-all duration-200 cursor-pointer"
+                            opacity={hoveredSlice && hoveredSlice !== entry.userId ? 0.45 : 1}
+                            onMouseEnter={() => setHoveredSlice(entry.userId)}
+                            onMouseLeave={() => setHoveredSlice(null)}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
 
-      {/* ── View 1: By Category ── */}
-      {activeTab === "by-category" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredCategories.map((c) => (
-            <div
-              key={c.key}
-              className="bg-card border border-border/70 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 hover:border-border transition-colors flex flex-col justify-between"
-            >
-              <div>
-                {/* Header row */}
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Centered Circle Metrics */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                     <span
-                      className="size-3 rounded-full shrink-0 shadow-xs"
-                      style={{ backgroundColor: c.color }}
+                      className="size-2 rounded-full mb-1 shadow-xs"
+                      style={{ backgroundColor: currentCategory.color }}
                     />
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-semibold text-foreground truncate">{c.label}</h4>
-                      <p className="text-[11px] text-muted-foreground font-mono">
-                        {c.short} · {c.contributors.length} {c.contributors.length === 1 ? "contributor" : "contributors"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-base font-bold tabular-nums text-foreground">
-                      {c.totalDocs.toLocaleString()}
+                    <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
+                      {currentCategory.totalDocs.toLocaleString()}
                     </span>
-                    <span className="block text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                      Total Docs
+                    <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground font-semibold">
+                      {currentCategory.short} · 100%
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/75 mt-0.5">
+                      {currentCategory.contributors.length} {currentCategory.contributors.length === 1 ? "member" : "members"}
                     </span>
                   </div>
                 </div>
 
-                {/* Stacked multi-segment bar showing the 100% share */}
-                <div className="h-2.5 w-full rounded-full bg-muted/50 overflow-hidden flex my-3 border border-border/40">
-                  {c.contributors.map((contrib, idx) => (
-                    <div
-                      key={contrib.userId}
-                      style={{
-                        width: `${contrib.sharePercent}%`,
-                        backgroundColor: c.color,
-                        opacity: 1 - idx * 0.18,
-                      }}
-                      className="h-full transition-all duration-300 relative group"
-                      title={`${contrib.name}: ${contrib.count.toLocaleString()} docs (${contrib.sharePercent}%)`}
-                    />
-                  ))}
+                {/* Subtitle / Donut legend */}
+                <div className="mt-2 text-center">
+                  <p className="text-xs font-semibold text-foreground">{currentCategory.label}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    100% of this category distributed across contributors
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Column: Contributor Circular Gauges & Percentage Attribution */}
+              <div className="lg:col-span-7 space-y-3">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                    Contributor 100% Breakdown
+                  </span>
+                  <span className="text-xs font-mono text-emerald-500 flex items-center gap-1 font-semibold">
+                    <CheckCheck className="size-3.5" />
+                    <span>Total: 100%</span>
+                  </span>
                 </div>
 
-                {/* Contributor rows breakdown */}
-                <div className="divide-y divide-border/40 mt-3">
-                  {c.contributors.map((contrib, rank) => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                  {currentCategory.contributors.map((contrib, rank) => {
                     const isMe = contrib.userId === currentUserId;
+                    const isHovered = hoveredSlice === contrib.userId;
+
                     return (
                       <div
                         key={contrib.userId}
-                        className="py-2.5 flex items-center justify-between gap-3 text-xs hover:bg-muted/20 px-1 rounded-lg transition-colors"
+                        onMouseEnter={() => setHoveredSlice(contrib.userId)}
+                        onMouseLeave={() => setHoveredSlice(null)}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-xl border transition-all duration-200 cursor-pointer",
+                          isHovered
+                            ? "bg-muted/40 border-primary shadow-xs scale-[1.01]"
+                            : "bg-card/80 border-border/60 hover:border-border hover:bg-muted/20"
+                        )}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {/* Rank badge */}
-                          <span
-                            className={cn(
-                              "size-5 rounded-md text-[10px] font-bold font-mono grid place-items-center shrink-0",
-                              rank === 0
-                                ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
-                                : rank === 1
-                                ? "bg-slate-400/15 text-slate-400 border border-slate-400/30"
-                                : "bg-muted text-muted-foreground"
-                            )}
-                            title={`Rank #${rank + 1}`}
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Circular SVG Ring Gauge */}
+                          <CirclePercentRing
+                            value={contrib.sharePercent}
+                            size={48}
+                            strokeWidth={4.5}
+                            color={contrib.color}
                           >
-                            {rank + 1}
-                          </span>
+                            <span className="text-[10px] font-mono font-bold">{contrib.sharePercent}%</span>
+                          </CirclePercentRing>
 
-                          {/* Avatar */}
-                          <div className="size-6 rounded-md bg-primary/10 text-primary font-bold text-[10px] grid place-items-center shrink-0 border border-primary/20">
-                            {contrib.initials}
-                          </div>
-
-                          {/* Contributor Name */}
+                          {/* Member info */}
                           <div className="min-w-0">
-                            <span className="font-medium text-foreground truncate block">
-                              {contrib.name}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-foreground truncate">
+                                {contrib.name}
+                              </span>
                               {isMe && (
-                                <span className="ml-1.5 text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                                   You
                                 </span>
                               )}
-                            </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span
+                                className={cn(
+                                  "text-[9px] font-bold font-mono px-1.5 py-0.2 rounded",
+                                  rank === 0
+                                    ? "bg-amber-500/15 text-amber-500"
+                                    : "bg-muted text-muted-foreground"
+                                )}
+                              >
+                                #{rank + 1}
+                              </span>
+                              <span className="text-[11px] font-mono text-muted-foreground">
+                                {contrib.count.toLocaleString()} docs
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Contributor stats & share out of 100% */}
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="tabular-nums font-semibold text-foreground">
-                            {contrib.count.toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">docs</span>
-                          </span>
-                          <span
-                            className="font-bold tabular-nums text-xs px-2 py-0.5 rounded-md min-w-[52px] text-right"
-                            style={{
-                              backgroundColor: `${c.color}15`,
-                              color: c.color,
-                            }}
-                          >
-                            {contrib.sharePercent}%
-                          </span>
-                        </div>
+                        {/* Color swatch dot */}
+                        <span
+                          className="size-3 rounded-full shrink-0 shadow-xs"
+                          style={{ backgroundColor: contrib.color }}
+                          title={`${contrib.sharePercent}% share`}
+                        />
                       </div>
                     );
                   })}
                 </div>
               </div>
-
-              {/* Bottom footer summary */}
-              <div className="pt-2 mt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1 font-mono">
-                  <CheckCheck className="size-3.5 text-emerald-500" />
-                  <span>Category Total: 100%</span>
-                </span>
-                <span className="text-foreground/80 font-medium">
-                  Top Contributor: <strong className="text-foreground">{c.contributors[0]?.name}</strong> ({c.contributors[0]?.sharePercent}%)
-                </span>
-              </div>
             </div>
-          ))}
+          </div>
         </div>
       )}
 
-      {/* ── View 2: By Member ── */}
-      {activeTab === "by-member" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredMembers.map((m) => {
-            const isMe = m.userId === currentUserId;
-            return (
-              <div
-                key={m.userId}
-                className="bg-card border border-border/70 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 hover:border-border transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  {/* Member header */}
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="size-10 rounded-xl bg-primary/10 text-primary font-bold text-sm grid place-items-center shrink-0 border border-primary/25 shadow-2xs">
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* ── VIEW 2: TEAM WORKLOAD GRAPH & RADIAL MEMBER DONUTS ── */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {activeTab === "team-graph" && (
+        <div className="space-y-4">
+          {/* Top Hero: 100% Stacked Workload Bar Chart */}
+          <div className="bg-card border border-border/70 rounded-2xl p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <BarChart3 className="size-4 text-primary" />
+                  <span>Team Workload Distribution Graph</span>
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Category breakdown per team member showing full throughput volume.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded-lg bg-muted/50 border border-border/50">
+                {memberWorkload.length} Active Members
+              </span>
+            </div>
+
+            {/* Stacked Recharts Bar Chart */}
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stackedBarData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--popover-border))",
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                    cursor={{ fill: "hsl(var(--accent) / 0.5)", radius: 6 }}
+                  />
+                  {activeCategoryKeys.map((cat, idx) => (
+                    <Bar
+                      key={cat.key}
+                      dataKey={cat.key}
+                      name={cat.label}
+                      stackId="workload"
+                      fill={cat.color}
+                      radius={idx === activeCategoryKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Category Color Legend */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/40 text-xs">
+              {activeCategoryKeys.map((cat) => (
+                <div key={cat.key} className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="text-muted-foreground">{cat.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Grid: Circular Donut Gauges per Team Member */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {memberWorkload.map((m) => {
+              const isMe = m.userId === currentUserId;
+              const memberPieData = m.categories.map((c) => ({
+                name: c.label,
+                value: c.count,
+                percent: c.sharePercent,
+                color: c.color,
+              }));
+
+              return (
+                <div
+                  key={m.userId}
+                  className="bg-card border border-border/70 rounded-2xl p-4 shadow-2xs hover:border-border transition-colors space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="size-8 rounded-xl bg-primary/10 text-primary font-bold text-xs grid place-items-center shrink-0 border border-primary/20">
                         {m.initials}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <h4 className="text-sm font-semibold text-foreground truncate">{m.name}</h4>
+                          <span className="text-xs font-semibold text-foreground truncate">{m.name}</span>
                           {isMe && (
-                            <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            <span className="text-[9px] uppercase font-bold px-1 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                               You
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                          <span className="capitalize">{m.role}</span>
-                          <span>·</span>
-                          <span>{m.categories.length} active {m.categories.length === 1 ? "category" : "categories"}</span>
-                        </p>
+                        <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-base font-bold tabular-nums text-foreground">
+                    <div className="text-right">
+                      <span className="text-xs font-bold font-mono text-foreground">
                         {m.totalDocs.toLocaleString()}
                       </span>
-                      <span className="block text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                        Total Output
-                      </span>
+                      <span className="block text-[9px] text-muted-foreground uppercase font-mono">docs</span>
                     </div>
                   </div>
 
-                  {/* Multi-category distribution bar totaling 100% of member's output */}
-                  <div className="h-2.5 w-full rounded-full bg-muted/50 overflow-hidden flex my-3 border border-border/40">
-                    {m.categories.map((c) => (
-                      <div
-                        key={c.key}
-                        style={{
-                          width: `${c.sharePercent}%`,
-                          backgroundColor: c.color,
-                        }}
-                        className="h-full transition-all duration-300"
-                        title={`${c.label}: ${c.count.toLocaleString()} docs (${c.sharePercent}%)`}
-                      />
-                    ))}
+                  {/* Circular Donut of Member's Category Split (100% of their output) */}
+                  <div className="relative h-44 flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Tooltip content={<CustomPieTooltip />} />
+                        <Pie
+                          data={memberPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={68}
+                          paddingAngle={memberPieData.length > 1 ? 3 : 0}
+                          dataKey="value"
+                        >
+                          {memberPieData.map((entry, idx) => (
+                            <Cell key={`mem-slice-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+
+                    {/* Center stats in donut */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                      <span className="text-sm font-bold font-mono text-foreground">
+                        {m.totalDocs.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] font-mono text-muted-foreground uppercase">100% Work</span>
+                    </div>
                   </div>
 
-                  {/* Categories list for this member */}
-                  <div className="divide-y divide-border/40 mt-3">
-                    {m.categories.map((c) => (
-                      <div
-                        key={c.key}
-                        className="py-2.5 flex items-center justify-between gap-3 text-xs hover:bg-muted/20 px-1 rounded-lg transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
-                          <span className="font-medium text-foreground truncate">{c.label}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground px-1.5 py-0.2 rounded bg-muted/60">
-                            {c.short}
-                          </span>
+                  {/* Top categories breakdown */}
+                  <div className="space-y-1.5 pt-1 border-t border-border/40">
+                    {m.categories.slice(0, 3).map((c) => (
+                      <div key={c.key} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                          <span className="text-muted-foreground truncate text-[11px]">{c.label}</span>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="tabular-nums font-semibold text-foreground">
-                            {c.count.toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">docs</span>
-                          </span>
+                        <div className="flex items-center gap-2 font-mono text-[11px]">
+                          <span className="text-muted-foreground">{c.count.toLocaleString()}</span>
                           <span
-                            className="font-bold tabular-nums text-xs px-2 py-0.5 rounded-md min-w-[52px] text-right"
-                            style={{
-                              backgroundColor: `${c.color}15`,
-                              color: c.color,
-                            }}
+                            className="font-bold px-1.5 py-0.2 rounded text-[10px]"
+                            style={{ backgroundColor: `${c.color}15`, color: c.color }}
                           >
                             {c.sharePercent}%
                           </span>
@@ -527,17 +744,104 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                     ))}
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-                {/* Footer summary */}
-                <div className="pt-2 mt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1 font-mono">
-                    <CheckCheck className="size-3.5 text-emerald-500" />
-                    <span>Member Output: 100%</span>
-                  </span>
-                  <span className="text-foreground/80 font-medium">
-                    Primary Focus: <strong className="text-foreground">{m.categories[0]?.label}</strong> ({m.categories[0]?.sharePercent}%)
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* ── VIEW 3: ALL CATEGORIES CIRCULAR DONUTS MATRIX ── */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {activeTab === "all-donuts" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categoryWorkload.map((c) => {
+            const pieData = c.contributors.map((contrib) => ({
+              name: contrib.name,
+              value: contrib.count,
+              percent: contrib.sharePercent,
+              color: contrib.color,
+            }));
+
+            return (
+              <div
+                key={c.key}
+                onClick={() => {
+                  setSelectedCatKey(c.key);
+                  setActiveTab("donut-focus");
+                }}
+                className="bg-card border border-border/70 rounded-2xl p-4 shadow-2xs hover:border-primary/50 transition-all cursor-pointer group space-y-3"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: c.color }} />
+                    <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                      {c.label}
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold font-mono text-foreground">
+                    {c.totalDocs.toLocaleString()}{" "}
+                    <span className="text-[9px] text-muted-foreground font-normal">docs</span>
                   </span>
                 </div>
+
+                {/* Circular Donut in center */}
+                <div className="relative h-44 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip content={<CustomPieTooltip />} />
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={48}
+                        outerRadius={68}
+                        paddingAngle={pieData.length > 1 ? 3 : 0}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, idx) => (
+                          <Cell key={`cat-cell-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Center circle text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                    <span className="text-sm font-bold font-mono text-foreground">100%</span>
+                    <span className="text-[9px] uppercase font-mono text-muted-foreground">
+                      {c.contributors.length} {c.contributors.length === 1 ? "user" : "users"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Top Contributor preview with circular gauge */}
+                {c.contributors[0] && (
+                  <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CirclePercentRing
+                        value={c.contributors[0].sharePercent}
+                        size={32}
+                        strokeWidth={3}
+                        color={c.contributors[0].color}
+                      >
+                        <span className="text-[8px] font-mono">{Math.round(c.contributors[0].sharePercent)}%</span>
+                      </CirclePercentRing>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-foreground truncate block">
+                          {c.contributors[0].name}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground font-mono">
+                          Top Contributor · #{1}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-primary">
+                      {c.contributors[0].sharePercent}%
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
