@@ -44,7 +44,7 @@ export function useUpsertLog() {
   return useMutation({
     mutationFn: async (log: DailyLogInsert) => {
       const validated = DailyLogInsertSchema.parse(log);
-      return await api.post<DailyLog>("/logs", validated);
+      return await api.post<DailyLog>("/logs", { ...validated, notes: validated.notes ?? "" });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["daily_logs"] });

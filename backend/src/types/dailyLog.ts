@@ -6,7 +6,7 @@ export interface DailyLog {
   log_date: string;
   counts: Record<string, number>;
   is_off_day: boolean;
-  notes?: string;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -24,7 +24,12 @@ export const UpsertDailyLogSchema = z.object({
     z.number().int("Count must be an integer").nonnegative("Count cannot be negative").max(99999, "Count value exceeds reasonable bounds")
   ),
   is_off_day: z.boolean().optional().default(false),
-  notes: z.string().max(1000, "Notes cannot exceed 1000 characters").optional().default(""),
+  notes: z
+    .string()
+    .max(1000, "Notes cannot exceed 1000 characters")
+    .nullable()
+    .optional()
+    .transform((val) => val ?? ""),
 });
 
 export const IncrementTapSchema = z.object({
