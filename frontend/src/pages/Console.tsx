@@ -4,21 +4,40 @@ import { LineChart } from "@/components/ui/icons";
 import Skeleton from "react-loading-skeleton";
 import { useDailyLogs } from "@/hooks/useDailyLogs";
 import { useCategories } from "@/hooks/useCategories";
+import { useTeamProfiles, useTeamDailyLogs } from "@/hooks/useTeamData";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { useFaxResolvedByDay, FAX_CATEGORY_KEY, FAX_CATEGORY_LABEL } from "@/hooks/useFaxTracker";
 import { useIndexableResolvedByDay, INDEXABLE_CATEGORY_KEY, INDEXABLE_CATEGORY_LABEL } from "@/hooks/useIndexableTracker";
 import { isoDate, totalForLog } from "@/types/log";
 import { colorForKey } from "@/lib/cat-colors";
 import { FigHeader, Panel, CategoryStatCard, EmptyState } from "@/components/ar/industrial";
+import { CategoryContributionMatrix } from "@/components/ar/dashboard/CategoryContributionMatrix";
 
 const Charts = lazy(() => import("@/components/ar/Charts").then((m) => ({ default: m.Charts })));
 
 const sectionEase: Easing = [0.23, 1, 0.32, 1];
 
 const Console = () => {
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { data: logs = [], isLoading } = useDailyLogs();
   const { data: categories = [] } = useCategories();
+  const { data: teamProfiles = [] } = useTeamProfiles();
+  const { data: teamLogs = [] } = useTeamDailyLogs();
   const { data: faxByDay = {} } = useFaxResolvedByDay();
   const { data: indexableByDay = {} } = useIndexableResolvedByDay();
+
+  const effectiveProfiles = useMemo(() => {
+    if (teamProfiles.length > 0) return teamProfiles;
+    if (profile) return [profile];
+    return [];
+  }, [teamProfiles, profile]);
+
+  const effectiveLogs = useMemo(() => {
+    if (teamLogs.length > 0) return teamLogs;
+    return logs;
+  }, [teamLogs, logs]);
 
   const stats = useMemo(() => {
     const today = isoDate();
@@ -122,6 +141,23 @@ const Console = () => {
                   )}
               </div>
           </section>
+
+          {/* ── Team Category Contributor Attribution ── */}
+          {!isEmpty && (
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: sectionEase, delay: 0.05 }}
+            >
+              <FigHeader title="Workload & Attribution" sub="Contributor distribution by category" />
+              <CategoryContributionMatrix
+                categories={categories}
+                logs={effectiveLogs}
+                profiles={effectiveProfiles}
+                currentUserId={user?.id}
+              />
+            </motion.section>
+          )}
 
           {/* ── Charts ── */}
           <motion.section
