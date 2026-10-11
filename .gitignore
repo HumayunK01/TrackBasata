@@ -50,4 +50,4 @@ Thumbs.db
 *.sw?
 
 # Local Database Migrations (Kept locally, not committed)
-supabase/
+/supabase/
