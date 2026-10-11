@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import {
   PieChart,
   Pie,
@@ -16,7 +16,7 @@ import type { Category } from "@/hooks/useCategories";
 import type { Profile } from "@/hooks/useProfile";
 import { colorForKey } from "@/lib/cat-colors";
 import { cn } from "@/lib/utils";
-import { Users, Search, CheckCheck } from "@/components/ui/icons";
+import { Users, Search, CheckCheck, ChevronLeft, ChevronRight } from "@/components/ui/icons";
 import { PieChart as PieIcon, BarChart3, LayoutGrid, Trophy, Sparkles } from "lucide-react";
 
 interface Props {
@@ -183,6 +183,47 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
   const [selectedCatKey, setSelectedCatKey] = useState<string>("");
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // Horizontal drag & slide controllers for category pills
+  const pillBarRef = useRef<HTMLDivElement>(null);
+  const [isDraggingPills, setIsDraggingPills] = useState(false);
+  const startXRef = useRef(0);
+  const startScrollLeftRef = useRef(0);
+  const hasDraggedRef = useRef(false);
+
+  const handlePillMouseDown = (e: React.MouseEvent) => {
+    if (!pillBarRef.current) return;
+    setIsDraggingPills(true);
+    hasDraggedRef.current = false;
+    startXRef.current = e.pageX - pillBarRef.current.offsetLeft;
+    startScrollLeftRef.current = pillBarRef.current.scrollLeft;
+  };
+
+  const handlePillMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingPills || !pillBarRef.current) return;
+    const x = e.pageX - pillBarRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    if (Math.abs(walk) > 4) {
+      hasDraggedRef.current = true;
+    }
+    pillBarRef.current.scrollLeft = startScrollLeftRef.current - walk;
+  };
+
+  const handlePillMouseUp = () => {
+    setIsDraggingPills(false);
+  };
+
+  const handlePillWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (pillBarRef.current && e.deltaY !== 0) {
+      pillBarRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
+  const scrollPills = (delta: number) => {
+    if (pillBarRef.current) {
+      pillBarRef.current.scrollBy({ left: delta, behavior: "smooth" });
+    }
+  };
 
   const profileMap = useMemo(() => new Map<string, Profile>(profiles.map((p) => [p.id, p])), [profiles]);
   const catMap = useMemo(() => new Map<string, Category>(categories.map((c) => [c.key, c])), [categories]);
@@ -421,30 +462,68 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === "donut-focus" && currentCategory && (
         <div className="space-y-4">
-          {/* Category Chips Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-            {categoryWorkload.map((c) => {
-              const isSelected = (selectedCatKey || categoryWorkload[0].key) === c.key;
-              return (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => setSelectedCatKey(c.key)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer shrink-0 border flex items-center gap-2",
-                    isSelected
-                      ? "bg-card text-foreground font-semibold shadow-xs border-primary scale-[1.02]"
-                      : "bg-card/60 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <span className="size-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: c.color }} />
-                  <span>{c.label}</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-muted/60 text-foreground/80 font-bold">
-                    {c.totalDocs.toLocaleString()}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Category Chips Bar with Click-to-Drag & Smooth Arrows */}
+          <div className="relative flex items-center gap-1.5 group/pills">
+            {/* Scroll Left Button */}
+            <button
+              type="button"
+              onClick={() => scrollPills(-220)}
+              className="hidden sm:flex size-7 rounded-xl bg-card border border-border/70 items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 shrink-0 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+              title="Slide left"
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+
+            {/* Draggable & Scrollable Pills container */}
+            <div
+              ref={pillBarRef}
+              onMouseDown={handlePillMouseDown}
+              onMouseMove={handlePillMouseMove}
+              onMouseUp={handlePillMouseUp}
+              onMouseLeave={handlePillMouseUp}
+              onWheel={handlePillWheel}
+              className={cn(
+                "flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 select-none transition-colors",
+                isDraggingPills ? "cursor-grabbing" : "cursor-grab"
+              )}
+            >
+              {categoryWorkload.map((c) => {
+                const isSelected = (selectedCatKey || categoryWorkload[0].key) === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => {
+                      if (!hasDraggedRef.current) {
+                        setSelectedCatKey(c.key);
+                      }
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 border flex items-center gap-2",
+                      isSelected
+                        ? "bg-card text-foreground font-semibold shadow-xs border-primary scale-[1.02]"
+                        : "bg-card/60 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <span className="size-2.5 rounded-full shrink-0 shadow-xs pointer-events-none" style={{ backgroundColor: c.color }} />
+                    <span className="pointer-events-none">{c.label}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-muted/60 text-foreground/80 font-bold pointer-events-none">
+                      {c.totalDocs.toLocaleString()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scroll Right Button */}
+            <button
+              type="button"
+              onClick={() => scrollPills(220)}
+              className="hidden sm:flex size-7 rounded-xl bg-card border border-border/70 items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 shrink-0 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+              title="Slide right"
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
           </div>
 
           {/* Main Visual Card: Donut Chart on Left, Contributor Circular Gauges on Right */}
