@@ -270,8 +270,8 @@ const ReportPage = () => {
     });
 
   return (
-    <div className="flex flex-col min-h-full">
-      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1]">
+    <div className="flex-1 min-h-0 flex flex-col">
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1] [overscroll-behavior-y:contain]">
         <div className="w-full space-y-6 sm:space-y-8">
           {/* ── Elevated Date Range & Filter Toolbar ── */}
           <div className="rounded-2xl border border-border bg-card/70 backdrop-blur-sm p-3.5 sm:p-4 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">

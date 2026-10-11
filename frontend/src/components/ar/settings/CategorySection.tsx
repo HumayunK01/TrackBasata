@@ -106,7 +106,7 @@ export function CategorySection({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 hidden xs:block">
-                Drag to reorder keys · Drive counters, quick logging, and chart reports
+                Drag to reorder · Used in counters, daily logs, and reports
               </p>
             </div>
           </div>
@@ -249,7 +249,7 @@ export function CategorySection({
               <div className="flex gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs leading-normal">
                 <HelpCircle className="size-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span className="text-foreground leading-relaxed">
-                  Labels automatically bind to daily metrics (e.g. <strong>&ldquo;Worked on NG&rdquo;</strong> generates target key <strong>&ldquo;worked_on_ng&rdquo;</strong>).
+                  Category names create database keys automatically (e.g. <strong>&ldquo;Worked on NG&rdquo;</strong> creates <strong>&ldquo;worked_on_ng&rdquo;</strong>).
                 </span>
               </div>
             )}

@@ -29,21 +29,21 @@ export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
     date: "2026-10-11",
     title: "TrackBasata 3.0",
     description:
-      "Major architecture upgrade featuring interactive circular donut charts, workload distribution graphs, and a dedicated backend API service.",
+      "Category donut charts, team workload graphs, and a faster backend API service.",
     body: [
       (
         <>
-          <strong className="text-foreground font-semibold">Interactive Donut & Circle Visualizations:</strong> Graphical category attribution with centered metric donuts, contributor percentage gauges, and 100% throughput distribution.
+          <strong className="text-foreground font-semibold">Category Charts:</strong> Visual donut charts and progress rings showing each team member's share and totals.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Drag & Slide Category Navigation:</strong> Smooth mouse-drag, horizontal wheel scroll, and quick slide arrows for browsing document categories.
+          <strong className="text-foreground font-semibold">Category Slider:</strong> Drag or click arrows to browse document categories quickly.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Dedicated Backend API:</strong> High-performance Node.js service with transactional integrity, rate limiting, and secure audit logging.
+          <strong className="text-foreground font-semibold">Backend API:</strong> Node.js service with rate limiting, transaction safety, and audit logs.
         </>
       ),
     ],
@@ -53,26 +53,26 @@ export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
     date: "2026-09-22",
     title: "Inbox Process Guide",
     description:
-      "A comprehensive, interactive intake guide featuring step-by-step flowcharts, document routing rules, and approved label references.",
+      "Step-by-step intake guides, document routing paths, and approved label references.",
     body: [
       (
         <>
-          <strong className="text-foreground font-semibold">Step-by-Step Flowcharts:</strong> Interactive visual decision trees for all core intake workflows — including ROI medical records requests, Indexable documents, single-patient EKG and Cath Lab routing, Patient Referrals with incomplete document checks, and Archive rules.
+          <strong className="text-foreground font-semibold">Visual Flowcharts:</strong> Interactive decision trees for core intake workflows, including medical records requests, indexing, and archive rules.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Document Routing Guide:</strong> Instant search and lookup across clinical document types, showing exact NextGen categories, description conventions, and step-by-step bucket paths.
+          <strong className="text-foreground font-semibold">Routing Guide:</strong> Search document types to find exact NextGen categories and bucket paths.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Approved Labels & Test Patients:</strong> Quick-reference directory of all 29 approved inbox labels and test patient account details with one-click copying for fast chart verification.
+          <strong className="text-foreground font-semibold">Approved Labels:</strong> Directory of all 29 approved inbox labels and test patient details with one-click copying.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">One-Click Compliance Actions:</strong> Built-in 1-click copy buttons for standard faxback responses, complete routing sequences, and clinical refax notices.
+          <strong className="text-foreground font-semibold">Quick Copy:</strong> One-click copy buttons for standard faxback responses, routing sequences, and refax notices.
         </>
       ),
     ],
@@ -82,26 +82,26 @@ export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
     date: "2026-09-19",
     title: "Basata Tracker 2.0",
     description:
-      "A complete modernization of Basata Tracker featuring our unified emerald design system, redesigned workflows, streamlined settings, and improved navigation.",
+      "Updated interface, cleaner settings, and faster navigation.",
     body: [
       (
         <>
-          <strong className="text-foreground font-semibold">Unified Emerald Design:</strong> A streamlined, modern aesthetic with glassmorphism, refined typography, and brand-consistent emerald accents across all pages and dialogs.
+          <strong className="text-foreground font-semibold">Refreshed Interface:</strong> Clean typography, emerald accents, and consistent layouts across pages and dialogs.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Redesigned Workstation:</strong> Upgraded Vault, Facility Management, Team views, and Login experience with responsive layouts and crisp vector iconography.
+          <strong className="text-foreground font-semibold">Updated Workstation:</strong> Cleaner layouts for Vault, Facilities, Team, and Login views.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Interactive Settings & Preferences:</strong> Reimagined settings workspace with spring-animated navigation tabs, quick timezone switching, and document category management.
+          <strong className="text-foreground font-semibold">Settings:</strong> Direct category reordering, custom labels, and timezone controls.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Performance & Polish:</strong> Faster page transitions, zero layout shift, seamless dark and light modes, and improved accessibility.
+          <strong className="text-foreground font-semibold">Performance:</strong> Faster transitions, better keyboard support, and improved accessibility.
         </>
       ),
     ],
@@ -109,23 +109,23 @@ export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
   {
     id: "version-1-3-1-themes",
     date: "2026-09-10",
-    title: "Modern & Legacy Theme",
+    title: "Modern & Legacy Themes",
     description:
-      "Seamlessly switch between our sleek Modern Theme and the familiar Legacy Theme, with full Light Mode support across all views.",
+      "Switch between Modern and Legacy themes with full light mode support.",
     body: [
       (
         <>
-          <strong className="text-foreground font-semibold">Theme Switching:</strong> Click the palette icon in the top navigation bar to switch between our sleek <strong className="text-foreground font-semibold">Modern Theme</strong> and the familiar <strong className="text-foreground font-semibold">Legacy Theme</strong>.
+          <strong className="text-foreground font-semibold">Theme Switching:</strong> Click the palette icon in the top navigation bar to toggle between Modern and Legacy themes.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Full Light Mode Support:</strong> High-clarity light mode across both themes featuring crisp white canvases, clean table headers, and distraction-free contrast.
+          <strong className="text-foreground font-semibold">Light Mode:</strong> Crisp light mode with clean borders and readable contrast.
         </>
       ),
       (
         <>
-          <strong className="text-foreground font-semibold">Unified Navigation:</strong> Standardized logo sizing, streamlined layout, and responsive controls across the entire workspace.
+          <strong className="text-foreground font-semibold">Unified Navigation:</strong> Consistent logo sizing and header controls across the workspace.
         </>
       ),
     ],

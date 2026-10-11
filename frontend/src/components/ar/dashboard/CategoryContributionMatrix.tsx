@@ -590,16 +590,16 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                 <div className="mt-2 text-center">
                   <p className="text-xs font-semibold text-foreground">{currentCategory.label}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    100% of this category distributed across contributors
+                    Work distribution across team members
                   </p>
                 </div>
               </div>
 
-              {/* Right Column: Contributor Circular Gauges & Percentage Attribution */}
+              {/* Right Column: Contributor Circular Gauges */}
               <div className="lg:col-span-7 space-y-3">
                 <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-1">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">
-                    Contributor 100% Breakdown
+                    Team Members
                   </span>
                   <span className="text-xs font-mono text-emerald-500 flex items-center gap-1 font-semibold">
                     <CheckCheck className="size-3.5" />

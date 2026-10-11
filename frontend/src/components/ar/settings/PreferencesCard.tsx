@@ -33,7 +33,7 @@ export function PreferencesCard({ dailyGoal }: PreferencesCardProps) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-foreground">Daily Document Goal</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Target production count displayed on your daily console and progress indicators</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Daily target shown on your console and progress bars</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 sm:ml-4">
@@ -66,7 +66,7 @@ export function PreferencesCard({ dailyGoal }: PreferencesCardProps) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-foreground">Color Mode</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Switch between dark obsidian workspace and high-contrast light mode</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Switch between dark and light mode</p>
             </div>
           </div>
           <div className="shrink-0 sm:ml-4">
