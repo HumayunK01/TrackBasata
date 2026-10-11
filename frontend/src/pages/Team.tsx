@@ -7,13 +7,14 @@ import {
   useDeleteUser,
   useSetUserDisabled,
   useTeamUserFaxedBack,
-  useTeamUserCategories,
   useTeamUserAuditLogs,
   useTeamUserLogs,
   fetchAllUserLogs,
   fetchAllUserFaxedBack,
   type TeamFaxedBackDoc,
 } from "@/hooks/useTeamData";
+import { useCategories } from "@/hooks/useCategories";
+import { colorForKey } from "@/lib/cat-colors";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, useProfile } from "@/hooks/useProfile";
 import { useDebouncedValue } from "@/hooks/useDebounce";
@@ -263,10 +264,7 @@ export default function TeamPage() {
     pages.faxedBack,
     { search: debouncedFaxSearch.trim() || undefined },
   );
-  const { data: categoriesPage = { rows: [], total: 0 }, isLoading: categoriesLoading } = useTeamUserCategories(
-    selectedUserId,
-    pages.categories,
-  );
+  const { data: allCategories = [], isLoading: categoriesLoading } = useCategories();
   const { data: auditPage = { rows: [], total: 0 }, isLoading: auditLoading } = useTeamUserAuditLogs(
     selectedUserId,
     pages.activity,
@@ -274,11 +272,9 @@ export default function TeamPage() {
 
   const selectedLogs = logsPage.rows;
   const selectedFaxedBack = faxedBackPage.rows;
-  const selectedCategories = categoriesPage.rows;
   const selectedAudit = auditPage.rows;
   const logsTotal = logsPage.total;
   const faxedBackTotal = faxedBackPage.total;
-  const categoriesTotal = categoriesPage.total;
   const auditTotal = auditPage.total;
 
   const isLoading = profilesLoading || logsLoading;
@@ -292,6 +288,46 @@ export default function TeamPage() {
     }
     return map;
   }, [allLogs]);
+
+  // Category contributions for the selected user:
+  // For users having 0 contribution in any category, do NOT show it!
+  const userCategoryContributions = useMemo(() => {
+    if (!selectedUserId) return [];
+    const userLogs = logsByUser.get(selectedUserId) ?? [];
+    const totals: Record<string, number> = {};
+    let userTotalDocs = 0;
+    for (const l of userLogs) {
+      if (l.is_off_day || !l.counts) continue;
+      for (const [k, v] of Object.entries(l.counts)) {
+        if (typeof v === "number" && v > 0) {
+          totals[k] = (totals[k] ?? 0) + v;
+          userTotalDocs += v;
+        }
+      }
+    }
+
+    const catMap = new Map(allCategories.map((c) => [c.key, c]));
+
+    return Object.entries(totals)
+      .filter(([_, count]) => count > 0)
+      .map(([key, totalDocs]) => {
+        const meta = catMap.get(key);
+        return {
+          id: meta?.id ?? key,
+          user_id: selectedUserId,
+          key,
+          label: meta?.label ?? key,
+          short: meta?.short ?? key.slice(0, 4).toUpperCase(),
+          position: meta?.position ?? 999,
+          totalDocs,
+          share: userTotalDocs > 0 ? Math.round((totalDocs / userTotalDocs) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.totalDocs - a.totalDocs);
+  }, [selectedUserId, logsByUser, allCategories]);
+
+  const selectedCategories = userCategoryContributions;
+  const categoriesTotal = userCategoryContributions.length;
 
   // Compute stats and maintain strict alphabetical sorting A-Z
   const memberCards: TeamMemberItem[] = useMemo(() => {
@@ -456,8 +492,9 @@ export default function TeamPage() {
     try {
       const logs = await fetchAllUserLogs(selectedUserId);
       const filename = `${memberSlug}-daily-log.${kind}`;
-      if (kind === "csv") downloadCSV(logs, selectedCategories, filename);
-      else await downloadPDF(logs, selectedCategories, filename, { title: `${memberName} — Daily Log`, userName: memberName });
+      const exportCats = selectedCategories.length > 0 ? selectedCategories : allCategories;
+      if (kind === "csv") downloadCSV(logs, exportCats, filename);
+      else await downloadPDF(logs, exportCats, filename, { title: `${memberName} — Daily Log`, userName: memberName });
     } finally {
       setExporting(null);
     }
@@ -950,30 +987,51 @@ export default function TeamPage() {
 
         {/* Tab 4: Categories */}
         {tab === "categories" && (
-          <SectionCard title="Categories" sub={`${categoriesTotal} custom categories configured`}>
+          <SectionCard
+            title="Categories"
+            sub={
+              categoriesTotal === 0
+                ? "No categories with logged contributions"
+                : categoriesTotal === 1
+                ? "1 category with logged contributions"
+                : `${categoriesTotal} categories with logged contributions`
+            }
+          >
             {categoriesLoading ? (
               <div className="space-y-2">
                 <Skeleton height={44} count={4} />
               </div>
             ) : selectedCategories.length === 0 ? (
               <div className="bg-card border border-border/60 rounded-xl p-8 text-center text-xs text-muted-foreground">
-                No custom categories set up for this member.
+                No category contributions recorded for {memberName} yet.
               </div>
             ) : (
               <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-xs">
                 <div className="divide-y divide-border/40">
                   {selectedCategories.map((c) => (
-                    <div key={c.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors">
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-muted/80 border border-border/50 font-mono">
+                    <div key={c.key} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors">
+                      <span
+                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border font-mono"
+                        style={{
+                          backgroundColor: `${colorForKey(c.key)}15`,
+                          color: colorForKey(c.key),
+                          borderColor: `${colorForKey(c.key)}35`,
+                        }}
+                      >
                         {c.key}
                       </span>
                       <span className="text-xs font-semibold text-foreground">{c.label}</span>
                       <span className="text-[10px] text-muted-foreground px-2 py-0.5 rounded bg-muted/40 border border-border/40">
                         {c.short}
                       </span>
-                      <span className="ml-auto text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
-                        Position #{c.position}
-                      </span>
+                      <div className="ml-auto flex items-center gap-3">
+                        <span className="text-xs font-bold tabular-nums text-primary">
+                          {c.totalDocs.toLocaleString()} docs
+                        </span>
+                        <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-muted/50 px-2 py-0.5 rounded border border-border/40">
+                          {c.share}% of total
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

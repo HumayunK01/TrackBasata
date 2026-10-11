@@ -220,6 +220,13 @@ const ReportPage = () => {
     [sortedWorkingAsc]
   );
 
+  const activeReportCategories = useMemo(() => {
+    const active = categories.filter((c) =>
+      workingLogs.some((l) => ((l.counts ?? {})[c.key] ?? 0) > 0),
+    );
+    return active.length > 0 ? active : categories;
+  }, [categories, workingLogs]);
+
   const categorySeries = useMemo(() =>
     categoryBreakdown.slice(0, 6).map((c) => ({
       name: c.short,
@@ -513,7 +520,7 @@ const ReportPage = () => {
                 <FigHeader title="Daily Activity Log" sub={`${filtered.length} total days`} />
                 <ReportDayTable
                   filtered={filtered}
-                  categories={categories}
+                  categories={activeReportCategories}
                   workingLogs={workingLogs}
                   totalDocs={totalDocs}
                   avgPerDay={avgPerDay}

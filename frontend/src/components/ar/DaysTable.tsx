@@ -43,6 +43,8 @@ import {
   Copy,
   Check,
   CalendarDays,
+  Eye,
+  EyeOff,
   X,
   Download,
   Plus,
@@ -379,6 +381,31 @@ export function DaysTable({ logs, onEdit, onNew, userName }: Props) {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const deleteLog = useDeleteLog();
   const { data: categories = [] } = useCategories();
+  const [hideZeroCategories, setHideZeroCategories] = useState(true);
+
+  // Track categories that have > 0 contributions across this user's logs
+  const userContributedKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of logs) {
+      if (l.is_off_day || !l.counts) continue;
+      for (const [k, v] of Object.entries(l.counts)) {
+        if (typeof v === "number" && v > 0) set.add(k);
+      }
+    }
+    return set;
+  }, [logs]);
+
+  // Count how many categories have 0 contributions
+  const zeroContributionCount = useMemo(() => {
+    return categories.filter((c) => !userContributedKeys.has(c.key)).length;
+  }, [categories, userContributedKeys]);
+
+  // When hideZeroCategories is active, don't show categories having 0 contribution
+  const visibleCategories = useMemo(() => {
+    if (!hideZeroCategories) return categories;
+    const filtered = categories.filter((c) => userContributedKeys.has(c.key));
+    return filtered.length > 0 ? filtered : categories;
+  }, [categories, hideZeroCategories, userContributedKeys]);
 
   const allSorted = useMemo(
     () => [...logs].sort((a, b) => b.log_date.localeCompare(a.log_date)),
@@ -483,7 +510,7 @@ export function DaysTable({ logs, onEdit, onNew, userName }: Props) {
 
   const sharedProps = {
     paginated,
-    categories,
+    categories: visibleCategories,
     search,
     copiedId,
     onEdit,
@@ -582,6 +609,38 @@ export function DaysTable({ logs, onEdit, onNew, userName }: Props) {
               Avg <strong className="text-primary font-semibold">{avgTotal}</strong> / day
             </span>
 
+            {/* Hide 0-Contribution Categories Toggle */}
+            {zeroContributionCount > 0 && (
+              <Button
+                variant={hideZeroCategories ? "default" : "outline"}
+                size="sm"
+                onClick={() => setHideZeroCategories((v) => !v)}
+                className={cn(
+                  "h-9 px-3 text-xs font-medium rounded-xl gap-1.5 shadow-2xs cursor-pointer transition-all",
+                  hideZeroCategories
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "border-border/60 bg-background hover:bg-muted text-foreground",
+                )}
+                title={
+                  hideZeroCategories
+                    ? "Showing only categories with contributions. Click to show all."
+                    : `Hide ${zeroContributionCount} categories with 0 contributions.`
+                }
+                aria-label="Toggle hiding zero contribution categories"
+              >
+                {hideZeroCategories ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                <span>{hideZeroCategories ? "Contributed Only" : "Hide 0-Count"}</span>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-mono",
+                    hideZeroCategories ? "bg-white/20 text-white font-semibold" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {hideZeroCategories ? `${visibleCategories.length}/${categories.length}` : `-${zeroContributionCount}`}
+                </span>
+              </Button>
+            )}
+
             {/* Export Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -603,7 +662,7 @@ export function DaysTable({ logs, onEdit, onNew, userName }: Props) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  onClick={() => downloadCSV(logs, categories, "daily-log.csv")}
+                  onClick={() => downloadCSV(logs, hideZeroCategories ? visibleCategories : categories, "daily-log.csv")}
                   className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer text-xs focus:bg-muted/70"
                 >
                   <div className="size-7 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 grid place-items-center shrink-0">
@@ -615,7 +674,7 @@ export function DaysTable({ logs, onEdit, onNew, userName }: Props) {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => downloadJSON(logs, categories, "daily-log.json")}
+                  onClick={() => downloadJSON(logs, hideZeroCategories ? visibleCategories : categories, "daily-log.json")}
                   className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer text-xs focus:bg-muted/70"
                 >
                   <div className="size-7 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 grid place-items-center shrink-0">
@@ -627,7 +686,7 @@ export function DaysTable({ logs, onEdit, onNew, userName }: Props) {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => downloadPDF(logs, categories, "daily-log.pdf", { title: "Daily Log Export", userName })}
+                  onClick={() => downloadPDF(logs, hideZeroCategories ? visibleCategories : categories, "daily-log.pdf", { title: "Daily Log Export", userName })}
                   className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer text-xs focus:bg-muted/70"
                 >
                   <div className="size-7 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 grid place-items-center shrink-0">
