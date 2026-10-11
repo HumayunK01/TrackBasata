@@ -9,8 +9,6 @@ import {
   Target,
   Palette,
   Clock,
-  Sun,
-  Moon,
   Globe,
   Tag,
   Tags,
@@ -70,6 +68,9 @@ import {
   PencilSquareIcon,
   UserPlusIcon,
   Cog6ToothIcon,
+  Cog8ToothIcon,
+  SunIcon,
+  MoonIcon,
   TrophyIcon,
   QuestionMarkCircleIcon,
   FireIcon,
@@ -125,7 +126,9 @@ export const EyeOff = wrapIcon(EyeSlashIcon);
 export const ChevronLeft = wrapIcon(ChevronLeft16);
 export const KeyRound = wrapIcon(KeyIcon);
 export const Copy = wrapIcon(DocumentDuplicateIcon);
-export { Sun, Moon, Palette, Target, User, Tag, Tags, ShieldAlert, TriangleAlert, UserX, AlertTriangle, SlidersHorizontal };
+export const Sun = wrapIcon(SunIcon);
+export const Moon = wrapIcon(MoonIcon);
+export { Palette, Target, User, Tag, Tags, ShieldAlert, TriangleAlert, UserX, AlertTriangle, SlidersHorizontal };
 export const Hash = wrapIcon(HashtagIcon);
 export const Users = wrapIcon(UsersIcon);
 export const Minus = wrapIcon(MinusIcon);
@@ -148,7 +151,7 @@ export const BookOpen = wrapIcon(BookOpenIcon);
 export const WandSparkles = wrapIcon(SparklesIcon);
 export const PenLine = wrapIcon(PencilSquareIcon);
 export const UserPlus = wrapIcon(UserPlusIcon);
-export const Settings = wrapIcon(Cog6ToothIcon);
+export const Settings = wrapIcon(Cog8ToothIcon);
 export { LogOut };
 export const Trophy = wrapIcon(TrophyIcon);
 export const Award = wrapIcon(TrophyIcon);

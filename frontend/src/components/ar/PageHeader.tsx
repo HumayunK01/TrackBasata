@@ -90,30 +90,30 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
           {/* Grouped Header Utility Toolbar (Fixed h-9 height) */}
           <div className="h-9 flex items-center gap-1 bg-muted/40 dark:bg-white/[0.04] px-1.5 rounded-lg border border-border/60 backdrop-blur-xs">
             {/* What's New */}
-            <WhatsNewButton className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&>svg]:size-[18px]" />
+            <WhatsNewButton className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&_svg]:!size-[18px]" />
 
             {/* Dark / Light Toggle */}
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&>svg]:size-[18px]"
+              className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&_svg]:!size-[18px]"
               onClick={toggle}
               title={theme === "dark" ? "Light mode" : "Dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {theme === "dark" ? <Sun /> : <Moon />}
+              {theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
             </Button>
 
             {/* Settings */}
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&>svg]:size-[18px]"
+              className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&_svg]:!size-[18px]"
               onClick={() => navigate("/settings")}
               title="Settings"
               aria-label="Settings"
             >
-              <Settings />
+              <Settings className="size-[18px]" />
             </Button>
           </div>
 
