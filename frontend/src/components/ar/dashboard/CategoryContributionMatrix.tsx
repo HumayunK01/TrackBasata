@@ -79,6 +79,26 @@ const MEMBER_COLORS = [
 ];
 
 /**
+ * Filter out categories explicitly excluded from the Console dashboard:
+ * Worked on NG, banchod, Patient Chart Created, moved_to_inbox, Faxback
+ */
+export function isConsoleExcludedCategory(key?: string, label?: string): boolean {
+  if (!key && !label) return false;
+  const k = (key ?? "").toLowerCase().replace(/[\s_-]+/g, "");
+  const l = (label ?? "").toLowerCase().replace(/[\s_-]+/g, "");
+  const excluded = new Set([
+    "workedonng",
+    "banchod",
+    "patientchartcreated",
+    "movedtoinbox",
+    "movedtoindexing",
+    "faxback",
+  ]);
+  return excluded.has(k) || excluded.has(l);
+}
+
+
+/**
  * Reusable Circular SVG Progress Ring Gauge
  */
 export function CirclePercentRing({
@@ -179,6 +199,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
       if (!log.counts) continue;
       const uid = log.user_id;
       for (const [k, v] of Object.entries(log.counts)) {
+        if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
         if (typeof v === "number" && v > 0) {
           catTotals[k] = (catTotals[k] ?? 0) + v;
           if (!catUserTotals[k]) catUserTotals[k] = {};
@@ -188,7 +209,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
     }
 
     return Object.entries(catTotals)
-      .filter(([_, total]) => total > 0)
+      .filter(([key, total]) => total > 0 && !isConsoleExcludedCategory(key, catMap.get(key)?.label))
       .map(([key, totalDocs]) => {
         const cat = catMap.get(key);
         const userCounts = catUserTotals[key] || {};
@@ -237,6 +258,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
       if (!log.counts) continue;
       const uid = log.user_id;
       for (const [k, v] of Object.entries(log.counts)) {
+        if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
         if (typeof v === "number" && v > 0) {
           userTotals[uid] = (userTotals[uid] ?? 0) + v;
           if (!userCatTotals[uid]) userCatTotals[uid] = {};

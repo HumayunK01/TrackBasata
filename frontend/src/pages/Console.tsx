@@ -12,7 +12,7 @@ import { useIndexableResolvedByDay, INDEXABLE_CATEGORY_KEY, INDEXABLE_CATEGORY_L
 import { isoDate, totalForLog } from "@/types/log";
 import { colorForKey } from "@/lib/cat-colors";
 import { FigHeader, Panel, CategoryStatCard, EmptyState } from "@/components/ar/industrial";
-import { CategoryContributionMatrix } from "@/components/ar/dashboard/CategoryContributionMatrix";
+import { CategoryContributionMatrix, isConsoleExcludedCategory } from "@/components/ar/dashboard/CategoryContributionMatrix";
 
 const Charts = lazy(() => import("@/components/ar/Charts").then((m) => ({ default: m.Charts })));
 
@@ -39,6 +39,10 @@ const Console = () => {
     return logs;
   }, [teamLogs, logs]);
 
+  const visibleCategories = useMemo(() => {
+    return categories.filter((c) => !isConsoleExcludedCategory(c.key, c.label));
+  }, [categories]);
+
   const stats = useMemo(() => {
     const today = isoDate();
     const working = logs.filter((l) => !l.is_off_day);
@@ -46,7 +50,7 @@ const Console = () => {
     const recent14 = sortedWorking.slice(-14);
     const todayLog = logs.find((l) => l.log_date === today);
 
-    const categoryTotals = categories
+    const categoryTotals = visibleCategories
       .map((c) => {
         const val = working.reduce((s, l) => s + ((l.counts ?? {})[c.key] ?? 0), 0);
         const sparkline = recent14.map((l) => (l.counts ?? {})[c.key] ?? 0);
@@ -151,7 +155,7 @@ const Console = () => {
             >
               <FigHeader title="Workload & Attribution" sub="Contributor distribution by category" />
               <CategoryContributionMatrix
-                categories={categories}
+                categories={visibleCategories}
                 logs={effectiveLogs}
                 profiles={effectiveProfiles}
                 currentUserId={user?.id}
@@ -183,7 +187,7 @@ const Console = () => {
                 />
               </Panel>
             ) : (
-              <Suspense fallback={null}><Charts logs={logs} categories={categories.filter((c) => stats.categoryTotals.some((t) => t.key === c.key))} /></Suspense>
+              <Suspense fallback={null}><Charts logs={logs} categories={visibleCategories.filter((c) => stats.categoryTotals.some((t) => t.key === c.key))} /></Suspense>
             )}
           </motion.section>
 
