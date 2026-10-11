@@ -91,7 +91,6 @@ export function isConsoleExcludedCategory(key?: string, label?: string): boolean
     "banchod",
     "patientchartcreated",
     "movedtoinbox",
-    "movedtoindexing",
     "faxback",
   ]);
   return excluded.has(k) || excluded.has(l);
