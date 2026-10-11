@@ -161,10 +161,10 @@ const CustomPieTooltip = ({ active, payload }: any) => {
   if (!active || !payload || !payload.length) return null;
   const data = payload[0].payload;
   return (
-    <div className="bg-popover/95 border border-popover-border px-3 py-2 rounded-xl shadow-xl backdrop-blur-md text-xs z-50">
+    <div className="bg-popover border border-border px-3.5 py-2.5 rounded-xl shadow-2xl text-xs z-[9999] relative pointer-events-none select-none">
       <div className="flex items-center gap-2 mb-1">
-        <span className="size-2.5 rounded-full" style={{ backgroundColor: data.color }} />
-        <span className="font-semibold text-foreground">{data.name}</span>
+        <span className="size-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: data.color }} />
+        <span className="font-semibold text-foreground truncate">{data.name}</span>
       </div>
       <div className="flex items-center justify-between gap-4 font-mono text-[11px] text-muted-foreground">
         <span>{data.value?.toLocaleString()} docs</span>
@@ -456,38 +456,8 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               {/* Left Column: Big Interactive Donut Chart with Center Metric Circle */}
               <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 relative">
                 <div className="relative w-full max-w-[280px] aspect-square flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Tooltip content={<CustomPieTooltip />} />
-                      <Pie
-                        data={categoryPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={72}
-                        outerRadius={105}
-                        paddingAngle={categoryPieData.length > 1 ? 3 : 0}
-                        dataKey="value"
-                        isAnimationActive={true}
-                        animationDuration={600}
-                      >
-                        {categoryPieData.map((entry) => (
-                          <Cell
-                            key={`slice-${entry.userId}`}
-                            fill={entry.color}
-                            stroke="hsl(var(--card))"
-                            strokeWidth={hoveredSlice === entry.userId ? 4 : 2}
-                            className="transition-all duration-200 cursor-pointer"
-                            opacity={hoveredSlice && hoveredSlice !== entry.userId ? 0.45 : 1}
-                            onMouseEnter={() => setHoveredSlice(entry.userId)}
-                            onMouseLeave={() => setHoveredSlice(null)}
-                          />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  {/* Centered Circle Metrics */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  {/* Centered Circle Metrics - placed behind chart at z-0 so Tooltip renders on top */}
+                  <div className="absolute inset-0 z-0 flex flex-col items-center justify-center pointer-events-none text-center select-none">
                     <span
                       className="size-2 rounded-full mb-1 shadow-xs"
                       style={{ backgroundColor: currentCategory.color }}
@@ -501,6 +471,42 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                     <span className="text-[9px] text-muted-foreground/75 mt-0.5">
                       {currentCategory.contributors.length} {currentCategory.contributors.length === 1 ? "member" : "members"}
                     </span>
+                  </div>
+
+                  {/* Chart placed in relative z-10 with high wrapperStyle z-index on Tooltip */}
+                  <div className="relative z-10 w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Tooltip
+                          content={<CustomPieTooltip />}
+                          wrapperStyle={{ zIndex: 9999, pointerEvents: "none" }}
+                        />
+                        <Pie
+                          data={categoryPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={72}
+                          outerRadius={105}
+                          paddingAngle={categoryPieData.length > 1 ? 3 : 0}
+                          dataKey="value"
+                          isAnimationActive={true}
+                          animationDuration={600}
+                        >
+                          {categoryPieData.map((entry) => (
+                            <Cell
+                              key={`slice-${entry.userId}`}
+                              fill={entry.color}
+                              stroke="hsl(var(--card))"
+                              strokeWidth={hoveredSlice === entry.userId ? 4 : 2}
+                              className="transition-all duration-200 cursor-pointer"
+                              opacity={hoveredSlice && hoveredSlice !== entry.userId ? 0.45 : 1}
+                              onMouseEnter={() => setHoveredSlice(entry.userId)}
+                              onMouseLeave={() => setHoveredSlice(null)}
+                            />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
 
@@ -717,31 +723,33 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
 
                   {/* Circular Donut of Member's Category Split (100% of their output) */}
                   <div className="relative h-44 flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Tooltip content={<CustomPieTooltip />} />
-                        <Pie
-                          data={memberPieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={48}
-                          outerRadius={68}
-                          paddingAngle={memberPieData.length > 1 ? 3 : 0}
-                          dataKey="value"
-                        >
-                          {memberPieData.map((entry, idx) => (
-                            <Cell key={`mem-slice-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-
-                    {/* Center stats in donut */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                    {/* Center stats in donut - placed at z-0 behind chart */}
+                    <div className="absolute inset-0 z-0 flex flex-col items-center justify-center pointer-events-none text-center select-none">
                       <span className="text-sm font-bold font-mono text-foreground">
                         {m.totalDocs.toLocaleString()}
                       </span>
                       <span className="text-[9px] font-mono text-muted-foreground uppercase">100% Work</span>
+                    </div>
+
+                    <div className="relative z-10 w-full h-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Tooltip content={<CustomPieTooltip />} wrapperStyle={{ zIndex: 9999, pointerEvents: "none" }} />
+                          <Pie
+                            data={memberPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={48}
+                            outerRadius={68}
+                            paddingAngle={memberPieData.length > 1 ? 3 : 0}
+                            dataKey="value"
+                          >
+                            {memberPieData.map((entry, idx) => (
+                              <Cell key={`mem-slice-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
 
@@ -810,31 +818,33 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
 
                 {/* Circular Donut in center */}
                 <div className="relative h-44 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Tooltip content={<CustomPieTooltip />} />
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={48}
-                        outerRadius={68}
-                        paddingAngle={pieData.length > 1 ? 3 : 0}
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, idx) => (
-                          <Cell key={`cat-cell-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  {/* Center circle text */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  {/* Center circle text - placed at z-0 behind chart */}
+                  <div className="absolute inset-0 z-0 flex flex-col items-center justify-center pointer-events-none text-center select-none">
                     <span className="text-sm font-bold font-mono text-foreground">100%</span>
                     <span className="text-[9px] uppercase font-mono text-muted-foreground">
                       {c.contributors.length} {c.contributors.length === 1 ? "user" : "users"}
                     </span>
+                  </div>
+
+                  <div className="relative z-10 w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Tooltip content={<CustomPieTooltip />} wrapperStyle={{ zIndex: 9999, pointerEvents: "none" }} />
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={68}
+                          paddingAngle={pieData.length > 1 ? 3 : 0}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, idx) => (
+                            <Cell key={`cat-cell-${idx}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
 
