@@ -1,187 +1,217 @@
+<div align="center">
+
+<img src="public/lightlogo.png" alt="TrackBasata logo" width="120" />
+
 # TrackBasata
 
-> **High-Performance Document Processing Productivity Tracker & API Gateway**  
-> Tailored for Accounts Receivable (AR) healthcare document processing associates, team leads, and operations managers.
+**High-performance document productivity tracker and workflow manager for Accounts Receivable (AR) healthcare teams.**
+
+[![React](https://img.shields.io/badge/React_18-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript_5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com)
+[![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
+[![Vitest](https://img.shields.io/badge/Tests-100_Passed-6E9F18?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev)
+[![Version](https://img.shields.io/badge/Version-3.0.0-10B981?style=flat-square)](package.json)
+
+</div>
+
+---
+
+## Overview
+
+TrackBasata replaces spreadsheets and disparate tracking notes with a purpose-built workstation for healthcare AR associates. It delivers tactile tap counting, category tracking across EHR workflows (NextGen, Athena), team workload visibility, and a tamper-resistant audit trail.
+
+---
+
+## Core Features
+
+### 1. Console & Work Breakdown
+- **Team Work Distribution**: Interactive donut charts and progress ring gauges show each team member's share and totals per category.
+- **Draggable Category Slider**: Mouse-drag, horizontal scroll, and directional arrows to quickly inspect categories.
+- **14-Day Sparklines**: Trend micro-charts for every document category.
+- **Weekly & Day-of-Week Trends**: Automatic volume aggregation by day of week and rolling 10-week totals.
+
+### 2. Fast Tap Counter
+- **Zero-Latency Tapping**: Big-button touch and click counter built for high-speed document indexing.
+- **Local Storage Hydration**: Protects ongoing session counts even if the browser closes or the network disconnects.
+- **Auto-Save & Cloud Sync**: Debounced background persistence updates database records automatically.
+
+### 3. Daily Logs & Reporting
+- **Daily History**: View, filter, and edit daily count records by date.
+- **Multi-Format Export**: One-click generation of formatted PDF summaries, CSV spreadsheets, and JSON exports.
+- **Date Range Filters**: Presets for 7 days, 14 days, 30 days, current month, or custom date spans.
+
+### 4. Fax & Indexable Tracker
+- **Multi-Step Tracking**: Track incoming faxes, verification steps, and indexing queue handoffs.
+- **Search & Resolution**: Instant filtering by patient name or document ID with quick status resolution.
+
+### 5. Clinic Facilities Directory
+- **Facility Directory**: Searchable directory of clinic names, verified addresses, and fax numbers.
+- **One-Click Copy**: Copy phone, fax, and address details straight to your clipboard.
+
+### 6. Intake Process Guide & Decision Trees
+- **Visual Flowcharts**: Step-by-step decision trees for intake routing, ROI medical record requests, single-patient EKG/Cath lab files, and archive rules.
+- **Routing Reference**: Directory of 29 approved inbox labels and test patient account details.
+
+### 7. Credential Vault
+- **Encrypted Storage**: Store service logins, clinic portal URLs, and notes organized into folders.
+- **Secure Retrieval**: Client-side decryption and one-click copy with automatic favicon lookups.
 
 ---
 
 ## System Architecture
 
-TrackBasata is structured as a fully decoupled, independent full-stack workspace:
-
 ```
 TrackBasata/
-+-- backend/                  # Layered Express + TypeScript API Gateway
-�   +-- src/
-�   �   +-- config/           # Zod env validation, Supabase Admin & Upstash Redis clients, Swagger spec
-�   �   +-- controllers/      # Thin HTTP request handlers (Categories, Logs, Facilities, Proxies)
-�   �   +-- middleware/       # JWT auth guard, is_disabled check, rate limiting, Zod schema validation
-�   �   +-- routes/           # Parameterized REST endpoints (/api/v1/*) & image proxies (/api/*)
-�   �   +-- services/         # Domain operations, atomic counter increments, audit logging
-�   �   +-- types/            # DTOs, request schemas, domain models
-�   �   +-- utils/            # Async wrappers, Winston/console loggers, standard JSON responses
-�   +-- test/                 # Automated boot and parameterized query security test suite
-�   +-- package.json
-�   +-- tsconfig.json
-�
-+-- frontend/                 # High-Performance Vite 8 + React 18 + Tailwind CSS Client
-�   +-- src/
-�   �   +-- api/ & lib/       # Typed API client with auto Supabase Bearer token forwarding
-�   �   +-- components/       # Metric cards, counter pad, charts, facility tables, dialogs
-�   �   +-- hooks/            # React Query state management, optimistic updates, cache persistence
-�   �   +-- pages/            # Counter, DailyLog, Report, Facilities, Team, Settings
-�   �   +-- test/             # Vitest test suite with 15 test suites and 96 unit/integration tests
-�   +-- vite.config.ts        # Built-in proxy (/api -> :5000), security CSP headers, vendor chunk splitting
-�   +-- package.json
-�   +-- tsconfig.json
-�
-+-- supabase/                 # Database Schema & Migrations
-    +-- migrations/           # Centralized categories, RLS policies, audit trail, user governance
+├── backend/                  # Express + TypeScript REST API Gateway (:5000)
+│   ├── src/
+│   │   ├── config/           # Environment validation, Supabase Admin, Upstash Redis, Swagger
+│   │   ├── controllers/      # Request handlers (Categories, Logs, Facilities, Proxies)
+│   │   ├── middleware/       # JWT auth guard, account disabled checks, rate limiting
+│   │   ├── routes/           # Parameterized REST endpoints (/api/v1/*)
+│   │   ├── services/         # Atomic counter increments, audit logging
+│   │   └── server.ts         # HTTP server entrypoint
+│   └── test/                 # Service boot and query security tests
+│
+├── frontend/                 # Vite 8 + React 18 + Tailwind CSS Client (:3000)
+│   ├── src/
+│   │   ├── components/       # Metric cards, counter pad, charts, facility tables, dialogs
+│   │   ├── hooks/            # TanStack React Query hooks with cache persistence
+│   │   ├── pages/            # Console, Counter, DailyLog, Report, Facilities, Team, Settings
+│   │   └── test/             # 16 Vitest suites covering 100 unit & integration tests
+│   └── vite.config.ts        # Proxy to backend (:5000), security CSP headers, vendor chunks
+│
+└── supabase/                 # PostgreSQL migrations & database schema
+    └── migrations/           # Tables, Row Level Security, triggers, and functions
 ```
 
 ---
 
-## Core Capabilities & Features
+## Tech Stack
 
-### 1. Atomic Tap Counter Surface
-- **Instant Tapping**: Tactile, zero-latency counter pad designed for high-speed AR document sorting and verification.
-- **Resilient State Persistence**: Hybrid local-storage hydration guarantees counts are never lost even during network interruptions.
-- **Atomic Cloud Sync**: High-frequency tap increments (`POST /api/v1/logs/tap`) synchronize atomically to PostgreSQL JSONB without row lock contention.
-
-### 2. Centralized Category Management
-- **Global Administrative Control**: All document categories are centrally managed and locked behind `public.is_admin()`.
-- **Workflow Integrity**: Distinguishes between distinct AR queues (`moved_to_indexing` vs `worked_on_indexing`).
-- **Non-Destructive Key Remapping**: Migration scripts non-destructively preserve all historical counts while unifying legacy category variants.
-
-### 3. Clinic Facilities Directory
-- **Fast Reference Lookups**: Search clinic names, addresses, and fax numbers instantly with search query highlighting.
-- **Sort Priority & Verification**: Mark verified provider facilities and customize display ordering.
-
-### 4. Multi-Format Reporting & Telemetry
-- **Aggregated Analytics**: Filter by single date or arbitrary date ranges (`?start_date=...&end_date=...`).
-- **Export Formats**: One-click generation of PDF documents (via isolated `pdf-vendor` chunk), CSV spreadsheets, and raw JSON exports.
-
-### 5. Multi-Layer Security Architecture
-- **JWT Authentication**: Validates Supabase bearer tokens on all protected endpoints.
-- **Immediate Deactivation Killswitch**: `auth.ts` inspects `profiles.is_disabled` on each request, instantly cutting off revoked credentials without waiting for JWT expiration.
-- **Sliding-Window Rate Limiting**: Redis-backed rate limiting protects mutation endpoints against brute-force or abuse with in-memory fail-open reliability.
-- **SSRF-Protected Image Proxies**: `GET /api/v1/logo` and `/api/v1/favicon` validate domain syntax, perform DNS resolution checks, and block private/loopback IP ranges.
-- **Hardened HTTP Headers**: Strict Helmet security configuration, iframe embedding protection, and scoped CORS origins.
-
-### 6. Design System & User Experience
-- **Dual Visual Themes**: Toggle seamlessly between *Classic* and *Modern* variants, paired with Dark and Light mode support.
-- **Typography**: Bundles Hubot Sans variable font for clear visual contrast in high-density document tables.
-- **Optimized Bundle Splitting**: Isolated vendor chunks (`react-vendor`, `query-vendor`, `pdf-vendor`, `charts-vendor`, `icons-vendor`) for fast page loads and long-term browser caching.
+| Component | Technology |
+|---|---|
+| **Frontend Framework** | React 18 · TypeScript 5 · Vite 8 |
+| **Styling & Design** | Tailwind CSS · shadcn/ui · Hubot Sans font |
+| **Icons & Motion** | Heroicons (24/outline) · Lucide React · Motion |
+| **State & Cache** | TanStack React Query with local storage persistence |
+| **Charts** | Recharts · SVG Sparklines |
+| **Backend API** | Node.js · Express · TypeScript · Swagger (OpenAPI 3.0) |
+| **Database & Auth** | Supabase (PostgreSQL with Row Level Security) |
+| **Rate Limiting** | Upstash Redis (sliding-window) with in-memory fallback |
+| **Testing** | Vitest · React Testing Library · jsdom |
 
 ---
 
-## Interactive Swagger API Documentation
+## Getting Started
 
-TrackBasata comes with built-in interactive OpenAPI 3.0 documentation:
+### Prerequisites
+- **Node.js**: Version 18 or higher
+- **npm**: Version 9 or higher
+- **Supabase Account**: With a running PostgreSQL database
 
-- **Swagger UI**: [http://localhost:5000/docs](http://localhost:5000/docs) (also available at `/api/docs` and `/api/v1/docs`)
-- **OpenAPI 3.0 Specification (JSON)**: [http://localhost:5000/api/v1/docs/swagger.json](http://localhost:5000/api/v1/docs/swagger.json)
+### 1. Installation
 
-### Testing via Swagger:
-1. Start the backend: `npm run dev:backend`
-2. Open [http://localhost:5000/docs](http://localhost:5000/docs) in your browser.
-3. Click the **Authorize** button in the upper-right corner.
-4. Paste your Supabase JWT access token. (Tokens persist across page reloads via `persistAuthorization: true`).
-5. Choose any parameterized endpoint, click **Try it out**, fill in the parameters, and click **Execute**.
-
----
-
-## API Endpoints Reference
-
-All endpoints are hosted under `/api/v1/*` and follow REST conventions with parameterized query filtering:
-
-| Method | Parameterized Endpoint | Authorization | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | Public | Telemetry & service health (Database, Redis, Uptime) |
-| `GET` | `/api/v1/categories` *(or `?id=UUID`)* | Authenticated | List all active categories or fetch a single category |
-| `POST` | `/api/v1/categories` | Admin Only | Create a new centralized category |
-| `PATCH` | `/api/v1/categories?id=UUID` | Admin Only | Update category label, short name, position, or status |
-| `PUT` | `/api/v1/categories/reorder` | Admin Only | Atomically update sequence ordering for categories |
-| `DELETE`| `/api/v1/categories?id=UUID` | Admin Only | Soft-archive a category (`is_active = false`) |
-| `GET` | `/api/v1/logs` *(or `?date=...` / `?start_date=...&end_date=...`)* | Authenticated | Fetch date range or single day log |
-| `POST` | `/api/v1/logs` | Authenticated | Upsert daily log document counts with audit tracking |
-| `POST` | `/api/v1/logs/tap` | Authenticated | Rapid atomic tap counter increment |
-| `DELETE`| `/api/v1/logs?date=YYYY-MM-DD` | Authenticated | Delete a daily log record |
-| `GET` | `/api/v1/facilities` *(or `?id=UUID`)* | Authenticated | List all facilities or get single facility |
-| `POST` | `/api/v1/facilities` | Admin Only | Create a new clinic facility |
-| `PATCH` | `/api/v1/facilities?id=UUID` | Admin Only | Update existing facility details |
-| `DELETE`| `/api/v1/facilities?id=UUID` | Admin Only | Remove a clinic facility |
-| `GET` | `/api/v1/logo?domain=DOMAIN` | Public | SSRF-guarded Clearbit logo proxy with Redis caching |
-| `GET` | `/api/v1/favicon?domain=DOMAIN` | Public | SSRF-guarded Google favicon proxy with Redis caching |
-
----
-
-## Quick Start & Setup
-
-### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher (Node 20+ recommended)
-- **Supabase Account**: With PostgreSQL and Authentication enabled
-- **Upstash Redis** (Optional): For sliding-window rate limiting (defaults to memory fallback)
-
-### 2. Environment Variables
-
-Copy the provided environment templates:
+Install dependencies across the monorepo:
 
 ```bash
-# In backend:
-cp backend/.env.example backend/.env
-
-# In frontend:
-cp frontend/.env.example frontend/.env
+# Install root, backend, and frontend dependencies
+npm run install:all
 ```
 
-#### Backend Configuration (`backend/.env`)
-```ini
-PORT=5000
-NODE_ENV=development
-CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+Or install inside the individual folders:
 
-# Supabase Credentials
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+```bash
+# Frontend
+cd frontend
+npm install
 
-# Upstash Redis (Optional for Rate Limiting)
-UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your-upstash-rest-token
+# Backend
+cd ../backend
+npm install
 ```
 
-#### Frontend Configuration (`frontend/.env`)
-```ini
+### 2. Configure Environment Variables
+
+**Frontend (`frontend/.env.local`):**
+```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
-VITE_API_URL=/api/v1
 ```
 
-### 3. Database Migration
+**Backend (`backend/.env`):**
+```env
+PORT=5000
+NODE_ENV=development
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
+```
 
-Run the centralized categories migration in your **Supabase SQL Editor**:
+### 3. Database Setup
 
-1. Open your local migration file (`supabase/migrations/20261009000001_centralize_categories.sql`).
-2. Paste into the SQL Editor and execute.
-3. This creates backup tables, seeds canonical categories, and configures admin RLS policies.
+Apply database schema and security policies using the Supabase CLI:
+
+```bash
+supabase link --project-ref your-project-id
+supabase db push
+```
+
+### 4. Running the Development Servers
+
+```bash
+# Run both backend and frontend concurrently
+npm run dev:backend    # Starts API on http://localhost:5000
+npm run dev:frontend   # Starts client on http://localhost:3000
+```
+
+- **Web App**: Open [http://localhost:3000](http://localhost:3000)
+- **API Swagger Documentation**: Open [http://localhost:5000/docs](http://localhost:5000/docs)
 
 ---
 
-## Development & Workspace Scripts
+## Available Scripts
 
-Run commands from the `TrackBasata/` root directory:
+| Command | Purpose |
+|---|---|
+| `npm run dev:frontend` | Starts the Vite development server on port 3000 |
+| `npm run dev:backend` | Starts the Express API server with hot-reload on port 5000 |
+| `npm run build` | Builds production bundles for both frontend and backend |
+| `npm run test` | Runs the full automated test suite |
+| `npm run typecheck` | Checks TypeScript types without emitting files |
 
-| Task | Command | Description |
-| :--- | :--- | :--- |
-| **Install Dependencies** | `npm run install:all` | Installs dependencies in both backend and frontend |
-| **Start Backend API** | `npm run dev:backend` | Starts Express server with hot-reload on `http://localhost:5000` |
-| **Start Frontend Client** | `npm run dev:frontend` | Starts Vite dev server with proxy on `http://localhost:3000` |
-| **Run All Tests** | `npm test` | Runs backend integration tests + 96 frontend Vitest tests |
-| **Type Check All** | `npm run typecheck` | Validates TypeScript in backend and frontend (0 errors) |
-| **Build for Production** | `npm run build` | Compiles backend to `dist/` and builds optimized Vite client |
+---
+
+## Security & Reliability
+
+- **Row Level Security (RLS)**: Enforces table access control at the database engine level.
+- **Deactivation Killswitch**: The backend verifies `profiles.is_disabled` on incoming requests, cutting access immediately if a user is deactivated.
+- **SSRF-Hardened Proxies**: Logo and favicon image endpoints validate target domains, check DNS records, and reject private/loopback IP addresses.
+- **Input Validation**: All API inputs and frontend forms are validated using Zod schemas.
+- **Append-Only Audit Trail**: Administrative updates, account actions, and category changes log to an immutable audit table.
+
+---
+
+## Testing
+
+Run the test suite with Vitest:
+
+```bash
+npm test
+```
+
+All 16 test suites pass with 100 assertions covering:
+- Counter state hydration and persistence
+- User category contributions and metric calculations
+- Session cleanups and token handling
+- Facilities search and data normalization
+- Security claims and rate limiting
 
 ---
 
 ## License
 
-Private & Proprietary � TrackBasata.
+This project is licensed under the [MIT License](LICENSE).
