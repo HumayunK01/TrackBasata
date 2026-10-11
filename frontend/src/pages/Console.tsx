@@ -27,18 +27,20 @@ const Console = () => {
     const recent14 = sortedWorking.slice(-14);
     const todayLog = logs.find((l) => l.log_date === today);
 
-    const categoryTotals = categories.map((c) => {
-      const val = working.reduce((s, l) => s + ((l.counts ?? {})[c.key] ?? 0), 0);
-      const sparkline = recent14.map((l) => (l.counts ?? {})[c.key] ?? 0);
-      const todayCount = todayLog ? (todayLog.counts ?? {})[c.key] ?? 0 : 0;
-      return {
-        key: c.key,
-        label: c.label,
-        value: val,
-        sparkline,
-        todayCount,
-      };
-    });
+    const categoryTotals = categories
+      .map((c) => {
+        const val = working.reduce((s, l) => s + ((l.counts ?? {})[c.key] ?? 0), 0);
+        const sparkline = recent14.map((l) => (l.counts ?? {})[c.key] ?? 0);
+        const todayCount = todayLog ? (todayLog.counts ?? {})[c.key] ?? 0 : 0;
+        return {
+          key: c.key,
+          label: c.label,
+          value: val,
+          sparkline,
+          todayCount,
+        };
+      })
+      .filter((c) => c.value > 0);
 
     const faxTotal = Object.values(faxByDay).reduce((s, n) => s + n, 0);
     if (faxTotal > 0) {
@@ -101,17 +103,23 @@ const Console = () => {
                       </div>
                     </div>
                   ))
-                  : [...stats.categoryTotals].sort((a, b) => b.value - a.value).map((c) => (
-                    <CategoryStatCard
-                      key={c.key}
-                      label={c.label}
-                      value={c.value}
-                      color={colorForKey(c.key)}
-                      share={c.share}
-                      sparkline={c.sparkline}
-                      todayCount={c.todayCount}
-                    />
-                  ))}
+                  : stats.categoryTotals.length === 0 ? (
+                    <div className="col-span-full py-8 text-center text-xs text-muted-foreground border border-border/50 rounded-2xl bg-card">
+                      No category contributions recorded yet.
+                    </div>
+                  ) : (
+                    [...stats.categoryTotals].sort((a, b) => b.value - a.value).map((c) => (
+                      <CategoryStatCard
+                        key={c.key}
+                        label={c.label}
+                        value={c.value}
+                        color={colorForKey(c.key)}
+                        share={c.share}
+                        sparkline={c.sparkline}
+                        todayCount={c.todayCount}
+                      />
+                    ))
+                  )}
               </div>
           </section>
 
@@ -139,7 +147,7 @@ const Console = () => {
                 />
               </Panel>
             ) : (
-              <Suspense fallback={null}><Charts logs={logs} categories={categories} /></Suspense>
+              <Suspense fallback={null}><Charts logs={logs} categories={categories.filter((c) => stats.categoryTotals.some((t) => t.key === c.key))} /></Suspense>
             )}
           </motion.section>
 

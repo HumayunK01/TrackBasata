@@ -89,14 +89,16 @@ export const Charts = memo(function Charts({ logs, categories }: Props) {
   );
 
   const categorySeries: MetricSeries[] = useMemo(() =>
-    categories.map((c) => ({
-      name: c.label,
-      color: colorForKey(c.key),
-      data: sorted.slice(-30).map((l) => ({
-        date: formatShortDate(l.log_date),
-        value: (l.counts ?? {})[c.key] ?? 0,
+    categories
+      .filter((c) => sorted.some((l) => ((l.counts ?? {})[c.key] ?? 0) > 0))
+      .map((c) => ({
+        name: c.label,
+        color: colorForKey(c.key),
+        data: sorted.slice(-30).map((l) => ({
+          date: formatShortDate(l.log_date),
+          value: (l.counts ?? {})[c.key] ?? 0,
+        })),
       })),
-    })),
     [categories, sorted],
   );
 
