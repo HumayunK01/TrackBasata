@@ -1,4 +1,4 @@
-{
+﻿{
     "name":  "trackbasata-backend",
     "version":  "1.0.0",
     "private":  true,
@@ -19,14 +19,14 @@
                          "express":  "^4.21.2",
                          "helmet":  "^8.0.0",
                          "swagger-ui-express":  "^5.0.1",
-                         "zod":  "^3.24.2"
+                         "zod":  "^3.24.2",
+                         "@types/cors":  "^2.8.17",
+                         "@types/express":  "^4.17.21",
+                         "@types/node":  "^22.13.9",
+                         "@types/swagger-ui-express":  "^4.1.8",
+                         "typescript":  "^5.8.2"
                      },
     "devDependencies":  {
-                            "@types/cors":  "^2.8.17",
-                            "@types/express":  "^4.17.21",
-                            "@types/node":  "^22.13.9",
-                            "@types/swagger-ui-express":  "^4.1.8",
-                            "tsx":  "^4.19.3",
-                            "typescript":  "^5.8.2"
+                            "tsx":  "^4.19.3"
                         }
 }
