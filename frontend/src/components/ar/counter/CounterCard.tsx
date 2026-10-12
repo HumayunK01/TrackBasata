@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { colorForKey, withAlpha } from "@/lib/cat-colors";
 import type { Category } from "@/hooks/useCategories";
 import { Minus, Plus, X } from "@/components/ui/icons";
+import { playTapFeedback } from "@/lib/audio-feedback";
 
 /** Press-and-hold auto-repeat for the +/- buttons. */
 function useHoldRepeat(action: () => void) {
@@ -49,33 +50,39 @@ export function CounterCard({
   const [bump, setBump] = useState(0);
   const fill = maxCount > 0 ? Math.min(100, (count / maxCount) * 100) : 0;
   const cardRef = useRef<HTMLDivElement>(null);
+  const ringRef = useRef<HTMLDivElement>(null);
 
-  const inc = useHoldRepeat(onIncrement);
-  const dec = useHoldRepeat(onDecrement);
+  const inc = useHoldRepeat(() => {
+    onIncrement();
+    playTapFeedback();
+  });
+  const dec = useHoldRepeat(() => {
+    onDecrement();
+    playTapFeedback();
+  });
 
   const tap = () => {
     onIncrement();
+    playTapFeedback();
     setBump((n) => n + 1);
   };
 
-  // Pulse ring animation
+  // Pulse ring animation: compositor-driven Web Animations API (no synchronous offsetHeight reflow)
   useEffect(() => {
-    if (count === 0) return;
-    const ring = cardRef.current?.querySelector(".pulse-ring") as HTMLElement | null;
-    if (!ring) return;
-    ring.style.transition = "none";
-    ring.style.transform = "scale(1)";
-    ring.style.opacity = "0.35";
-    void ring.offsetHeight;
-    ring.style.transition = "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out";
-    ring.style.transform = "scale(2.2)";
-    ring.style.opacity = "0";
+    if (count === 0 || !ringRef.current) return;
+    ringRef.current.animate(
+      [
+        { transform: "scale(1)", opacity: 0.35 },
+        { transform: "scale(2.2)", opacity: 0 },
+      ],
+      { duration: 400, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
+    );
   }, [count]);
 
   return (
     <div
       ref={cardRef}
-      className="group rounded-2xl border flex flex-col relative overflow-hidden focus-within:ring-2 focus-within:ring-primary/40 active:scale-[0.985] transition-all duration-200 shadow-2xs hover:shadow-md"
+      className="group rounded-2xl border flex flex-col relative overflow-hidden focus-within:ring-2 focus-within:ring-primary/40 active:scale-[0.97] transition-[transform,box-shadow,border-color] duration-150 ease-out shadow-2xs hover:shadow-md"
       style={{
         borderColor: withAlpha(clr, 0.22),
         background: `radial-gradient(ellipse at top, ${withAlpha(clr, 0.08)} 0%, ${withAlpha(clr, 0.02)} 100%)`,
@@ -83,7 +90,8 @@ export function CounterCard({
     >
       {/* Pulse ring */}
       <div
-        className="pulse-ring absolute inset-0 pointer-events-none rounded-2xl"
+        ref={ringRef}
+        className="pulse-ring absolute inset-0 pointer-events-none rounded-2xl opacity-0"
         style={{ backgroundColor: clr }}
       />
 
@@ -193,7 +201,7 @@ export function CounterCard({
           onPointerLeave={dec.stop}
           onPointerCancel={dec.stop}
           disabled={count === 0}
-          className="flex-1 flex items-center justify-center h-10 rounded-xl border border-border/50 bg-background/60 hover:bg-muted active:scale-[0.96] transition-all disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation cursor-pointer shadow-2xs"
+          className="flex-1 flex items-center justify-center h-10 rounded-xl border border-border/50 bg-background/60 hover:bg-muted active:scale-[0.96] transition-transform duration-100 ease-out disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation cursor-pointer shadow-2xs"
           aria-label={`Decrease ${cat.label}`}
         >
           <Minus className="size-4 text-muted-foreground" />
@@ -204,7 +212,7 @@ export function CounterCard({
           onPointerUp={inc.stop}
           onPointerLeave={inc.stop}
           onPointerCancel={inc.stop}
-          className="flex-1 flex items-center justify-center h-10 rounded-xl border active:scale-[0.96] transition-all touch-manipulation cursor-pointer shadow-2xs"
+          className="flex-1 flex items-center justify-center h-10 rounded-xl border active:scale-[0.96] transition-transform duration-100 ease-out touch-manipulation cursor-pointer shadow-2xs"
           style={{
             backgroundColor: withAlpha(clr, 0.12),
             borderColor: withAlpha(clr, 0.3),

@@ -58,6 +58,15 @@ function filterZeroContributionCategories(
   return filtered.length > 0 ? filtered : categories;
 }
 
+function createLog(data: { id: string; user_id: string; log_date: string; is_off_day: boolean; counts: Record<string, number> }): DailyLog {
+  return {
+    notes: null,
+    created_at: "2026-10-01T00:00:00Z",
+    updated_at: "2026-10-01T00:00:00Z",
+    ...data,
+  };
+}
+
 describe("User Category Contributions - Hide 0 Contributions Feature", () => {
   const mockCategories: Category[] = [
     { key: "ekg", label: "EKG / ECG", short: "EKG", position: 1 },
@@ -68,20 +77,20 @@ describe("User Category Contributions - Hide 0 Contributions Feature", () => {
 
   it("filters out any category where the user has 0 contributions", () => {
     const logs: DailyLog[] = [
-      {
+      createLog({
         id: "1",
         user_id: "user_a",
         log_date: "2026-10-01",
         is_off_day: false,
         counts: { ekg: 10, labs: 30, radiology: 0 },
-      },
-      {
+      }),
+      createLog({
         id: "2",
         user_id: "user_a",
         log_date: "2026-10-02",
         is_off_day: false,
         counts: { ekg: 5, labs: 0 },
-      },
+      }),
     ];
 
     const result = computeUserCategoryContributions(logs, mockCategories);
@@ -103,20 +112,20 @@ describe("User Category Contributions - Hide 0 Contributions Feature", () => {
 
   it("returns an empty list when user has 0 contribution across all categories", () => {
     const logs: DailyLog[] = [
-      {
+      createLog({
         id: "1",
         user_id: "user_b",
         log_date: "2026-10-01",
         is_off_day: true,
         counts: {},
-      },
-      {
+      }),
+      createLog({
         id: "2",
         user_id: "user_b",
         log_date: "2026-10-02",
         is_off_day: false,
         counts: { ekg: 0, labs: 0, radiology: 0 },
-      },
+      }),
     ];
 
     const result = computeUserCategoryContributions(logs, mockCategories);
@@ -125,20 +134,20 @@ describe("User Category Contributions - Hide 0 Contributions Feature", () => {
 
   it("ignores counts on scheduled off days", () => {
     const logs: DailyLog[] = [
-      {
+      createLog({
         id: "1",
         user_id: "user_c",
         log_date: "2026-10-01",
         is_off_day: true,
         counts: { ekg: 50 }, // Should be ignored because is_off_day is true
-      },
-      {
+      }),
+      createLog({
         id: "2",
         user_id: "user_c",
         log_date: "2026-10-02",
         is_off_day: false,
         counts: { labs: 12 },
-      },
+      }),
     ];
 
     const result = computeUserCategoryContributions(logs, mockCategories);
@@ -148,13 +157,13 @@ describe("User Category Contributions - Hide 0 Contributions Feature", () => {
 
   it("filters table columns in DaysTable when hideZeroCategories is enabled", () => {
     const logs: DailyLog[] = [
-      {
+      createLog({
         id: "1",
         user_id: "user_d",
         log_date: "2026-10-01",
         is_off_day: false,
         counts: { ekg: 8, cardiology: 14 },
-      },
+      }),
     ];
 
     // When hideZeroCategories is false: all categories are returned

@@ -16,8 +16,8 @@ import type { Category } from "@/hooks/useCategories";
 import type { Profile } from "@/hooks/useProfile";
 import { colorForKey } from "@/lib/cat-colors";
 import { cn } from "@/lib/utils";
-import { Users, Search, CheckCheck, ChevronLeft, ChevronRight } from "@/components/ui/icons";
-import { PieChart as PieIcon, BarChart3, LayoutGrid, Trophy, Sparkles } from "lucide-react";
+import { CheckCheck, ChevronLeft, ChevronRight } from "@/components/ui/icons";
+import { PieChart as PieIcon, BarChart3, LayoutGrid } from "lucide-react";
 
 interface Props {
   categories: Category[];
@@ -182,7 +182,6 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
   const [activeTab, setActiveTab] = useState<"donut-focus" | "team-graph" | "all-donuts">("donut-focus");
   const [selectedCatKey, setSelectedCatKey] = useState<string>("");
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
 
   // Horizontal drag & slide controllers for category pills
   const pillBarRef = useRef<HTMLDivElement>(null);

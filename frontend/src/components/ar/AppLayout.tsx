@@ -1,14 +1,13 @@
 import { Suspense, useEffect, useState } from "react";
-import { motion, type Easing, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { AppSidebar } from "@/components/ar/AppSidebar";
 import { MobileTabBar } from "@/components/ar/MobileTabBar";
 import { PageHeader } from "@/components/ar/PageHeader";
 import { HrmsReminder } from "@/components/ar/HrmsReminder";
 import { ResourceViewer, preloadResources } from "@/pages/Resources";
+import { CommandPalette } from "@/components/ar/CommandPalette";
 import { cn } from "@/lib/utils";
-
-const pageEase: Easing = [0.16, 1, 0.3, 1];
 
 const pageTitles: Record<string, string> = {
   "/log": "Daily Log",
@@ -28,9 +27,9 @@ export function AnimatedPage({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion();
   return (
     <motion.div
-      initial={reduce ? { opacity: 1 } : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={reduce ? { duration: 0 } : { duration: 0.22, ease: pageEase }}
+      initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={reduce ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }}
       className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden"
     >
       {children}
@@ -100,7 +99,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileTabBar />
       </div>
       <HrmsReminder />
-      <div id="kudos-animation-container" className="fixed inset-0 pointer-events-none z-50 overflow-hidden" />
+      <CommandPalette />
     </div>
   );
 }

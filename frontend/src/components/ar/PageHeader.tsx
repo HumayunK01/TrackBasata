@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Settings, Sun, Moon, LogOut, ChevronDown, SlidersHorizontal } from "@/components/ui/icons";
+import { Settings, Sun, Moon, LogOut, ChevronDown, SlidersHorizontal, Search } from "@/components/ui/icons";
 import { WhatsNewButton } from "@/components/ar/whats-new";
 import { formatHeaderDate } from "@/types/log";
 
@@ -89,6 +89,21 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
 
           {/* Grouped Header Utility Toolbar (Fixed h-9 height) */}
           <div className="h-9 flex items-center gap-1 bg-muted/40 dark:bg-white/[0.04] px-1.5 rounded-lg border border-border/60 backdrop-blur-xs">
+            {/* Quick Command Search */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 gap-1.5 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors text-xs font-medium cursor-pointer"
+              onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+              title="Quick Command Palette (Cmd+K / Ctrl+K)"
+              aria-label="Open Command Palette"
+            >
+              <Search className="size-3.5 text-muted-foreground" />
+              <kbd className="hidden sm:inline-block font-mono text-[10px] text-muted-foreground/80 font-bold px-1 py-0.2 rounded border border-border/60 bg-muted/30">
+                ⌘K
+              </kbd>
+            </Button>
+
             {/* What's New */}
             <WhatsNewButton className="h-7 w-7 rounded-md text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 transition-colors [&_svg]:!size-[18px]" />
 

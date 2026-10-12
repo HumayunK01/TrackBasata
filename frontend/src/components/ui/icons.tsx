@@ -21,6 +21,9 @@ import {
   UserCheck,
   SlidersHorizontal,
   ShieldX,
+  GitFork,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   ChevronDownIcon as ChevronDown16,
@@ -67,7 +70,6 @@ import {
   CalendarIcon,
   PencilSquareIcon,
   UserPlusIcon,
-  Cog6ToothIcon,
   Cog8ToothIcon,
   SunIcon,
   MoonIcon,
@@ -84,6 +86,8 @@ import {
   NoSymbolIcon,
 } from "@heroicons/react/24/outline";
 
+import { cn } from "@/lib/utils";
+
 export interface IconProps extends React.ComponentProps<"svg"> {
   size?: number | string;
 }
@@ -91,12 +95,14 @@ export interface IconProps extends React.ComponentProps<"svg"> {
 function wrapIcon(Component: React.ComponentType<React.ComponentProps<"svg">>) {
   const WrappedIcon = React.forwardRef<SVGSVGElement, IconProps>(
     ({ size, width, height, className, ...props }, ref) => {
+      const resolvedWidth = width ?? size;
+      const resolvedHeight = height ?? size;
       return (
         <Component
           ref={ref}
-          width={width ?? size}
-          height={height ?? size}
-          className={className}
+          width={resolvedWidth}
+          height={resolvedHeight}
+          className={cn("w-4 h-4 shrink-0", className)}
           aria-hidden="true"
           {...props}
         />
@@ -324,4 +330,7 @@ export const Circle = React.forwardRef<SVGSVGElement, IconProps>(
 Circle.displayName = "Circle";
 
 export const CalendarCheck = wrapIcon(CalendarDaysIcon);
-export { CalendarIcon, UserCheck };
+export const WrappedGitFork = wrapIcon(GitFork);
+export const WrappedVolume2 = wrapIcon(Volume2);
+export const WrappedVolumeX = wrapIcon(VolumeX);
+export { CalendarIcon, UserCheck, WrappedGitFork as GitFork, WrappedVolume2 as Volume2, WrappedVolumeX as VolumeX };

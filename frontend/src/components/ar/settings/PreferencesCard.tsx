@@ -1,10 +1,11 @@
-import { Sun, Moon, Target, Loader2 } from "@/components/ui/icons";
+import { Sun, Moon, Target, Loader2, Volume2, VolumeX } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/hooks/useTheme";
 import { useState } from "react";
 import { useUpdateDailyGoal } from "@/hooks/useProfile";
 import { toast } from "sonner";
+import { isFeedbackEnabled, setFeedbackEnabled, playTapFeedback } from "@/lib/audio-feedback";
 
 interface PreferencesCardProps {
   dailyGoal: number | null;
@@ -13,6 +14,7 @@ interface PreferencesCardProps {
 export function PreferencesCard({ dailyGoal }: PreferencesCardProps) {
   const { theme, toggle } = useTheme();
   const [goal, setGoal] = useState(dailyGoal ?? 50);
+  const [feedbackOn, setFeedbackOn] = useState(() => isFeedbackEnabled());
   const updateGoal = useUpdateDailyGoal();
 
   const handleSaveGoal = () => {
@@ -20,6 +22,18 @@ export function PreferencesCard({ dailyGoal }: PreferencesCardProps) {
     updateGoal.mutate(v, {
       onSuccess: () => toast.success("Daily goal updated"),
     });
+  };
+
+  const handleToggleFeedback = () => {
+    const next = !feedbackOn;
+    setFeedbackOn(next);
+    setFeedbackEnabled(next);
+    if (next) {
+      playTapFeedback();
+      toast.success("Tactile audio & haptic feedback enabled");
+    } else {
+      toast.info("Tactile audio & haptic feedback muted");
+    }
   };
 
   return (
@@ -78,6 +92,30 @@ export function PreferencesCard({ dailyGoal }: PreferencesCardProps) {
             >
               {theme === "dark" ? <Sun className="size-4 mr-1.5 text-amber-500" strokeWidth={1.75} /> : <Moon className="size-4 mr-1.5 text-amber-500" strokeWidth={1.75} />}
               {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Tactile Audio & Haptic Feedback */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="size-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 text-blue-500">
+              {feedbackOn ? <Volume2 className="size-4.5" strokeWidth={1.75} /> : <VolumeX className="size-4.5" strokeWidth={1.75} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground">Tactile Audio &amp; Haptics</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Zero-latency acoustic tick &amp; vibration on counter taps for no-look indexing</p>
+            </div>
+          </div>
+          <div className="shrink-0 sm:ml-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9.5 min-w-32 rounded-xl border-border/60 hover:bg-muted/70 font-semibold"
+              onClick={handleToggleFeedback}
+            >
+              {feedbackOn ? <Volume2 className="size-4 mr-1.5 text-blue-500" strokeWidth={1.75} /> : <VolumeX className="size-4 mr-1.5 text-muted-foreground" strokeWidth={1.75} />}
+              {feedbackOn ? "Enabled" : "Muted"}
             </Button>
           </div>
         </div>

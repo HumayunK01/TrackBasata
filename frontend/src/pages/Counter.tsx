@@ -23,6 +23,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMutationRateLimit } from "@/hooks/useMutationRateLimit";
 import { logAuditEvent } from "@/hooks/useAuditLog";
+import { playTapFeedback } from "@/lib/audio-feedback";
 
 // Import modular components
 import { CounterCard } from "@/components/ar/counter/CounterCard";
@@ -76,23 +77,11 @@ function counterReducer(s: CounterState, a: CounterAction): CounterState {
   }
 }
 
-function triggerKudosAnimation(emoji: string) {
-  const container = document.getElementById("kudos-animation-container");
-  if (!container) return;
-
-  const node = document.createElement("div");
-  node.innerText = emoji;
-  node.className = "kudos-float absolute text-4xl select-none pointer-events-none z-50";
-
-  const randomX = Math.random() * 80 + 10;
-  node.style.left = `${randomX}%`;
-  node.style.bottom = "0px";
-  node.style.fontSize = `${Math.random() * 25 + 28}px`;
-  
-  container.appendChild(node);
-  setTimeout(() => {
-    node.remove();
-  }, 2000);
+interface KudosItem {
+  id: number;
+  emoji: string;
+  left: number;
+  size: number;
 }
 
 export default function CounterPage() {
@@ -129,6 +118,22 @@ export default function CounterPage() {
   const hydratedRef = useRef(false);
   const skipUnsavedMarkRef = useRef(false);
 
+  const [kudosItems, setKudosItems] = useState<KudosItem[]>([]);
+  const [announcement, setAnnouncement] = useState("");
+
+  const triggerKudos = useCallback((emoji: string) => {
+    const item: KudosItem = {
+      id: Date.now() + Math.random(),
+      emoji,
+      left: Math.random() * 80 + 10,
+      size: Math.random() * 25 + 28,
+    };
+    setKudosItems((prev) => [...prev, item]);
+    setTimeout(() => {
+      setKudosItems((prev) => prev.filter((k) => k.id !== item.id));
+    }, 2000);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
 
@@ -144,7 +149,7 @@ export default function CounterPage() {
           toast("Kudos received! 🎉", {
             description: `${payload.payload.senderEmail} sent you a ${payload.payload.emoji}!`,
           });
-          triggerKudosAnimation(payload.payload.emoji);
+          triggerKudos(payload.payload.emoji);
         }
       })
       .subscribe();
@@ -156,7 +161,7 @@ export default function CounterPage() {
         supabase.removeChannel(channel);
       }
     };
-  }, [user]);
+  }, [user, triggerKudos]);
 
   useEffect(() => {
     localStorage.setItem(COUNTS_KEY, JSON.stringify(counts));
@@ -175,33 +180,69 @@ export default function CounterPage() {
     return categories.filter((c) => !selectedKeys.includes(c.key));
   }, [categories, selectedKeys]);
 
-  const broadcastIncrement = useCallback((key: string, change: number) => {
-    if (channelRef.current && user) {
-      channelRef.current.send({
-        type: "broadcast",
-        event: "activity",
-        payload: {
-          user_id: user.id,
-          email: user.email,
-          category_key: key,
-          change: change,
-          timestamp: Date.now()
-        }
-      });
+  // Throttled / debounced broadcast queue to avoid saturating realtime channel on rapid clicks
+  const pendingBroadcastRef = useRef<Record<string, number>>({});
+  const broadcastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushBroadcast = useCallback(() => {
+    if (!channelRef.current || !user) {
+      pendingBroadcastRef.current = {};
+      return;
+    }
+    const pending = pendingBroadcastRef.current;
+    pendingBroadcastRef.current = {};
+
+    for (const [key, change] of Object.entries(pending)) {
+      if (change !== 0) {
+        channelRef.current.send({
+          type: "broadcast",
+          event: "activity",
+          payload: {
+            user_id: user.id,
+            email: user.email,
+            category_key: key,
+            change,
+            timestamp: Date.now(),
+          },
+        });
+      }
     }
   }, [user]);
+
+  const queueBroadcast = useCallback(
+    (key: string, change: number) => {
+      pendingBroadcastRef.current[key] = (pendingBroadcastRef.current[key] ?? 0) + change;
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
+      broadcastTimerRef.current = setTimeout(flushBroadcast, 450);
+    },
+    [flushBroadcast]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (broadcastTimerRef.current) clearTimeout(broadcastTimerRef.current);
+    };
+  }, []);
 
   const getCount = (key: string) => counts[key] ?? 0;
 
   const increment = useCallback((key: string) => {
-    cDispatch({ type: "set_count", key, val: (counts[key] ?? 0) + 1 });
-    broadcastIncrement(key, 1);
-  }, [counts, broadcastIncrement]);
+    const nextVal = (counts[key] ?? 0) + 1;
+    cDispatch({ type: "set_count", key, val: nextVal });
+    queueBroadcast(key, 1);
+    playTapFeedback();
+    const cat = categories.find((c) => c.key === key);
+    setAnnouncement(`${cat?.label ?? key}: ${nextVal}`);
+  }, [counts, queueBroadcast, categories]);
   
   const decrement = useCallback((key: string) => {
-    cDispatch({ type: "set_count", key, val: (counts[key] ?? 0) - 1 });
-    broadcastIncrement(key, -1);
-  }, [counts, broadcastIncrement]);
+    const nextVal = Math.max(0, (counts[key] ?? 0) - 1);
+    cDispatch({ type: "set_count", key, val: nextVal });
+    queueBroadcast(key, -1);
+    playTapFeedback();
+    const cat = categories.find((c) => c.key === key);
+    setAnnouncement(`${cat?.label ?? key}: ${nextVal}`);
+  }, [counts, queueBroadcast, categories]);
 
   const total = activeCategories.reduce((s, c) => s + getCount(c.key), 0);
   const maxCount = activeCategories.reduce((m, c) => Math.max(m, getCount(c.key)), 0);
@@ -267,24 +308,37 @@ export default function CounterPage() {
     cDispatch({ type: "set_saved", v: false });
   }, [counts]);
 
-  // Global Keyboard Shortcuts: Keys 1 to 9 instantly increment the 1st through 9th cards
+  // Global Keyboard Shortcuts: Keys 1 to 9 & Numpad 1 to 9 (Shift+[1-9] decrements)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
 
-      const num = parseInt(e.key);
+      const codeMatch = e.code.match(/^(?:Digit|Numpad)([1-9])$/);
+      let num = codeMatch ? parseInt(codeMatch[1], 10) : NaN;
+      if (isNaN(num)) {
+        const parsedKey = parseInt(e.key, 10);
+        if (!isNaN(parsedKey) && parsedKey >= 1 && parsedKey <= 9) {
+          num = parsedKey;
+        }
+      }
+
       if (!isNaN(num) && num >= 1 && num <= 9) {
         const idx = num - 1;
         if (idx >= 0 && idx < activeCategories.length) {
           e.preventDefault();
-          increment(activeCategories[idx].key);
+          const targetKey = activeCategories[idx].key;
+          if (e.shiftKey) {
+            decrement(targetKey);
+          } else {
+            increment(targetKey);
+          }
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeCategories, increment]);
+  }, [activeCategories, increment, decrement]);
 
   const handleReset = () => {
     cDispatch({ type: "reset" });
@@ -417,7 +471,27 @@ export default function CounterPage() {
 
   return (
     <>
-      <div id="kudos-animation-container" className="fixed inset-0 pointer-events-none z-50 overflow-hidden" aria-hidden />
+      {/* Declarative Kudos Float Stream */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" aria-hidden>
+        {kudosItems.map((item) => (
+          <div
+            key={item.id}
+            className="kudos-float absolute select-none pointer-events-none"
+            style={{
+              left: `${item.left}%`,
+              bottom: "0px",
+              fontSize: `${item.size}px`,
+            }}
+          >
+            {item.emoji}
+          </div>
+        ))}
+      </div>
+
+      {/* Screen reader live region announcing counts */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
 
       <main className="flex-1 overflow-y-auto">
         <div className="w-full px-4 sm:px-6 py-5 sm:py-6 flex flex-col gap-5 max-w-7xl mx-auto">

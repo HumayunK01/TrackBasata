@@ -61,6 +61,7 @@ import {
   Search,
   Trash2,
   X,
+  AlertTriangle,
 } from "@/components/ui/icons";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -227,6 +228,7 @@ const CredentialsPage = () => {
   const [editing, setEditing] = useState<Credential | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Credential | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [exportWarningOpen, setExportWarningOpen] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<Set<string>>(new Set());
   const revealTimers = useRef<Record<string, number>>({});
@@ -578,7 +580,7 @@ const CredentialsPage = () => {
               <DropdownMenuContent align="end" className="w-40 font-sans p-1 rounded-xl shadow-lg border-border/60">
                 <DropdownMenuItem
                   className="text-xs gap-2 cursor-pointer rounded-lg"
-                  onClick={() => downloadCredentialCSV(credentials, showAll ? "all-credentials" : activeFolder?.name ?? "vault")}
+                  onClick={() => setExportWarningOpen(true)}
                 >
                   <FileText className="size-3.5 text-muted-foreground" /> CSV Spreadsheet
                 </DropdownMenuItem>
@@ -1106,6 +1108,35 @@ const CredentialsPage = () => {
               }}
             >
               Delete {selectedRows.length} Credentials
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={exportWarningOpen} onOpenChange={setExportWarningOpen}>
+        <AlertDialogContent className="sm:max-w-md bg-background/95 backdrop-blur-xl border-border/60 rounded-2xl shadow-xl p-5 sm:p-6">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              Export Unencrypted Passwords?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Exporting to CSV saves account names, logins, and <strong className="text-amber-500">passwords in plaintext</strong> to your local device. Ensure you store this file securely and delete it after use to maintain HIPAA / security compliance.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
+            <AlertDialogCancel className="h-10 rounded-xl border-border/60 hover:bg-muted/60 font-medium">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="h-10 rounded-xl px-5 bg-amber-600 hover:bg-amber-500 text-white font-semibold"
+              onClick={() => {
+                downloadCredentialCSV(credentials, showAll ? "all-credentials" : activeFolder?.name ?? "vault");
+                setExportWarningOpen(false);
+                toast.success("Credentials exported to CSV");
+              }}
+            >
+              Confirm Plaintext Export
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
