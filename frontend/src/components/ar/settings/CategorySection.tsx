@@ -1,4 +1,4 @@
-import type { Dispatch, DragEvent } from "react";
+import { useState, useMemo, type Dispatch, type DragEvent } from "react";
 import { colorForKey } from "@/lib/cat-colors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, MoreVertical, Pencil, Trash2, GripVertical, Tag, Loader2, Info, HelpCircle, ChevronUp, ChevronDown } from "@/components/ui/icons";
+import {
+  Plus,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  GripVertical,
+  Tag,
+  Loader2,
+  Info,
+  HelpCircle,
+  ChevronUp,
+  ChevronDown,
+  Search,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +44,7 @@ import {
 import Skeleton from "react-loading-skeleton";
 import { EmptyState } from "@/components/ar/industrial";
 import type { Category } from "@/hooks/useCategories";
+import { cn } from "@/lib/utils";
 
 export interface CategoryFormState {
   label: string;
@@ -89,45 +103,78 @@ export function CategorySection({
   onDrop,
   onMove,
 }: CategorySectionProps) {
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return categories;
+    const q = search.toLowerCase().trim();
+    return categories.filter(
+      (c) => c.label.toLowerCase().includes(q) || c.short.toLowerCase().includes(q) || c.key.toLowerCase().includes(q)
+    );
+  }, [categories, search]);
+
   return (
     <>
       <div className="bg-card/90 backdrop-blur-md border border-border/70 rounded-2xl shadow-sm overflow-hidden transition-all">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border/60 bg-muted/[0.04]">
-          <div className="flex items-center gap-3.5">
+        {/* Header Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-5 border-b border-border/60 gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="size-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
               <Tag className="size-4.5" strokeWidth={1.75} />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold font-heading text-foreground">Document Categories</h2>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-                  {categories.length}
+                <h2 className="text-sm font-bold font-heading text-foreground truncate">Document Categories</h2>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono shrink-0">
+                  {categories.length} total
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 hidden xs:block">
-                Drag to reorder · Used in counters, daily logs, and reports
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                Drag to reorder · Controls active counter and log sequence
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Quick search input */}
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search categories..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-7 h-8.5 text-xs rounded-lg bg-muted/40 border-border/70 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60 font-sans"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-1 cursor-pointer font-mono"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <Button
               size="sm"
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs h-9 px-3.5 shadow-xs shadow-emerald-600/20 active:scale-[0.98]"
+              variant="outline"
+              className="h-8.5 px-3 rounded-lg bg-muted/60 hover:bg-muted text-foreground border border-border text-xs font-medium shadow-2xs active:scale-[0.98] shrink-0 cursor-pointer"
               onClick={onAdd}
             >
-              <Plus className="size-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">Add Category</span>
+              <Plus className="size-3.5 mr-1.5 text-emerald-500" />
+              <span>Add Category</span>
             </Button>
           </div>
         </div>
 
-        {/* Content grid */}
+        {/* Content list / grid */}
         {isLoading ? (
-          <div className="p-4 sm:p-5 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
+          <div className="p-4 sm:p-5 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 rounded-xl border border-border/60 p-3.5 bg-muted/20">
-                <Skeleton circle width={12} height={12} />
+                <Skeleton circle width={14} height={14} />
                 <div className="flex-1 space-y-1.5">
                   <Skeleton width="75%" height={14} borderRadius={6} />
                   <Skeleton width={48} height={10} borderRadius={4} />
@@ -139,16 +186,33 @@ export function CategorySection({
           <EmptyState
             icon={Tag}
             title="No Categories Yet"
-            hint="Click Add category to create your first document key."
+            hint="Click Add Category to create your first document key."
           />
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center space-y-2">
+            <p className="text-sm font-semibold text-foreground">No matching categories found</p>
+            <p className="text-xs text-muted-foreground">Try searching with a different label or short name</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSearch("")}
+              className="rounded-xl border-border/60 text-xs mt-2"
+            >
+              Reset search
+            </Button>
+          </div>
         ) : (
-          <div className="p-4 sm:p-5 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
-            {categories.map((c, index) => {
+          <div className="p-4 sm:p-5 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+            {filtered.map((c, index) => {
               const clr = colorForKey(c.key);
+              const originalIndex = categories.findIndex((item) => item.key === c.key);
+              const isFirst = originalIndex === 0;
+              const isLast = originalIndex === categories.length - 1;
+
               return (
                 <div
                   key={c.key}
-                  draggable
+                  draggable={!search}
                   onDragStart={(e) => {
                     e.dataTransfer.setData("text/plain", c.key);
                     e.dataTransfer.effectAllowed = "move";
@@ -160,38 +224,56 @@ export function CategorySection({
                     onDrop(c.key);
                   }}
                   onDragEnd={() => catDispatch({ type: "drag_end" })}
-                  className={[
-                    "group flex items-center gap-3 rounded-xl border p-3 select-none touch-manipulation",
-                    "transition-all duration-150",
+                  className={cn(
+                    "group relative flex items-center gap-3 rounded-xl border p-3 select-none touch-manipulation transition-all duration-150",
                     cat.dragOver === c.key && cat.dragging !== c.key
-                      ? "border-emerald-500/60 bg-emerald-500/10 scale-[0.99] shadow-xs"
+                      ? "border-emerald-500/60 bg-emerald-500/10 scale-[0.99] shadow-xs ring-2 ring-emerald-500/30"
                       : "border-border/60 bg-card hover:bg-muted/40 hover:border-border/90 shadow-2xs",
-                    cat.dragging === c.key ? "opacity-35 scale-[0.98] border-dashed border-emerald-500" : "",
-                  ].join(" ")}
+                    cat.dragging === c.key ? "opacity-35 scale-[0.98] border-dashed border-emerald-500" : ""
+                  )}
                 >
-                  <div className="cursor-grab active:cursor-grabbing shrink-0 -ml-0.5 text-muted-foreground/60 hover:text-foreground transition-colors">
-                    <GripVertical className="size-4" />
-                  </div>
+                  {/* Drag Grip Handle */}
+                  {!search ? (
+                    <div
+                      className="cursor-grab active:cursor-grabbing shrink-0 -ml-0.5 text-muted-foreground/50 hover:text-foreground transition-colors p-0.5"
+                      title="Drag to reorder"
+                    >
+                      <GripVertical className="size-4" />
+                    </div>
+                  ) : (
+                    <span className="text-2xs font-mono text-muted-foreground/60 w-4 text-center">#{index + 1}</span>
+                  )}
+
+                  {/* Category Color Dot */}
                   <span
-                    className="size-3 rounded-full shrink-0 ring-2 ring-background shadow-xs"
+                    className="size-3.5 rounded-full shrink-0 ring-2 ring-background shadow-xs transition-transform group-hover:scale-110"
                     style={{ backgroundColor: clr }}
                     aria-hidden
                   />
+
+                  {/* Label & Short code */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate" title={c.label}>
+                    <p className="text-xs sm:text-sm font-bold text-foreground truncate leading-snug" title={c.label}>
                       {c.label}
                     </p>
-                    <span className="inline-block text-[11px] font-mono font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.2 rounded mt-0.5 truncate max-w-full">
-                      {c.short}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="inline-block text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                        {c.short}
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground truncate opacity-70">
+                        {c.key}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Actions Dropdown */}
                   <div className="flex items-center shrink-0">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
+                          className="size-7.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
                           aria-label={`Actions for ${c.label}`}
                         >
                           <MoreVertical className="size-4" />
@@ -199,29 +281,29 @@ export function CategorySection({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44 rounded-xl border border-border/70 bg-popover/95 backdrop-blur-xl shadow-xl p-1 font-sans">
                         <DropdownMenuItem className="text-xs font-medium rounded-lg gap-2 cursor-pointer" onClick={() => onEdit(c)}>
-                          <Pencil className="size-3.5 text-muted-foreground" /> Edit
+                          <Pencil className="size-3.5 text-muted-foreground" /> Edit Label
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="my-1" />
                         <DropdownMenuItem
                           className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
-                          disabled={index === 0}
+                          disabled={isFirst}
                           onClick={() => onMove(c.key, -1)}
                         >
-                          <ChevronUp className="size-3.5 text-muted-foreground" /> Move up
+                          <ChevronUp className="size-3.5 text-muted-foreground" /> Move Up
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
-                          disabled={index === categories.length - 1}
+                          disabled={isLast}
                           onClick={() => onMove(c.key, 1)}
                         >
-                          <ChevronDown className="size-3.5 text-muted-foreground" /> Move down
+                          <ChevronDown className="size-3.5 text-muted-foreground" /> Move Down
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="my-1" />
                         <DropdownMenuItem
                           className="text-xs font-medium rounded-lg gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
                           onClick={() => catDispatch({ type: "set_delete_target", cat: c })}
                         >
-                          <Trash2 className="size-3.5" /> Delete
+                          <Trash2 className="size-3.5" /> Delete Category
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -249,7 +331,7 @@ export function CategorySection({
               <div className="flex gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs leading-normal">
                 <HelpCircle className="size-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span className="text-foreground leading-relaxed">
-                  Category names create database keys automatically (e.g. <strong>&ldquo;Worked on NG&rdquo;</strong> creates <strong>&ldquo;worked_on_ng&rdquo;</strong>).
+                  Category names automatically generate unique database keys (e.g. <strong>&ldquo;Worked on NG&rdquo;</strong> creates <strong>&ldquo;worked_on_ng&rdquo;</strong>).
                 </span>
               </div>
             )}
@@ -260,7 +342,7 @@ export function CategorySection({
                 id="cat-label"
                 placeholder="e.g. Worked on NG"
                 value={cat.form.label}
-                className="font-medium rounded-xl bg-muted/40 border-border/60 text-sm focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60"
+                className="font-medium rounded-xl bg-muted/40 border-border/60 text-sm focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60 h-10"
                 onChange={(e) => catDispatch({ type: "set_form", patch: { label: e.target.value } })}
                 onKeyDown={(e) => e.key === "Enter" && onSave()}
               />
@@ -272,7 +354,7 @@ export function CategorySection({
                 placeholder="e.g. NG"
                 maxLength={10}
                 value={cat.form.short}
-                className="font-semibold rounded-xl bg-muted/40 border-border/60 text-sm focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60"
+                className="font-semibold rounded-xl bg-muted/40 border-border/60 text-sm focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60 h-10 font-mono"
                 onChange={(e) => catDispatch({ type: "set_form", patch: { short: e.target.value } })}
                 onKeyDown={(e) => e.key === "Enter" && onSave()}
               />
@@ -280,20 +362,20 @@ export function CategorySection({
             </div>
             
             {cat.formError && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2 animate-fade-in font-medium">
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2 animate-in fade-in-50 font-medium">
                 <Info className="size-3.5 shrink-0" />
                 <span>{cat.formError}</span>
               </div>
             )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
-            <Button variant="outline" className="rounded-xl border-border/60 hover:bg-muted/70 font-semibold" onClick={() => catDispatch({ type: "close_dialog" })}>
+            <Button variant="outline" className="rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium h-8.5" onClick={() => catDispatch({ type: "close_dialog" })}>
               Cancel
             </Button>
             <Button
               onClick={onSave}
               disabled={isBusy}
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs shadow-emerald-600/20 active:scale-[0.98]"
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs shadow-emerald-600/20 active:scale-[0.98] h-8.5"
             >
               {isBusy && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
               {cat.editingKey ? "Save Changes" : "Create Category"}
@@ -327,10 +409,10 @@ export function CategorySection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
-            <AlertDialogCancel className="rounded-xl border-border/60 hover:bg-muted/70 font-semibold">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium h-8.5">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={onDelete}
-              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs shadow-destructive/20 font-semibold active:scale-[0.98]"
+              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs shadow-destructive/20 font-semibold text-xs active:scale-[0.98] h-8.5"
             >
               Remove Category
             </AlertDialogAction>

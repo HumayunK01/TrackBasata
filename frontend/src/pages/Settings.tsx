@@ -21,8 +21,8 @@ import {
   SlidersHorizontal,
   Tag,
   AlertTriangle,
-  Globe,
-} from "@/components/ui/icons";
+  Command,
+} from "lucide-react";
 
 import {
   ProfilePasswordCard,
@@ -114,11 +114,19 @@ function profileReducer(s: ProfileState, a: ProfileAction): ProfileState {
 
 type SettingsTab = "profile" | "preferences" | "categories" | "danger";
 
-const SETTINGS_TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }> }[] = [
-  { id: "profile", label: "Profile & Security", icon: User },
-  { id: "preferences", label: "Preferences & Region", icon: SlidersHorizontal },
-  { id: "categories", label: "Document Categories", icon: Tag },
-  { id: "danger", label: "Danger Zone", icon: AlertTriangle },
+interface TabItem {
+  id: SettingsTab;
+  label: string;
+  sublabel: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
+  destructive?: boolean;
+}
+
+const SETTINGS_TABS: TabItem[] = [
+  { id: "profile", label: "Profile & Security", sublabel: "Identity & access keys", icon: User },
+  { id: "preferences", label: "Preferences & Region", sublabel: "Theme, haptics & timezone", icon: SlidersHorizontal },
+  { id: "categories", label: "Document Categories", sublabel: "Keys & custom order", icon: Tag },
+  { id: "danger", label: "Danger Zone", sublabel: "Account & data purge", icon: AlertTriangle, destructive: true },
 ];
 
 export default function SettingsPage() {
@@ -253,8 +261,6 @@ export default function SettingsPage() {
 
   const isBusy = addCategory.isPending || updateCategory.isPending;
 
-  const ORG_TZ = "America/Phoenix";
-  const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [tzPreference, setTzPreference] = useState(() => localStorage.getItem("tz_preference") ?? "org");
 
   const handleTzChange = (val: string) => {
@@ -263,237 +269,224 @@ export default function SettingsPage() {
     toast.success("Time zone preference updated.");
   };
 
+  const userInitials = (() => {
+    const f = profile?.first_name?.[0] ?? "";
+    const l = profile?.last_name?.[0] ?? "";
+    return ((f + l) || user?.email?.[0] || "U").toUpperCase();
+  })();
+
+  const userDisplayName = profile?.first_name || profile?.last_name
+    ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
+    : "Authorized User";
+
   return (
-    <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6">
-      <div className="w-full space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-border/50 gap-3">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Workspace Settings</h1>
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-card border border-border/50 rounded-full px-2.5 py-0.5 shadow-2xs">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-heading">
+                Settings &amp; Workspace
+              </h1>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
               </span>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Manage profile credentials, document categories, workspace appearance, and system region
+              Configure personal profile, visual environment, document categories, and system region
             </p>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/40 border border-border/50 rounded-xl px-3 py-1.5">
+            <Command className="size-3.5 text-muted-foreground" />
+            <span>Cmd+K for Command Palette</span>
           </div>
         </div>
 
-        {/* Tab Navigation Rail */}
-        <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1 bg-card/90 backdrop-blur-md border border-border/70 rounded-2xl p-1.5 w-fit max-w-full shadow-2xs">
-          {SETTINGS_TABS.map((t) => {
-            const active = activeTab === t.id;
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveTab(t.id)}
-                className={cn(
-                  "relative shrink-0 inline-flex items-center gap-2 px-3.5 sm:px-4 h-9 rounded-xl text-xs font-medium transition-all cursor-pointer select-none",
-                  active
-                    ? "text-white font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                {active && (
-                  <motion.div
-                    layoutId="settings-active-tab-pill"
-                    className="absolute inset-0 bg-emerald-600 rounded-xl shadow-xs shadow-emerald-600/25"
-                    transition={{ type: "spring", bounce: 0.18, duration: 0.35 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-2">
-                  <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-                  <span>{t.label}</span>
-                  {t.id === "categories" && categories.length > 0 && (
-                    <span
-                      className={cn(
-                        "text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full",
-                        active ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {categories.length}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Tab Content Panels */}
-        <AnimatePresence mode="wait">
-          {activeTab === "profile" && (
-            <motion.div
-              key="profile"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6"
-            >
-              <ProfilePasswordCard
-                profile={profile}
-                profileState={profileState}
-                pwState={pwState}
-                profileDispatch={profileDispatch}
-                pwDispatch={pwDispatch}
-                onUpdateProfile={handleUpdateProfile}
-                onChangePassword={handleChangePassword}
-                email={user?.email}
-                createdAt={user?.created_at}
-                categoriesCount={categories.length}
-                logsCount={logs.length}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === "preferences" && (
-            <motion.div
-              key="preferences"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6"
-            >
-              <PreferencesCard dailyGoal={profile?.daily_goal ?? null} />
-
-              {/* Time Zone Section */}
-              <div className="bg-card/90 backdrop-blur-md border border-border/70 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm transition-all">
-                <div className="flex items-center gap-3.5 pb-4 border-b border-border/60">
-                  <div className="size-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
-                    <Globe className="size-4.5" strokeWidth={1.75} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">Time Zone & Regional Clock</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Choose how dates and times are interpreted and rendered across your tables and reports
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <label
-                    className={cn(
-                      "group flex items-start gap-3.5 p-4 rounded-xl border transition-all cursor-pointer",
-                      tzPreference === "org"
-                        ? "border-emerald-500/60 bg-emerald-500/[0.04] shadow-2xs ring-1 ring-emerald-500/20"
-                        : "border-border/60 bg-card hover:bg-muted/40"
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="tz"
-                      value="org"
-                      checked={tzPreference === "org"}
-                      onChange={() => handleTzChange("org")}
-                      className="size-4 mt-0.5 accent-emerald-600 cursor-pointer"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground">Organization Time Zone</span>
-                        {tzPreference === "org" && (
-                          <span className="text-[10px] font-semibold uppercase px-2 py-0.2 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-mono">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-mono text-muted-foreground">{ORG_TZ}</p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
-                        Standardizes all logs across team members and facilities. Recommended for consistent auditing and reports.
-                      </p>
-                    </div>
-                  </label>
-
-                  <label
-                    className={cn(
-                      "group flex items-start gap-3.5 p-4 rounded-xl border transition-all cursor-pointer",
-                      tzPreference === "local"
-                        ? "border-emerald-500/60 bg-emerald-500/[0.04] shadow-2xs ring-1 ring-emerald-500/20"
-                        : "border-border/60 bg-card hover:bg-muted/40"
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="tz"
-                      value="local"
-                      checked={tzPreference === "local"}
-                      onChange={() => handleTzChange("local")}
-                      className="size-4 mt-0.5 accent-emerald-600 cursor-pointer"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground">Local Device Time Zone</span>
-                        {tzPreference === "local" && (
-                          <span className="text-[10px] font-semibold uppercase px-2 py-0.2 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-mono">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-mono text-muted-foreground">{LOCAL_TZ}</p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
-                        Displays all timestamps converted to your workstation's local operating system clock.
-                      </p>
-                    </div>
-                  </label>
-                </div>
+        {/* ── Two-Column macOS / Apple Settings Layout ── */}
+        <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
+          {/* ── Left Navigation Rail ── */}
+          <aside className="w-full md:w-64 lg:w-72 shrink-0 space-y-4">
+            {/* Quick Profile Summary Card */}
+            <div className="p-3.5 rounded-2xl bg-card/90 backdrop-blur-md border border-border/70 shadow-sm flex items-center gap-3">
+              <div className="relative size-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-bold text-sm shadow-inner shrink-0 font-heading">
+                {userInitials}
+                <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 border-2 border-card" />
               </div>
-            </motion.div>
-          )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-foreground truncate font-heading">{userDisplayName}</p>
+                <p className="text-[11px] text-muted-foreground truncate font-mono mt-0.5">{user?.email || "Signed In"}</p>
+                <span className="inline-block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded mt-1">
+                  {profile?.role === "admin" ? "Admin" : "AR Specialist"}
+                </span>
+              </div>
+            </div>
 
-          {activeTab === "categories" && (
-            <motion.div
-              key="categories"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6"
-            >
-              <CategorySection
-                categories={categories}
-                isLoading={isLoading}
-                cat={cat}
-                catDispatch={catDispatch}
-                isBusy={isBusy}
-                onAdd={() => catDispatch({ type: "open_add" })}
-                onEdit={(c) => catDispatch({ type: "open_edit", cat: c })}
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onDragStart={(key) => catDispatch({ type: "drag_start", key })}
-                onDragOver={(e, key) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  if (cat.dragOver !== key) catDispatch({ type: "drag_over", key });
-                }}
-                onDrop={handleDrop}
-                onMove={handleMove}
-              />
-            </motion.div>
-          )}
+            {/* Navigation Tabs (Vertical on Desktop, Horizontal on Mobile) */}
+            <nav className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0 p-1.5 rounded-2xl bg-card/90 backdrop-blur-md border border-border/70 shadow-sm">
+              {SETTINGS_TABS.map((t) => {
+                const active = activeTab === t.id;
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveTab(t.id)}
+                    className={cn(
+                      "relative shrink-0 md:w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer select-none text-left",
+                      active
+                        ? "text-white font-semibold"
+                        : t.destructive
+                        ? "text-destructive/80 hover:text-destructive hover:bg-destructive/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="settings-active-pill"
+                        className={cn(
+                          "absolute inset-0 rounded-xl shadow-xs",
+                          t.destructive
+                            ? "bg-destructive text-destructive-foreground"
+                            : "bg-emerald-600 shadow-emerald-600/25"
+                        )}
+                        transition={{ type: "spring", bounce: 0.15, duration: 0.3 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-2.5 min-w-0">
+                      <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+                      <span className="truncate">{t.label}</span>
+                    </span>
 
-          {activeTab === "danger" && (
-            <motion.div
-              key="danger"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6"
-            >
-              <DangerZone delState={delState} delDispatch={delDispatch} onDeleteAccount={handleDeleteAccount} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    {/* Count badge for categories */}
+                    {t.id === "categories" && categories.length > 0 && (
+                      <span
+                        className={cn(
+                          "relative z-10 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ml-2",
+                          active ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {categories.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
 
-        {/* Footer version indicator */}
-        <p className="text-center font-mono text-2xs text-muted-foreground/70 tracking-[0.2em] pt-4 select-none">
-          {APP_VERSION}
-        </p>
+            {/* Workspace & System Info Card (Desktop) */}
+            <div className="hidden md:block p-4 rounded-2xl bg-card/70 border border-border/60 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">System Status</span>
+                <span className="flex items-center gap-1.5 font-semibold text-emerald-500 font-mono text-2xs">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Operational
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Build Engine</span>
+                <span className="font-mono font-bold text-foreground text-2xs">{APP_VERSION}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Auth Provider</span>
+                <span className="font-mono text-muted-foreground text-2xs">Supabase JWT</span>
+              </div>
+              <div className="pt-2 border-t border-border/40 text-[11px] text-muted-foreground leading-relaxed">
+                TrackBasata AR Workstation Engine. Real-time document indexing &amp; compliance logs.
+              </div>
+            </div>
+          </aside>
+
+          {/* ── Right Content Canvas ── */}
+          <section className="flex-1 min-w-0 w-full space-y-6">
+            <AnimatePresence mode="wait">
+              {activeTab === "profile" && (
+                <motion.div
+                  key="profile"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="space-y-6"
+                >
+                  <ProfilePasswordCard
+                    profile={profile}
+                    profileState={profileState}
+                    pwState={pwState}
+                    profileDispatch={profileDispatch}
+                    pwDispatch={pwDispatch}
+                    onUpdateProfile={handleUpdateProfile}
+                    onChangePassword={handleChangePassword}
+                    email={user?.email}
+                    createdAt={user?.created_at}
+                    categoriesCount={categories.length}
+                    logsCount={logs.length}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === "preferences" && (
+                <motion.div
+                  key="preferences"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="space-y-6"
+                >
+                  <PreferencesCard
+                    tzPreference={tzPreference}
+                    onTzChange={handleTzChange}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === "categories" && (
+                <motion.div
+                  key="categories"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="space-y-6"
+                >
+                  <CategorySection
+                    categories={categories}
+                    isLoading={isLoading}
+                    cat={cat}
+                    catDispatch={catDispatch}
+                    isBusy={isBusy}
+                    onAdd={() => catDispatch({ type: "open_add" })}
+                    onEdit={(c) => catDispatch({ type: "open_edit", cat: c })}
+                    onSave={handleSave}
+                    onDelete={handleDelete}
+                    onDragStart={(key) => catDispatch({ type: "drag_start", key })}
+                    onDragOver={(e, key) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (cat.dragOver !== key) catDispatch({ type: "drag_over", key });
+                    }}
+                    onDrop={handleDrop}
+                    onMove={handleMove}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === "danger" && (
+                <motion.div
+                  key="danger"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="space-y-6"
+                >
+                  <DangerZone delState={delState} delDispatch={delDispatch} onDeleteAccount={handleDeleteAccount} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+        </div>
       </div>
     </main>
   );
