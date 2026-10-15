@@ -21,6 +21,8 @@ dist-ssr/
 # Vendored Agent Skills & Assistant Workspaces
 .agents/
 **/.agents/
+.archify/
+**/.archify/
 .impeccable/
 .ua/
 graphify-out/

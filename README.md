@@ -63,6 +63,51 @@ TrackBasata replaces spreadsheets and disparate tracking notes with a purpose-bu
 
 ## System Architecture
 
+```mermaid
+flowchart TD
+    subgraph ClientTier["Frontend Workstation (:3000)"]
+        User(["Healthcare AR Associate"])
+        SPA["TrackBasata SPA<br/>React 18 · Vite 8 · Tailwind CSS"]
+        Cache[("LocalStorage & Cache<br/>Zero-latency count hydration")]
+        User -->|"Touch / Keyboard Tap"| SPA
+        SPA <-->|"Offline Cache Sync"| Cache
+    end
+
+    subgraph SecurityTier["Security & Rate Limiting"]
+        Auth["Supabase Auth<br/>JWT Session Guard"]
+        Redis[("Upstash Redis<br/>Sliding-Window Limiter")]
+    end
+
+    subgraph BackendTier["Express API Gateway (:5000)"]
+        API["Node.js + TypeScript API<br/>Helmet · CORS · OpenAPI Swagger"]
+        subgraph Services["Services & Handlers"]
+            CountSvc["Counter & Daily Logs"]
+            CatSvc["Categories Service"]
+            FacSvc["Facilities Directory"]
+            ProxySvc["Portal Asset Proxy"]
+        end
+        API --> CountSvc & CatSvc & FacSvc & ProxySvc
+    end
+
+    subgraph DataTier["Data Persistence"]
+        DB[("Supabase PostgreSQL<br/>Row Level Security (RLS)")]
+        Tables["daily_counts · categories · facilities<br/>vault_items · audit_logs"]
+        DB --- Tables
+    end
+
+    subgraph ExternalTier["External Clinic Workflows"]
+        EHR["Clinic & EHR Portals<br/>NextGen · Athena · Fax Queues"]
+    end
+
+    SPA <-->|"Bearer JWT Token"| Auth
+    SPA -->|"REST API (/api/v1/*)"| API
+    API <-->|"Rate Limit (60-120 req/min)"| Redis
+    API <-->|"Authenticated SQL"| DB
+    ProxySvc -.->|"External Fetch"| EHR
+```
+
+### Directory Structure
+
 ```
 TrackBasata/
 ├── backend/                  # Express + TypeScript REST API Gateway (:5000)
