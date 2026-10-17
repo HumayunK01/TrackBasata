@@ -71,18 +71,12 @@ jobs:
 
       - name: Configure Backend Environment
         run: |
-          echo "PORT=5099" >> .env
-          echo "NODE_ENV=test" >> .env
-          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          else
-            echo "SUPABASE_URL=https://calghfwmypuqrydprscx.supabase.co" >> .env
-          fi
-          if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
-            echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
-          else
-            echo "SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzcxMjA4MiwiZXhwIjoyMDkzMjg4MDgyfQ.F2FDgKXK1NgjYpJc6exrgOUb3x9ZGKmzAAQlqOcWit4" >> .env
-          fi
+          cat << 'EOF' > .env
+          PORT=5099
+          NODE_ENV=test
+          SUPABASE_URL=https://calghfwmypuqrydprscx.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzcxMjA4MiwiZXhwIjoyMDkzMjg4MDgyfQ.F2FDgKXK1NgjYpJc6exrgOUb3x9ZGKmzAAQlqOcWit4
+          EOF
         working-directory: backend
 
       - name: Compile Backend TypeScript
@@ -92,6 +86,11 @@ jobs:
       - name: Run Backend Tests (Boot, Security & RLS tests)
         run: npm run test
         working-directory: backend
+        env:
+          PORT: 5099
+          NODE_ENV: test
+          SUPABASE_URL: https://calghfwmypuqrydprscx.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzcxMjA4MiwiZXhwIjoyMDkzMjg4MDgyfQ.F2FDgKXK1NgjYpJc6exrgOUb3x9ZGKmzAAQlqOcWit4
 
       - name: Upload Backend Dist Artifact
         if: github.ref == 'refs/heads/main'
@@ -124,26 +123,28 @@ jobs:
 
       - name: Configure Frontend Environment
         run: |
-          if [ -n "${{ secrets.VITE_SUPABASE_URL }}" ]; then
-            echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
-          else
-            echo "VITE_SUPABASE_URL=https://calghfwmypuqrydprscx.supabase.co" >> .env
-          fi
-          if [ -n "${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" ]; then
-            echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" >> .env
-          else
-            echo "VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04" >> .env
-          fi
-          echo "VITE_API_URL=/api/v1" >> .env
+          cat << 'EOF' > .env
+          VITE_SUPABASE_URL=https://calghfwmypuqrydprscx.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04
+          VITE_API_URL=/api/v1
+          EOF
         working-directory: frontend
 
       - name: Run Frontend Vitest Suite
         run: npm run test
         working-directory: frontend
+        env:
+          VITE_SUPABASE_URL: https://calghfwmypuqrydprscx.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04
+          VITE_API_URL: /api/v1
 
       - name: Build Production Frontend Assets
         run: npm run build
         working-directory: frontend
+        env:
+          VITE_SUPABASE_URL: https://calghfwmypuqrydprscx.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04
+          VITE_API_URL: /api/v1
 
       - name: Upload Frontend Dist Artifact
         if: github.ref == 'refs/heads/main'
