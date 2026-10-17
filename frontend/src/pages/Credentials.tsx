@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   useCredentialFolders,
   useCredentials,
@@ -186,29 +187,98 @@ const CredentialsPage = () => {
   const me = user?.id;
   const { data: folders = [], isLoading: foldersLoading } = useCredentialFolders();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, val] of Object.entries(updates)) {
+            if (val === null || val === undefined || val === "") {
+              next.delete(key);
+            } else {
+              next.set(key, val);
+            }
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const urlView = searchParams.get("view")?.toLowerCase();
+  const viewMode: "list" | "cards" = useMemo(() => {
+    if (urlView === "list" || urlView === "cards") return urlView;
+    const saved = localStorage.getItem("basata_vault_view_mode_v2") as "list" | "cards" | null;
+    if (saved === "list" || saved === "cards") return saved;
+    return "cards"; // Default to cards view
+  }, [urlView]);
+
+  const handleViewModeChange = (newView: "list" | "cards") => {
+    try {
+      localStorage.setItem("basata_vault_view_mode_v2", newView);
+    } catch {}
+    updateUrlParams({
+      view: newView === "cards" ? null : newView,
+    });
+  };
+
   const [folderId, setFolderId] = useState<string | null>(() => localStorage.getItem(FOLDER_KEY));
+  const [showAll, setShowAll] = useState(() => {
+    const urlFolder = searchParams.get("folder")?.trim();
+    if (urlFolder) return urlFolder.toLowerCase() === "all";
+    return true;
+  });
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<CredentialFolder | null>(null);
   const [folderToRename, setFolderToRename] = useState<CredentialFolder | null>(null);
 
   useEffect(() => {
     if (foldersLoading || folders.length === 0) return;
-    if (!folderId || !folders.some((f) => f.id === folderId)) {
-      setFolderId(folders[0].id);
-    }
-  }, [folders, foldersLoading, folderId]);
 
-  useEffect(() => {
-    if (folderId) localStorage.setItem(FOLDER_KEY, folderId);
-  }, [folderId]);
+    const urlFolder = searchParams.get("folder")?.trim();
+
+    if (urlFolder) {
+      if (urlFolder.toLowerCase() === "all") {
+        setShowAll(true);
+      } else {
+        const match = folders.find(
+          (f) => f.name.toLowerCase() === urlFolder.toLowerCase() || f.id === urlFolder,
+        );
+        if (match) {
+          setFolderId(match.id);
+          setShowAll(false);
+          if (urlFolder !== match.name) {
+            updateUrlParams({ folder: match.name });
+          }
+        } else {
+          setShowAll(true);
+        }
+      }
+    } else {
+      setShowAll(true);
+    }
+  }, [folders, foldersLoading, searchParams, updateUrlParams]);
+
+  const handleSelectFolder = (f: CredentialFolder) => {
+    setFolderId(f.id);
+    setShowAll(false);
+    try {
+      localStorage.setItem(FOLDER_KEY, f.id);
+    } catch {}
+    updateUrlParams({ folder: f.name });
+  };
+
+  const handleSelectAllVault = () => {
+    setShowAll(true);
+    updateUrlParams({ folder: null });
+  };
 
   const activeFolder = folders.find((f) => f.id === folderId) ?? null;
   const otherFolders = folders.filter((f) => f.id !== folderId);
-  const [showAll, setShowAll] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "cards">(
-    () => (localStorage.getItem(VIEW_KEY) as "list" | "cards" | null) ?? "list",
-  );
-  useEffect(() => { localStorage.setItem(VIEW_KEY, viewMode); }, [viewMode]);
 
   const folderQuery = useCredentials(showAll ? undefined : folderId ?? undefined);
   const allQuery = useAllCredentials(showAll);
@@ -223,7 +293,23 @@ const CredentialsPage = () => {
   const bulkDelete = useBulkDeleteCredentials();
   const bulkMove = useBulkMoveCredentials();
 
-  const [search, setSearch] = useState("");
+  const urlSearch = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(urlSearch);
+
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = search.trim();
+      if (trimmed !== (searchParams.get("q") ?? "")) {
+        updateUrlParams({ q: trimmed || null });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, searchParams, updateUrlParams]);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Credential | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Credential | null>(null);
@@ -388,7 +474,7 @@ const CredentialsPage = () => {
             <div className="inline-flex items-center rounded-xl bg-muted/40 p-1 border border-border/50 text-xs h-10 shrink-0 shadow-2xs gap-1">
               <button
                 type="button"
-                onClick={() => setShowAll(true)}
+                onClick={handleSelectAllVault}
                 className={cn(
                   "relative h-8 px-3 rounded-lg text-xs transition-colors duration-150 cursor-pointer select-none flex items-center gap-2 font-medium shrink-0",
                   showAll
@@ -439,7 +525,7 @@ const CredentialsPage = () => {
                     )}
                     <button
                       type="button"
-                      onClick={() => { setFolderId(f.id); setShowAll(false); }}
+                      onClick={() => handleSelectFolder(f)}
                       title={f.name}
                       className="relative z-10 flex items-center gap-1.5 h-full cursor-pointer min-w-0 max-w-[12rem]"
                     >
@@ -502,7 +588,10 @@ const CredentialsPage = () => {
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => {
+                    setSearch("");
+                    updateUrlParams({ q: null });
+                  }}
                   title="Clear search"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
                 >
@@ -511,35 +600,11 @@ const CredentialsPage = () => {
               )}
             </div>
 
-            {/* View Mode Switcher (List vs Cards) */}
+            {/* View Mode Switcher (Cards vs List) */}
             <div className="inline-flex items-center rounded-xl bg-muted/40 p-1 border border-border/50 text-xs h-10 shrink-0 shadow-2xs">
               <button
                 type="button"
-                onClick={() => setViewMode("list")}
-                title="List view"
-                aria-pressed={viewMode === "list"}
-                className={cn(
-                  "relative h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer flex items-center gap-1.5",
-                  viewMode === "list"
-                    ? "text-white font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                )}
-              >
-                {viewMode === "list" && (
-                  <motion.div
-                    layoutId="vault-active-view-pill"
-                    className="absolute inset-0 rounded-lg bg-emerald-600 shadow-xs"
-                    transition={tabTransition}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  <List className="size-3.5" />
-                  <span className="hidden sm:inline">List</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("cards")}
+                onClick={() => handleViewModeChange("cards")}
                 title="Card view"
                 aria-pressed={viewMode === "cards"}
                 className={cn(
@@ -559,6 +624,30 @@ const CredentialsPage = () => {
                 <span className="relative z-10 flex items-center gap-1.5">
                   <LayoutGrid className="size-3.5" />
                   <span className="hidden sm:inline">Cards</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("list")}
+                title="List view"
+                aria-pressed={viewMode === "list"}
+                className={cn(
+                  "relative h-8 px-3 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer flex items-center gap-1.5",
+                  viewMode === "list"
+                    ? "text-white font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                )}
+              >
+                {viewMode === "list" && (
+                  <motion.div
+                    layoutId="vault-active-view-pill"
+                    className="absolute inset-0 rounded-lg bg-emerald-600 shadow-xs"
+                    transition={tabTransition}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  <List className="size-3.5" />
+                  <span className="hidden sm:inline">List</span>
                 </span>
               </button>
             </div>
@@ -690,8 +779,17 @@ const CredentialsPage = () => {
             </div>
           )}
 
-          {/* Desktop List Table View */}
-          {viewMode === "list" && (
+          {/* Animated Transition Wrapper for View & Folder switches */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${showAll ? "all" : (folderId ?? "none")}-${viewMode}`}
+              initial={{ opacity: 0, y: 8, filter: "blur(2px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Desktop List Table View */}
+              {viewMode === "list" && (
             <div className="hidden md:block bg-card/60 border border-border/60 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs border-collapse">
@@ -910,8 +1008,8 @@ const CredentialsPage = () => {
             </div>
           )}
 
-          {/* Desktop & Mobile Card Grid View */}
-          {(viewMode === "cards" || false) && (
+              {/* Desktop Card Grid View */}
+              {viewMode === "cards" && (
             <div className="hidden md:block">
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
                 {isLoading ? (
@@ -998,6 +1096,8 @@ const CredentialsPage = () => {
               ))
             )}
           </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
 
@@ -1012,7 +1112,7 @@ const CredentialsPage = () => {
       <NewFolderDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
-        onCreated={(f) => setFolderId(f.id)}
+        onCreated={(f) => handleSelectFolder(f)}
       />
 
       <RenameFolderDialog
@@ -1072,8 +1172,7 @@ const CredentialsPage = () => {
                 deleteFolder.mutate(target.id, {
                   onSuccess: () => {
                     if (target.id === folderId) {
-                      const next = folders.find((f) => f.id !== target.id);
-                      setFolderId(next ? next.id : null);
+                      handleSelectAllVault();
                     }
                   },
                 });

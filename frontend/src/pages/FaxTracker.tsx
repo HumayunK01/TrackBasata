@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFaxTracker, useDeleteFax, useUpdateStep as useFaxUpdateStep } from "@/hooks/useFaxTracker";
 import { useIndexableTracker, useDeleteIndexable, useUpdateStep as useIndexableUpdateStep } from "@/hooks/useIndexableTracker";
@@ -46,21 +48,68 @@ import type { FaxRow, FaxStepStatus, StepField } from "@/hooks/useFaxTracker";
 const ACCOUNT_KEY = "fax-tracker-account";
 const MODE_KEY = "tracker-mode";
 const STATUS_FILTER_KEY = "tracker-status-filter";
+const PAGE_SIZE_KEY = "tracker-page-size";
 const DEFAULT_PAGE_SIZE = 10;
+const ALLOWED_PAGE_SIZES = [10, 20, 50, 100] as const;
+type PageSize = (typeof ALLOWED_PAGE_SIZES)[number];
 
 const MODES: { id: TrackerMode; label: string }[] = [
   { id: "fax", label: "Fax" },
   { id: "indexable", label: "Indexable" },
 ];
 
+function parseStatuses(raw: string | null): Set<string> {
+  if (!raw) return new Set();
+  const parts = raw.split(",").map((s) => s.trim().toLowerCase());
+  const valid = new Set<string>();
+  for (const group of STATUS_GROUPS) {
+    if (parts.includes(group.toLowerCase())) {
+      valid.add(group);
+    }
+  }
+  return valid;
+}
+
 const FaxTrackerPage = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: accounts = [], isLoading: accountsLoading } = useFaxAccounts();
 
-  const [mode, setMode] = useState<TrackerMode>(
-    () => (localStorage.getItem(MODE_KEY) as TrackerMode) || "fax",
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, val] of Object.entries(updates)) {
+            if (val === null || val === undefined || val === "") {
+              next.delete(key);
+            } else {
+              next.set(key, val);
+            }
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
   );
-  useEffect(() => { localStorage.setItem(MODE_KEY, mode); }, [mode]);
+
+  const mode: TrackerMode = useMemo(() => {
+    const m = searchParams.get("mode")?.toLowerCase();
+    if (m === "indexable" || m === "fax") return m as TrackerMode;
+    const saved = localStorage.getItem(MODE_KEY) as TrackerMode | null;
+    if (saved === "indexable" || saved === "fax") return saved;
+    return "fax";
+  }, [searchParams]);
+
+  const handleModeChange = (newMode: TrackerMode) => {
+    localStorage.setItem(MODE_KEY, newMode);
+    updateUrlParams({
+      mode: newMode === "fax" ? null : newMode,
+      page: null,
+    });
+  };
 
   const deleteAccount = useDeleteFaxAccount();
   const [accountId, setAccountId] = useState<string | null>(() => localStorage.getItem(ACCOUNT_KEY));
@@ -70,19 +119,44 @@ const FaxTrackerPage = () => {
 
   useEffect(() => {
     if (accountsLoading || accounts.length === 0) return;
-    if (!accountId || !accounts.some((a) => a.id === accountId)) {
-      setAccountId(accounts[0].id);
+
+    const urlAccount = searchParams.get("account")?.trim();
+    let targetAccount: FaxAccount | undefined;
+
+    if (urlAccount) {
+      targetAccount = accounts.find(
+        (a) => a.id === urlAccount || a.name.toLowerCase() === urlAccount.toLowerCase(),
+      );
     }
-  }, [accounts, accountsLoading, accountId]);
+
+    if (!targetAccount && accountId) {
+      targetAccount = accounts.find((a) => a.id === accountId);
+    }
+
+    if (!targetAccount) {
+      const savedId = localStorage.getItem(ACCOUNT_KEY);
+      targetAccount = accounts.find((a) => a.id === savedId) ?? accounts[0];
+    }
+
+    if (targetAccount) {
+      if (targetAccount.id !== accountId) {
+        setAccountId(targetAccount.id);
+      }
+      localStorage.setItem(ACCOUNT_KEY, targetAccount.id);
+      // Keep URL parameter synchronized using human-friendly account name
+      if (urlAccount !== targetAccount.name && urlAccount !== targetAccount.id) {
+        updateUrlParams({ account: targetAccount.name });
+      }
+    }
+  }, [accounts, accountsLoading, searchParams, accountId, updateUrlParams]);
+
+  const handleSelectAccount = (a: FaxAccount) => {
+    setAccountId(a.id);
+    localStorage.setItem(ACCOUNT_KEY, a.id);
+    updateUrlParams({ account: a.name, page: null });
+  };
 
   useEffect(() => {
-    if (accountId) localStorage.setItem(ACCOUNT_KEY, accountId);
-    setPage(1);
-  }, [accountId]);
-
-  useEffect(() => {
-    setPage(1);
-    setSearch("");
     setEditing(null);
     setDeleteTarget(null);
     seenIds.current = null;
@@ -108,23 +182,110 @@ const FaxTrackerPage = () => {
 
   const labels = stepLabels(mode);
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Set<string>>(
-    () => {
-      try {
-        const raw = localStorage.getItem(STATUS_FILTER_KEY);
-        return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-      } catch {
-        return new Set();
-      }
-    },
-  );
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? searchParams.get("search") ?? "");
+
   useEffect(() => {
-    try { localStorage.setItem(STATUS_FILTER_KEY, JSON.stringify([...statusFilter])); } catch { /* ignore */ }
-  }, [statusFilter]);
+    const urlQ = searchParams.get("q") ?? searchParams.get("search") ?? "";
+    if (urlQ !== search) {
+      setSearch(urlQ);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlQ = searchParams.get("q") ?? searchParams.get("search") ?? "";
+    const trimmed = search.trim();
+    if (trimmed === currentUrlQ) return;
+
+    const t = setTimeout(() => {
+      updateUrlParams({ q: trimmed || null, page: null });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search, searchParams, updateUrlParams]);
+
+  const statusFilter = useMemo(() => {
+    const raw = searchParams.get("status");
+    if (raw !== null) {
+      return parseStatuses(raw);
+    }
+    try {
+      const rawLocal = localStorage.getItem(STATUS_FILTER_KEY);
+      if (rawLocal) {
+        const arr = JSON.parse(rawLocal);
+        if (Array.isArray(arr) && arr.length > 0) {
+          return new Set(arr.filter((s: string) => (STATUS_GROUPS as readonly string[]).includes(s)));
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return new Set<string>();
+  }, [searchParams]);
+
+  const toggleStatus = (s: string) => {
+    const next = new Set(statusFilter);
+    if (next.has(s)) next.delete(s);
+    else next.add(s);
+
+    try {
+      localStorage.setItem(STATUS_FILTER_KEY, JSON.stringify([...next]));
+    } catch {
+      /* ignore */
+    }
+
+    updateUrlParams({
+      status: next.size > 0 ? Array.from(next).join(",") : null,
+      page: null,
+    });
+  };
+
+  const clearStatusFilter = () => {
+    try {
+      localStorage.removeItem(STATUS_FILTER_KEY);
+    } catch {
+      /* ignore */
+    }
+    updateUrlParams({ status: null, page: null });
+  };
+
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const page = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
+
+  const handlePageChange = (p: number) => {
+    updateUrlParams({ page: p > 1 ? String(p) : null });
+  };
+
+  const pageSize: PageSize = useMemo(() => {
+    const rawParam = searchParams.get("limit") || searchParams.get("pageSize") || searchParams.get("per_page");
+    if (rawParam) {
+      const parsed = parseInt(rawParam, 10);
+      if (ALLOWED_PAGE_SIZES.includes(parsed as PageSize)) return parsed as PageSize;
+    }
+    try {
+      const saved = localStorage.getItem(PAGE_SIZE_KEY);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (ALLOWED_PAGE_SIZES.includes(parsed as PageSize)) return parsed as PageSize;
+      }
+    } catch {
+      /* ignore */
+    }
+    return DEFAULT_PAGE_SIZE;
+  }, [searchParams]);
+
+  const handlePageSizeChange = (n: number) => {
+    try {
+      localStorage.setItem(PAGE_SIZE_KEY, String(n));
+    } catch {
+      /* ignore */
+    }
+    const paramKey = searchParams.has("pageSize") ? "pageSize" : "limit";
+    updateUrlParams({
+      [paramKey]: n === DEFAULT_PAGE_SIZE ? null : String(n),
+      page: null,
+    });
+  };
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FaxRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FaxRow | null>(null);
@@ -163,10 +324,11 @@ const FaxTrackerPage = () => {
     });
   }, [rows, matchesFilters, sort]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
+    if (totalPages > 0 && page > totalPages) {
+      handlePageChange(totalPages);
+    }
   }, [page, totalPages]);
   const paginated = useMemo(
     () => filtered.slice((page - 1) * pageSize, page * pageSize),
@@ -211,7 +373,15 @@ const FaxTrackerPage = () => {
   );
 
   const hasActiveFilters = search.trim() !== "" || statusFilter.size > 0;
-  const clearAll = () => { setSearch(""); setStatusFilter(new Set()); };
+  const clearAll = () => {
+    setSearch("");
+    try {
+      localStorage.removeItem(STATUS_FILTER_KEY);
+    } catch {
+      /* ignore */
+    }
+    updateUrlParams({ status: null, q: null, page: null });
+  };
 
   const toggleSort = (key: SortKey) => {
     setSort((prev) => {
@@ -223,15 +393,6 @@ const FaxTrackerPage = () => {
 
   const openAdd = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (row: FaxRow) => { setEditing(row); setDialogOpen(true); };
-
-  const toggleStatus = (s: string) => {
-    setStatusFilter((prev) => {
-      const next = new Set(prev);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
-  };
 
   const EntryDialog = isFax ? FaxEntryDialog : IndexableEntryDialog;
 
@@ -245,11 +406,46 @@ const FaxTrackerPage = () => {
         <div key={mode} className="w-full max-w-7xl mx-auto space-y-5 animate-fade-in">
           {/* KPI Stat Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            <StatCard label="Resolved" value={stats.resolved} tone="emerald" loading={isLoading} />
-            <StatCard label="All Steps Failed" value={stats.allFailed} tone="rose" loading={isLoading} />
-            <StatCard label="Waiting" value={stats.waiting} tone="sky" loading={isLoading} />
-            <StatCard label="Incomplete" value={stats.incomplete} tone="slate" loading={isLoading} />
-            <StatCard label="Total Patients" value={stats.total} tone="neutral" loading={isLoading} />
+            <StatCard
+              label="Resolved"
+              value={stats.resolved}
+              tone="emerald"
+              loading={isLoading}
+              active={statusFilter.has("Resolved")}
+              onClick={() => toggleStatus("Resolved")}
+            />
+            <StatCard
+              label="All Steps Failed"
+              value={stats.allFailed}
+              tone="rose"
+              loading={isLoading}
+              active={statusFilter.has("Failed")}
+              onClick={() => toggleStatus("Failed")}
+            />
+            <StatCard
+              label="Waiting"
+              value={stats.waiting}
+              tone="sky"
+              loading={isLoading}
+              active={statusFilter.has("Waiting")}
+              onClick={() => toggleStatus("Waiting")}
+            />
+            <StatCard
+              label="Incomplete"
+              value={stats.incomplete}
+              tone="slate"
+              loading={isLoading}
+              active={statusFilter.has("Incomplete")}
+              onClick={() => toggleStatus("Incomplete")}
+            />
+            <StatCard
+              label="Total Patients"
+              value={stats.total}
+              tone="neutral"
+              loading={isLoading}
+              active={statusFilter.size === 0}
+              onClick={statusFilter.size > 0 ? clearStatusFilter : undefined}
+            />
           </div>
 
           {/* Unified Command Toolbar */}
@@ -260,7 +456,7 @@ const FaxTrackerPage = () => {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setMode(m.id)}
+                  onClick={() => handleModeChange(m.id)}
                   className={cn(
                     "h-8 px-3.5 rounded-lg text-xs transition-all duration-150 cursor-pointer select-none flex items-center justify-center font-medium",
                     mode === m.id
@@ -283,9 +479,18 @@ const FaxTrackerPage = () => {
                   disabled={accountsLoading}
                 >
                   <Users className="size-4 text-muted-foreground shrink-0" />
-                  <span className="truncate font-semibold text-xs">
-                    {activeAccount?.name ?? (accountsLoading ? "Loading…" : "No account")}
-                  </span>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={activeAccount?.id ?? "none"}
+                      initial={{ opacity: 0, y: 3 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="truncate font-semibold text-xs"
+                    >
+                      {activeAccount?.name ?? (accountsLoading ? "Loading…" : "No account")}
+                    </motion.span>
+                  </AnimatePresence>
                   <ChevronDown className="size-3.5 opacity-70 shrink-0 ml-0.5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -297,7 +502,7 @@ const FaxTrackerPage = () => {
                 {sortedAccounts.map((a) => (
                   <DropdownMenuItem
                     key={a.id}
-                    onClick={() => setAccountId(a.id)}
+                    onClick={() => handleSelectAccount(a)}
                     className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs font-medium cursor-pointer"
                   >
                     <span className="flex items-center gap-2 min-w-0">
@@ -350,7 +555,10 @@ const FaxTrackerPage = () => {
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => {
+                    setSearch("");
+                    updateUrlParams({ q: null, page: null });
+                  }}
                   title="Clear search"
                   className="absolute right-3 top-1/2 -translate-y-1/2 size-5 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
                 >
@@ -374,11 +582,19 @@ const FaxTrackerPage = () => {
                 >
                   <ListFilter className="size-4 shrink-0 text-muted-foreground" />
                   <span>Status</span>
-                  {statusFilter.size > 0 && (
-                    <span className="size-5 rounded-full bg-primary/20 text-primary text-[10px] font-mono grid place-items-center ml-0.5">
-                      {statusFilter.size}
-                    </span>
-                  )}
+                  <AnimatePresence>
+                    {statusFilter.size > 0 && (
+                      <motion.span
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="size-5 rounded-full bg-primary/20 text-primary text-[10px] font-mono grid place-items-center ml-0.5"
+                      >
+                        {statusFilter.size}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl border border-border/60 bg-popover/95 backdrop-blur-xl shadow-xl p-1.5">
@@ -416,7 +632,7 @@ const FaxTrackerPage = () => {
                     <DropdownMenuSeparator className="my-1" />
                     <button
                       className="w-full text-left font-mono text-2xs uppercase tracking-wider text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                      onClick={() => setStatusFilter(new Set())}
+                      onClick={clearStatusFilter}
                     >
                       Clear filters
                     </button>
@@ -456,18 +672,49 @@ const FaxTrackerPage = () => {
               <h3 className="text-sm font-bold tracking-tight text-foreground">
                 {isFax ? "Fax Patients" : "Indexable Patients"}
               </h3>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                {filtered.length}
-              </span>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={filtered.length}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20"
+                >
+                  {filtered.length}
+                </motion.span>
+              </AnimatePresence>
             </div>
             {activeAccount && (
               <span className="text-xs text-muted-foreground font-medium hidden sm:inline-flex items-center gap-1.5">
-                Account: <span className="text-foreground font-semibold">{activeAccount.name}</span>
+                Account:{" "}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={activeAccount.id}
+                    initial={{ opacity: 0, x: 4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -4 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="text-foreground font-semibold"
+                  >
+                    {activeAccount.name}
+                  </motion.span>
+                </AnimatePresence>
               </span>
             )}
           </div>
 
-          {/* Desktop Patients Table */}
+          {/* Patients Content Area with Smooth Crossfade Animation */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${accountId ?? "empty"}-${Array.from(statusFilter).sort().join(",")}-${mode}-${page}-${pageSize}`}
+              initial={{ opacity: 0, y: 8, filter: "blur(2px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="space-y-4"
+            >
+              {/* Desktop Patients Table */}
           <div className="hidden md:block bg-card/60 backdrop-blur-md border border-border/70 rounded-2xl overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse table-fixed">
@@ -625,6 +872,8 @@ const FaxTrackerPage = () => {
               </div>
             )}
           </div>
+          </motion.div>
+        </AnimatePresence>
 
           {/* Pagination */}
           {!isLoading && (
@@ -632,13 +881,10 @@ const FaxTrackerPage = () => {
               page={page}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              onPageChange={setPage}
+              onPageChange={handlePageChange}
               showFirstLast
               itemsPerPage={pageSize}
-              onItemsPerPageChange={(n) => {
-                setPageSize(n);
-                setPage(1);
-              }}
+              onItemsPerPageChange={handlePageSizeChange}
             />
           )}
         </div>
@@ -649,7 +895,7 @@ const FaxTrackerPage = () => {
       <NewAccountDialog
         open={accountDialogOpen}
         onOpenChange={setAccountDialogOpen}
-        onCreated={(account) => setAccountId(account.id)}
+        onCreated={(account) => handleSelectAccount(account)}
       />
 
       <RenameAccountDialog
@@ -703,7 +949,12 @@ const FaxTrackerPage = () => {
                   onSuccess: () => {
                     if (target.id === accountId) {
                       const next = accounts.find((a) => a.id !== target.id);
-                      setAccountId(next ? next.id : null);
+                      if (next) {
+                        handleSelectAccount(next);
+                      } else {
+                        setAccountId(null);
+                        updateUrlParams({ account: null, page: null });
+                      }
                     }
                   },
                 });

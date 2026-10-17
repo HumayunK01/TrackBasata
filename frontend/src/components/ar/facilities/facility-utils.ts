@@ -220,14 +220,63 @@ export function scoreFacilityMatch(f: Facility, query: string): number {
   return totalScore;
 }
 
+/**
+ * Extracts city name from a facility's address string if available.
+ */
+export function extractCity(address?: string | null): string | null {
+  if (!address || typeof address !== "string") return null;
+  const cleaned = address.trim().replace(/[,.\s]+$/, "");
+  if (!cleaned || cleaned.toLowerCase().includes("no street address")) return null;
+
+  // 1. Check comma-separated parts: "..., City, ST 12345" or "..., City, ST"
+  const commaParts = cleaned.split(",").map((p) => p.trim()).filter(Boolean);
+  if (commaParts.length >= 2) {
+    const last = commaParts[commaParts.length - 1];
+    // State abbreviation + optional zip (e.g. "AZ 85351" or "AZ" or "VA 20153-1166")
+    const stZipMatch = last.match(/^[A-Za-z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/);
+    if (stZipMatch) {
+      const cityPart = commaParts[commaParts.length - 2];
+      const cleanCity = cityPart
+        .replace(/^(?:suite|ste|apt|bldg|unit|dept|p\.?o\.?\s*box)\s*[\w#.-]+\s*/i, "")
+        .trim();
+      if (cleanCity && cleanCity.length < 35 && !/\d/.test(cleanCity)) {
+        return cleanCity;
+      }
+    }
+  }
+
+  // 2. Regex for "... City, ST 12345"
+  const match = cleaned.match(/(?:,\s*|\s+)([A-Za-z\s.]+?),\s*([A-Za-z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/);
+  if (match && match[1]) {
+    const city = match[1].trim();
+    if (city && city.length < 35 && !/\d/.test(city)) {
+      return city;
+    }
+  }
+
+  return null;
+}
+
 export function filterAndRankFacilities(
   facilities: Facility[],
   query: string,
-  statusFilter: FacilityStatusFilter = "all"
+  statusFilter: FacilityStatusFilter = "all",
+  cityFilter: string = "all"
 ): Facility[] {
+  const normCity = cityFilter.trim().toLowerCase();
+  const isCityFilterActive = normCity !== "all" && normCity !== "";
+
   const statusFiltered = facilities.filter((f) => {
     if (statusFilter === "verified" && !f.verified) return false;
     if (statusFilter === "unverified" && f.verified) return false;
+
+    if (isCityFilterActive) {
+      const city = extractCity(f.address);
+      const matchCity = city?.toLowerCase() === normCity;
+      const matchAddress = (f.address ?? "").toLowerCase().includes(normCity);
+      if (!matchCity && !matchAddress) return false;
+    }
+
     return true;
   });
 
