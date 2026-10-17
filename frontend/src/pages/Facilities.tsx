@@ -182,7 +182,7 @@ export default function FacilitiesPage() {
     if (target) {
       const lenis = (window as unknown as { __lenis?: { scrollTo: (t: HTMLElement | number, o?: Record<string, unknown>) => void } }).__lenis;
       if (lenis) {
-        lenis.scrollTo(target, { offset: -24, duration: 0.9 });
+        lenis.scrollTo(target, { offset: -24, duration: 0.45 });
       } else {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -193,7 +193,7 @@ export default function FacilitiesPage() {
     setActiveLetter(null);
     const lenis = (window as unknown as { __lenis?: { scrollTo: (t: HTMLElement | number, o?: Record<string, unknown>) => void } }).__lenis;
     if (lenis) {
-      lenis.scrollTo(0, { duration: 0.8 });
+      lenis.scrollTo(0, { duration: 0.45 });
     } else {
       containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       window.scrollTo({ top: 0, behavior: "smooth" });

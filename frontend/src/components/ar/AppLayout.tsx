@@ -32,35 +32,36 @@ export function AnimatedPage({ children }: { children: React.ReactNode }) {
     if (reduce) return;
 
     let lenisInstance: Lenis | null = null;
+    let isCancelled = false;
 
-    const rafId = requestAnimationFrame(() => {
-      const scrollContainer = pageRef.current?.querySelector("main") as HTMLElement | null;
-      if (!scrollContainer) return;
+    const scrollContainer = pageRef.current?.querySelector("main") as HTMLElement | null;
+    if (!scrollContainer) return;
 
-      const content = (scrollContainer.firstElementChild as HTMLElement) || scrollContainer;
-
-      lenisInstance = new Lenis({
-        wrapper: scrollContainer,
-        content,
-        autoRaf: true,
-        duration: 1.1,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        touchMultiplier: 1.5,
-        wheelMultiplier: 1,
-        prevent: (node) => {
-          return (
-            node.hasAttribute("data-lenis-prevent") ||
-            Boolean(node.closest("[data-lenis-prevent], [role='dialog'], [role='menu'], [role='listbox']"))
-          );
-        },
-      });
-
-      (window as unknown as { __lenis?: Lenis }).__lenis = lenisInstance;
+    // Use full scrollContainer so Dimensions measures the entire scrollable height
+    // instead of only the first child, preventing boundary snapping and scroll stutter.
+    lenisInstance = new Lenis({
+      wrapper: scrollContainer,
+      content: scrollContainer,
+      autoRaf: true,
+      lerp: 0.12, // Snappy 120Hz responsive interpolation; eliminates 1.1s lag delay
+      smoothWheel: true,
+      syncTouch: false, // Touchpads & touch inputs bypass JS interpolation for 1:1 hardware responsiveness
+      wheelMultiplier: 0.85, // Balanced, natural scroll step without over-accelerating
+      touchMultiplier: 1,
+      prevent: (node) => {
+        return (
+          node.hasAttribute("data-lenis-prevent") ||
+          Boolean(node.closest("[data-lenis-prevent], [role='dialog'], [role='menu'], [role='listbox']"))
+        );
+      },
     });
 
+    if (!isCancelled) {
+      (window as unknown as { __lenis?: Lenis }).__lenis = lenisInstance;
+    }
+
     return () => {
-      cancelAnimationFrame(rafId);
+      isCancelled = true;
       if (lenisInstance) {
         lenisInstance.destroy();
         if ((window as unknown as { __lenis?: Lenis }).__lenis === lenisInstance) {

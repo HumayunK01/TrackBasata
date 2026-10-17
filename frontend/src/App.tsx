@@ -9,7 +9,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthGuard } from "@/components/ar/AuthGuard";
 import { AppLayout } from "@/components/ar/AppLayout";
 import { ThemeProvider } from "@/components/ar/ThemeProvider";
-import { ReactLenis } from "lenis/react";
 import "lenis/dist/lenis.css";
 import {
   ConsolePage,
@@ -79,8 +78,7 @@ const TitleSync = () => {
 
 const App = () => (
   <ThemeProvider>
-    <ReactLenis root options={{ autoRaf: true, smoothWheel: true }}>
-      <SkeletonTheme baseColor="hsl(var(--skeleton-base))" highlightColor="hsl(var(--skeleton-highlight))">
+    <SkeletonTheme baseColor="hsl(var(--skeleton-base))" highlightColor="hsl(var(--skeleton-highlight))">
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Sonner />
@@ -121,7 +119,6 @@ const App = () => (
           </TooltipProvider>
         </QueryClientProvider>
       </SkeletonTheme>
-    </ReactLenis>
   </ThemeProvider>
 );
 
