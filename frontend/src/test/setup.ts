@@ -1,4 +1,18 @@
 import "@testing-library/jest-dom";
+import { webcrypto } from "node:crypto";
+
+if (!globalThis.crypto || !globalThis.crypto.subtle) {
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    writable: true,
+  });
+}
+if (!window.crypto || !window.crypto.subtle) {
+  Object.defineProperty(window, "crypto", {
+    value: webcrypto,
+    writable: true,
+  });
+}
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,

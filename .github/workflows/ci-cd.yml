@@ -54,11 +54,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: typecheck
-    env:
-      NODE_ENV: test
-      PORT: 5099
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-placeholder-key-00000000' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -74,13 +69,36 @@ jobs:
         run: npm ci
         working-directory: backend
 
+      - name: Configure Backend Environment
+        run: |
+          cat << 'EOF' > .env
+          PORT=5099
+          NODE_ENV=test
+          SUPABASE_URL=http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY=dummy-service-role-key-for-test
+          EOF
+        working-directory: backend
+
       - name: Compile Backend TypeScript
         run: npm run build
         working-directory: backend
 
       - name: Run Backend Tests (Boot, Security & RLS tests)
-        run: npm run test
+        run: |
+          npm run test 2>&1 | tee test-output.log || (echo "### Backend Tests Output ❌" >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && cat test-output.log >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && exit 1)
         working-directory: backend
+        env:
+          PORT: 5099
+          NODE_ENV: test
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY: dummy-service-role-key-for-test
+
+      - name: Upload Backend Test Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-log
+          path: backend/test-output.log
 
       - name: Upload Backend Dist Artifact
         if: github.ref == 'refs/heads/main'
@@ -96,9 +114,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: typecheck
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'ci-publishable-placeholder-key-00000000' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -114,13 +129,38 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Run Frontend Vitest Suite
-        run: npm run test
+      - name: Configure Frontend Environment
+        run: |
+          cat << 'EOF' > .env
+          VITE_SUPABASE_URL=http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY=dummy-anon-key-for-test
+          VITE_API_URL=/api/v1
+          EOF
         working-directory: frontend
+
+      - name: Run Frontend Vitest Suite
+        run: |
+          npm run test 2>&1 | tee vitest-output.log || (echo "### Frontend Vitest Output ❌" >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && cat vitest-output.log >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && exit 1)
+        working-directory: frontend
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: dummy-anon-key-for-test
+          VITE_API_URL: /api/v1
+
+      - name: Upload Frontend Test Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-log
+          path: frontend/vitest-output.log
 
       - name: Build Production Frontend Assets
         run: npm run build
         working-directory: frontend
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: dummy-anon-key-for-test
+          VITE_API_URL: /api/v1
 
       - name: Upload Frontend Dist Artifact
         if: github.ref == 'refs/heads/main'
