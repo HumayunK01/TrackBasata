@@ -1,5 +1,6 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
+import Lenis from "lenis";
 import { useLocation } from "react-router-dom";
 import { AppSidebar } from "@/components/ar/AppSidebar";
 import { MobileTabBar } from "@/components/ar/MobileTabBar";
@@ -25,8 +26,53 @@ const pageTitles: Record<string, string> = {
 
 export function AnimatedPage({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion();
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (reduce) return;
+
+    let lenisInstance: Lenis | null = null;
+
+    const rafId = requestAnimationFrame(() => {
+      const scrollContainer = pageRef.current?.querySelector("main") as HTMLElement | null;
+      if (!scrollContainer) return;
+
+      const content = (scrollContainer.firstElementChild as HTMLElement) || scrollContainer;
+
+      lenisInstance = new Lenis({
+        wrapper: scrollContainer,
+        content,
+        autoRaf: true,
+        duration: 1.1,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+        touchMultiplier: 1.5,
+        wheelMultiplier: 1,
+        prevent: (node) => {
+          return (
+            node.hasAttribute("data-lenis-prevent") ||
+            Boolean(node.closest("[data-lenis-prevent], [role='dialog'], [role='menu'], [role='listbox']"))
+          );
+        },
+      });
+
+      (window as unknown as { __lenis?: Lenis }).__lenis = lenisInstance;
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (lenisInstance) {
+        lenisInstance.destroy();
+        if ((window as unknown as { __lenis?: Lenis }).__lenis === lenisInstance) {
+          delete (window as unknown as { __lenis?: unknown }).__lenis;
+        }
+      }
+    };
+  }, [reduce]);
+
   return (
     <motion.div
+      ref={pageRef}
       initial={reduce ? { opacity: 1 } : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={reduce ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }}

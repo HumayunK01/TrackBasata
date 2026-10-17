@@ -9,6 +9,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthGuard } from "@/components/ar/AuthGuard";
 import { AppLayout } from "@/components/ar/AppLayout";
 import { ThemeProvider } from "@/components/ar/ThemeProvider";
+import { ReactLenis } from "lenis/react";
+import "lenis/dist/lenis.css";
 import {
   ConsolePage,
   DailyLogPage,
@@ -77,47 +79,49 @@ const TitleSync = () => {
 
 const App = () => (
   <ThemeProvider>
-  <SkeletonTheme baseColor="hsl(var(--skeleton-base))" highlightColor="hsl(var(--skeleton-highlight))">
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <SidebarProvider>
-          <AuthGuard>
-            <TitleSync />
-            <Suspense
-              fallback={
-                <div className="flex-1 flex items-center justify-center text-sm text-foreground font-mono uppercase tracking-[0.2em]">
-                  Loading…
-                </div>
-              }
-            >
-              <Routes>
-                <Route element={<AppLayout><Outlet /></AppLayout>}>
-                  <Route path="/" element={<Navigate to="/console" replace />} />
-                  <Route path="/console" element={<ConsolePage />} />
-                  <Route path="/log" element={<DailyLogPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/report" element={<ReportPage />} />
-                  <Route path="/counter" element={<CounterPage />} />
-                  <Route path="/tracker" element={<FaxTrackerPage />} />
-                  {/* Legacy path — the page now hosts both Fax and Indexable */}
-                  <Route path="/fax-tracker" element={<FaxTrackerPage />} />
-                  <Route path="/vault" element={<VaultPage />} />
-                  <Route path="/team" element={<TeamPage />} />
-                  <Route path="/facilities" element={<FacilitiesPage />} />
-                  <Route path="/scenarios" element={<ScenariosPage />} />
-                  <Route path="/resources/:docId" element={<ResourcePage />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </AuthGuard>
-        </SidebarProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-  </SkeletonTheme>
+    <ReactLenis root options={{ autoRaf: true, smoothWheel: true }}>
+      <SkeletonTheme baseColor="hsl(var(--skeleton-base))" highlightColor="hsl(var(--skeleton-highlight))">
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Sonner />
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <SidebarProvider>
+                <AuthGuard>
+                  <TitleSync />
+                  <Suspense
+                    fallback={
+                      <div className="flex-1 flex items-center justify-center text-sm text-foreground font-mono uppercase tracking-[0.2em]">
+                        Loading…
+                      </div>
+                    }
+                  >
+                    <Routes>
+                      <Route element={<AppLayout><Outlet /></AppLayout>}>
+                        <Route path="/" element={<Navigate to="/console" replace />} />
+                        <Route path="/console" element={<ConsolePage />} />
+                        <Route path="/log" element={<DailyLogPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/report" element={<ReportPage />} />
+                        <Route path="/counter" element={<CounterPage />} />
+                        <Route path="/tracker" element={<FaxTrackerPage />} />
+                        {/* Legacy path — the page now hosts both Fax and Indexable */}
+                        <Route path="/fax-tracker" element={<FaxTrackerPage />} />
+                        <Route path="/vault" element={<VaultPage />} />
+                        <Route path="/team" element={<TeamPage />} />
+                        <Route path="/facilities" element={<FacilitiesPage />} />
+                        <Route path="/scenarios" element={<ScenariosPage />} />
+                        <Route path="/resources/:docId" element={<ResourcePage />} />
+                      </Route>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                </AuthGuard>
+              </SidebarProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </SkeletonTheme>
+    </ReactLenis>
   </ThemeProvider>
 );
 

@@ -175,19 +175,29 @@ export default function FacilitiesPage() {
     return counts;
   }, [filtered]);
 
-  // Smooth scroll to an alphabetical letter group
+  // Smooth scroll to an alphabetical letter group using Lenis or native fallback
   const scrollToLetter = (letter: string) => {
     setActiveLetter(letter);
     const target = document.getElementById(`facility-letter-${letter}`);
     if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      const lenis = (window as unknown as { __lenis?: { scrollTo: (t: HTMLElement | number, o?: Record<string, unknown>) => void } }).__lenis;
+      if (lenis) {
+        lenis.scrollTo(target, { offset: -24, duration: 0.9 });
+      } else {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
   };
 
   const scrollToTop = () => {
     setActiveLetter(null);
-    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const lenis = (window as unknown as { __lenis?: { scrollTo: (t: HTMLElement | number, o?: Record<string, unknown>) => void } }).__lenis;
+    if (lenis) {
+      lenis.scrollTo(0, { duration: 0.8 });
+    } else {
+      containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const hasActiveFilters = Boolean(debouncedSearch.trim() || statusFilter !== "all" || cityFilter !== "all");
@@ -195,7 +205,7 @@ export default function FacilitiesPage() {
   return (
     <main
       ref={containerRef}
-      className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 scroll-smooth"
+      className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6"
     >
       <div className="w-full space-y-3.5">
         {/* Controls Bar: Search, Status Tabs, City Filter, View Switcher & Add Button */}
