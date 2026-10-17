@@ -70,7 +70,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CredentialCardItem } from "@/components/ar/credentials/CredentialCardItem";
 
 const FOLDER_KEY = "credential-folder";
-const VIEW_KEY = "credential-view";
+const VIEW_KEY = "basata_vault_view_mode_v2";
 
 // Mirrors the Daily Log CSV export: downloads a real .csv file so the whole
 // folder can be opened as a table in Excel/Sheets.
@@ -212,14 +212,14 @@ const CredentialsPage = () => {
   const urlView = searchParams.get("view")?.toLowerCase();
   const viewMode: "list" | "cards" = useMemo(() => {
     if (urlView === "list" || urlView === "cards") return urlView;
-    const saved = localStorage.getItem("basata_vault_view_mode_v2") as "list" | "cards" | null;
+    const saved = localStorage.getItem(VIEW_KEY) as "list" | "cards" | null;
     if (saved === "list" || saved === "cards") return saved;
     return "cards"; // Default to cards view
   }, [urlView]);
 
   const handleViewModeChange = (newView: "list" | "cards") => {
     try {
-      localStorage.setItem("basata_vault_view_mode_v2", newView);
+      localStorage.setItem(VIEW_KEY, newView);
     } catch {}
     updateUrlParams({
       view: newView === "cards" ? null : newView,

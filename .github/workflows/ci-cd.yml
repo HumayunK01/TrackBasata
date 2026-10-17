@@ -1,0 +1,188 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Typecheck & Code Integrity ──────────────────────────────────────────
+  typecheck:
+    name: TypeScript Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Backend Typecheck
+        run: npm run typecheck
+        working-directory: backend
+
+      - name: Frontend Typecheck
+        run: npm run typecheck
+        working-directory: frontend
+
+  # ── 2. Backend Build & Automated Tests ─────────────────────────────────────
+  backend-test:
+    name: Backend Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: typecheck
+    env:
+      NODE_ENV: test
+      PORT: 5099
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-placeholder-key-00000000' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Compile Backend TypeScript
+        run: npm run build
+        working-directory: backend
+
+      - name: Run Backend Tests (Boot, Security & RLS tests)
+        run: npm run test
+        working-directory: backend
+
+      - name: Upload Backend Dist Artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/dist
+          retention-days: 7
+
+  # ── 3. Frontend Tests & Production Bundle ──────────────────────────────────
+  frontend-test-and-build:
+    name: Frontend Vitest & Vite Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: typecheck
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'ci-publishable-placeholder-key-00000000' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run Frontend Vitest Suite
+        run: npm run test
+        working-directory: frontend
+
+      - name: Build Production Frontend Assets
+        run: npm run build
+        working-directory: frontend
+
+      - name: Upload Frontend Dist Artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # ── 4. Production Release & Deployment Gate ────────────────────────────────
+  deploy-production:
+    name: Production Deployment Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [backend-test, frontend-test-and-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Download Backend Build
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/dist
+
+      - name: Verify Release Artifacts
+        run: |
+          echo "=== VERIFYING PRODUCTION DEPLOY ARTIFACTS ==="
+          ls -la frontend/dist
+          ls -la backend/dist
+          if [ ! -f frontend/dist/index.html ]; then
+            echo "❌ Error: frontend/dist/index.html is missing!"
+            exit 1
+          fi
+          if [ ! -f backend/dist/server.js ]; then
+            echo "❌ Error: backend/dist/server.js is missing!"
+            exit 1
+          fi
+          echo "✅ Production artifacts verified and ready for deployment."
+
+      # Optional deploy steps trigger if deploy secrets are configured:
+      - name: Deploy to Vercel (if configured)
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel --prod --token=$VERCEL_TOKEN
+
+      - name: Deploy Webhook / Cloud Trigger (if configured)
+        if: env.DEPLOY_WEBHOOK_URL != ''
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+        run: |
+          curl -X POST -fail "$DEPLOY_WEBHOOK_URL"
