@@ -74,8 +74,8 @@ jobs:
           cat << 'EOF' > .env
           PORT=5099
           NODE_ENV=test
-          SUPABASE_URL=https://calghfwmypuqrydprscx.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzcxMjA4MiwiZXhwIjoyMDkzMjg4MDgyfQ.F2FDgKXK1NgjYpJc6exrgOUb3x9ZGKmzAAQlqOcWit4
+          SUPABASE_URL=http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY=dummy-service-role-key-for-test
           EOF
         working-directory: backend
 
@@ -90,8 +90,8 @@ jobs:
         env:
           PORT: 5099
           NODE_ENV: test
-          SUPABASE_URL: https://calghfwmypuqrydprscx.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzcxMjA4MiwiZXhwIjoyMDkzMjg4MDgyfQ.F2FDgKXK1NgjYpJc6exrgOUb3x9ZGKmzAAQlqOcWit4
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_SERVICE_ROLE_KEY: dummy-service-role-key-for-test
 
       - name: Upload Backend Test Logs on Failure
         if: failure()
@@ -132,8 +132,8 @@ jobs:
       - name: Configure Frontend Environment
         run: |
           cat << 'EOF' > .env
-          VITE_SUPABASE_URL=https://calghfwmypuqrydprscx.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04
+          VITE_SUPABASE_URL=http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY=dummy-anon-key-for-test
           VITE_API_URL=/api/v1
           EOF
         working-directory: frontend
@@ -143,8 +143,8 @@ jobs:
           npm run test 2>&1 | tee vitest-output.log || (echo "### Frontend Vitest Output ❌" >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && cat vitest-output.log >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && exit 1)
         working-directory: frontend
         env:
-          VITE_SUPABASE_URL: https://calghfwmypuqrydprscx.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: dummy-anon-key-for-test
           VITE_API_URL: /api/v1
 
       - name: Upload Frontend Test Logs on Failure
@@ -158,8 +158,8 @@ jobs:
         run: npm run build
         working-directory: frontend
         env:
-          VITE_SUPABASE_URL: https://calghfwmypuqrydprscx.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: dummy-anon-key-for-test
           VITE_API_URL: /api/v1
 
       - name: Upload Frontend Dist Artifact

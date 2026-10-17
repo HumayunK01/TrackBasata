@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { tolerantNavigatorLock } from '@/lib/auth-lock';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://calghfwmypuqrydprscx.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhbGdoZndteXB1cXJ5ZHByc2N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTIwODIsImV4cCI6MjA5MzI4ODA4Mn0.CsstWGEYFhBy-gIK_-ZMfBpT08N_SyCcP3rBubx4N04';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'dummy-anon-key-for-test';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
