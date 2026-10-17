@@ -3,12 +3,12 @@ import { createApp } from "../dist/app.js";
 async function main() {
   const app = createApp();
 
-  const server = app.listen(5097, async () => {
+  const server = app.listen(5097, "0.0.0.0", async () => {
     try {
       console.log("=== RUNNING PARAMETERIZED QUERY & SECURITY TESTS ===");
 
       // Test 1: Parameterized unauthenticated GET /categories?id=test should reject with 401
-      const res1 = await fetch("http://localhost:5097/api/v1/categories?id=00000000-0000-0000-0000-000000000000");
+      const res1 = await fetch("http://127.0.0.1:5097/api/v1/categories?id=00000000-0000-0000-0000-000000000000");
       const data1 = await res1.json();
       console.log("Test 1 (GET /categories?id=... unauth): Status", res1.status, data1.error?.code);
       if (res1.status !== 401 || data1.error?.code !== "UNAUTHORIZED") {
@@ -16,7 +16,7 @@ async function main() {
       }
 
       // Test 2: Parameterized unauthenticated DELETE /categories?id=test should reject with 401
-      const res2 = await fetch("http://localhost:5097/api/v1/categories?id=00000000-0000-0000-0000-000000000000", {
+      const res2 = await fetch("http://127.0.0.1:5097/api/v1/categories?id=00000000-0000-0000-0000-000000000000", {
         method: "DELETE",
       });
       const data2 = await res2.json();
@@ -26,7 +26,7 @@ async function main() {
       }
 
       // Test 3: Parameterized unauthenticated GET /logs?date=2026-10-09 should reject with 401
-      const res3 = await fetch("http://localhost:5097/api/v1/logs?date=2026-10-09");
+      const res3 = await fetch("http://127.0.0.1:5097/api/v1/logs?date=2026-10-09");
       const data3 = await res3.json();
       console.log("Test 3 (GET /logs?date=... unauth): Status", res3.status, data3.error?.code);
       if (res3.status !== 401) {
@@ -34,7 +34,7 @@ async function main() {
       }
 
       // Test 4: Parameterized unauthenticated DELETE /logs?date=2026-10-09 should reject with 401
-      const res4 = await fetch("http://localhost:5097/api/v1/logs?date=2026-10-09", {
+      const res4 = await fetch("http://127.0.0.1:5097/api/v1/logs?date=2026-10-09", {
         method: "DELETE",
       });
       const data4 = await res4.json();
