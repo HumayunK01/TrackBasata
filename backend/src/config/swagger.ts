@@ -746,5 +746,72 @@ export const swaggerSpec = {
         },
       },
     },
+    "/api/v1/tracker/export": {
+      get: {
+        tags: ["Tracker"],
+        summary: "Export tracker records to CSV or JSON with active filters",
+        description: "Streams or downloads full-fledged tracker datasets filtered by account, status (e.g., waiting), search query, and tracker mode directly from server database.",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "mode",
+            in: "query",
+            schema: { type: "string", enum: ["fax", "indexable"], default: "fax" },
+            description: "Tracker category mode (fax or indexable)",
+          },
+          {
+            name: "account_id",
+            in: "query",
+            schema: { type: "string", format: "uuid" },
+            description: "Filter by specific account UUID",
+          },
+          {
+            name: "status",
+            in: "query",
+            schema: { type: "string" },
+            description: "Comma-separated status groups or status names to export (e.g. 'waiting' or 'waiting,failed')",
+          },
+          {
+            name: "q",
+            in: "query",
+            schema: { type: "string" },
+            description: "Case-insensitive search query matching patient name or notes",
+          },
+          {
+            name: "format",
+            in: "query",
+            schema: { type: "string", enum: ["csv", "json"], default: "csv" },
+            description: "Export file format (csv or json)",
+          },
+          {
+            name: "sort",
+            in: "query",
+            schema: { type: "string", enum: ["patient_name", "updated_at", "created_at", "overall_status"], default: "updated_at" },
+            description: "Sort field",
+          },
+          {
+            name: "sort_dir",
+            in: "query",
+            schema: { type: "string", enum: ["asc", "desc"], default: "desc" },
+            description: "Sort direction",
+          },
+        ],
+        responses: {
+          200: {
+            description: "Tracker export file (text/csv with UTF-8 BOM or application/json)",
+            headers: {
+              "Content-Disposition": {
+                schema: { type: "string", example: "attachment; filename=\"fax-tracker-export-2026-10-21.csv\"" },
+              },
+              "X-Export-Count": {
+                schema: { type: "integer", example: 42 },
+              },
+            },
+          },
+          400: { description: "Invalid filter parameters", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          401: { description: "Unauthorized / missing token", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+        },
+      },
+    },
   },
 };

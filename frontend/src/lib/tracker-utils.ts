@@ -1,5 +1,6 @@
 import type { TrackerRow } from "@/hooks/useTracker";
 import { displayStatus, labelFor } from "@/components/ar/tracker/tracker-helpers";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface TrackerPDFConfig {
   title: string;
@@ -195,7 +196,7 @@ export async function downloadTrackerPDF(
 }
 
 export const FAX_PDF_CONFIG: TrackerPDFConfig = {
-  title: "Phoenix Heart Fax Tracker",
+  title: "Phoenix Heart Outbox Tracker",
   step3Label: "Step 3 – Reupload ROI",
   defaultFilename: "fax-tracker.pdf",
 };
@@ -205,3 +206,128 @@ export const INDEXABLE_PDF_CONFIG: TrackerPDFConfig = {
   step3Label: "Step 3 – Reupload Indexable",
   defaultFilename: "indexable-tracker.pdf",
 };
+
+export function formatMMDDYYYY(d: Date = new Date()): string {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${mm}${dd}${yyyy}`;
+}
+
+export function generate10RandomDigits(): string {
+  let result = "";
+  for (let i = 0; i < 10; i++) {
+    result += Math.floor(Math.random() * 10);
+  }
+  return result;
+}
+
+export function getTrackerReportFilename(
+  mode: "fax" | "indexable",
+  ext: "pdf" | "csv" | "json",
+  date: Date = new Date(),
+  randomSuffix = generate10RandomDigits()
+): string {
+  const prefix = mode === "fax" ? "FAX" : "INDEXABLE";
+  const dateStr = formatMMDDYYYY(date);
+  return `${prefix}_${dateStr}_${randomSuffix}.${ext}`;
+}
+
+const BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
+
+export interface ServerTrackerExportOptions {
+  mode: "fax" | "indexable";
+  accountId?: string | null;
+  accountName?: string;
+  statuses?: string[];
+  search?: string;
+  format?: "csv" | "json";
+  sort?: "patient_name" | "updated_at" | "created_at" | "overall_status";
+  sortDir?: "asc" | "desc";
+}
+
+/**
+ * Downloads full tracker data directly from the server endpoint /api/v1/tracker/export
+ * with all active filters applied (status, search query, mode, account).
+ */
+export async function exportTrackerServer(opts: ServerTrackerExportOptions): Promise<{ count: number; filename: string }> {
+  let token: string | null = null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    token = session?.access_token || null;
+  } catch {
+    // proceed without token if session check fails
+  }
+
+  const searchParams = new URLSearchParams();
+  searchParams.set("mode", opts.mode);
+  if (opts.accountId) {
+    searchParams.set("account_id", opts.accountId);
+  }
+  if (opts.statuses && opts.statuses.length > 0) {
+    searchParams.set("status", opts.statuses.join(","));
+  }
+  if (opts.search && opts.search.trim()) {
+    searchParams.set("q", opts.search.trim());
+  }
+  if (opts.format) {
+    searchParams.set("format", opts.format);
+  }
+  if (opts.sort) {
+    searchParams.set("sort", opts.sort);
+  }
+  if (opts.sortDir) {
+    searchParams.set("sort_dir", opts.sortDir);
+  }
+
+  const url = `${BASE_URL}/tracker/export?${searchParams.toString()}`;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { headers });
+
+  if (!response.ok) {
+    let errMsg = "Export request failed";
+    try {
+      const errJson = await response.json();
+      errMsg = errJson?.error?.message || errMsg;
+    } catch {
+      errMsg = `${response.status} ${response.statusText}`;
+    }
+    throw new Error(errMsg);
+  }
+
+  // Extract filename from Content-Disposition header if available
+  let filename = "";
+  const disposition = response.headers.get("content-disposition");
+  if (disposition) {
+    const match = disposition.match(/filename=["']?([^"';]+)["']?/i);
+    if (match?.[1]) {
+      filename = match[1];
+    }
+  }
+
+  if (!filename) {
+    const ext = opts.format === "json" ? "json" : "csv";
+    filename = getTrackerReportFilename(opts.mode, ext);
+  }
+
+  const countHeader = response.headers.get("x-export-count");
+  const count = countHeader ? parseInt(countHeader, 10) : 0;
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
+
+  return { count, filename };
+}
+
