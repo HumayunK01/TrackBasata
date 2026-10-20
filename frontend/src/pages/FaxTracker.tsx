@@ -40,7 +40,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Pencil, Trash2, Search, ListFilter, FileWarning, MoreVertical, X, Check, ChevronDown, Users } from "@/components/ui/icons";
+import { Plus, Pencil, Trash2, Search, ListFilter, FileWarning, MoreVertical, X, Check, ChevronDown, Users, Download, Loader2, FileText, Copy, FileCheck } from "@/components/ui/icons";
+import { toast } from "sonner";
+import { exportTrackerServer, downloadTrackerPDF, getTrackerReportFilename, FAX_PDF_CONFIG, INDEXABLE_PDF_CONFIG } from "@/lib/tracker-utils";
 import Skeleton from "react-loading-skeleton";
 import { cn } from "@/lib/utils";
 import type { FaxRow, FaxStepStatus, StepField } from "@/hooks/useFaxTracker";
@@ -400,6 +402,60 @@ const FaxTrackerPage = () => {
     return [...accounts].sort((a, b) => a.name.localeCompare(b.name));
   }, [accounts]);
 
+  const [exporting, setExporting] = useState<"csv" | "json" | "pdf" | null>(null);
+
+  const handleExportServer = async (format: "csv" | "json") => {
+    setExporting(format);
+    try {
+      const statuses = statusFilter.size > 0 ? Array.from(statusFilter) : undefined;
+      const { count, filename } = await exportTrackerServer({
+        mode,
+        accountId: accountId || undefined,
+        accountName: activeAccount?.name,
+        statuses,
+        search: search.trim() || undefined,
+        format,
+        sort: sort?.key === "patient_name" || sort?.key === "updated_at" || sort?.key === "overall_status" ? sort.key : undefined,
+        sortDir: sort?.dir,
+      });
+      toast.success(`Exported ${count} ${count === 1 ? "patient" : "patients"} to ${filename}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to export tracker records";
+      toast.error(message);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setExporting("pdf");
+    try {
+      const subtitle = [
+        activeAccount ? `Account: ${activeAccount.name}` : "All Accounts",
+        statusFilter.size > 0 ? `Status: ${Array.from(statusFilter).join(", ")}` : null,
+        search.trim() ? `Search: "${search.trim()}"` : null,
+      ].filter(Boolean).join("  ·  ");
+
+      const filename = getTrackerReportFilename(mode, "pdf");
+
+      await downloadTrackerPDF(
+        filtered,
+        isFax ? FAX_PDF_CONFIG : INDEXABLE_PDF_CONFIG,
+        filename,
+        {
+          subtitle,
+          userName: user?.email,
+        }
+      );
+      toast.success(`Exported ${filtered.length} ${filtered.length === 1 ? "patient" : "patients"} to ${filename}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to generate PDF";
+      toast.error(message);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <>
       <main className="flex-1 overflow-y-auto px-3 sm:px-6 py-5 sm:py-6">
@@ -646,12 +702,111 @@ const FaxTrackerPage = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-10 shrink-0 text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium gap-1.5 animate-fade-in"
+                className="h-10 shrink-0 text-muted-foreground hover:text-foreground rounded-xl text-xs font-medium gap-1.5 animate-fade-in cursor-pointer"
                 onClick={clearAll}
               >
                 <X className="size-4" /> Clear all
               </Button>
             )}
+
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "group h-10 px-3.5 rounded-xl font-semibold border-border/50 bg-muted/40 hover:bg-muted/70 data-[state=open]:bg-muted/80 text-foreground shrink-0 text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer",
+                    statusFilter.size > 0 && "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                  )}
+                  disabled={exporting !== null}
+                  title="Export tracker records with active filters"
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                  ) : (
+                    <Download className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  )}
+                  <span>{exporting ? "Exporting…" : "Export"}</span>
+                  <ChevronDown className="size-3.5 opacity-70 ml-0.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-80 p-1.5 rounded-2xl border border-border/80 bg-popover/95 backdrop-blur-xl shadow-2xl font-sans select-none space-y-1 z-50"
+              >
+                <div className="px-2.5 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+                      Export {isFax ? "Fax Tracker" : "Indexable"}
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-medium">
+                      {filtered.length} {filtered.length === 1 ? "patient" : "patients"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/80 mt-1 truncate">
+                    {activeAccount?.name || "All Accounts"}
+                    {statusFilter.size > 0 && ` · ${Array.from(statusFilter).join(", ")}`}
+                    {search.trim() && ` · "${search.trim()}"`}
+                  </p>
+                </div>
+                <DropdownMenuSeparator className="bg-border/60 -mx-1" />
+                <DropdownMenuItem
+                  onClick={() => handleExportServer("csv")}
+                  disabled={exporting !== null}
+                  className="group flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer hover:bg-muted/80 focus:bg-muted/80 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <FileText className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground tracking-tight">CSV Spreadsheet</div>
+                      <div className="text-[10px] text-muted-foreground truncate">Server export with active filters</div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground/90 border border-border/50 shrink-0">
+                    .csv
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportServer("json")}
+                  disabled={exporting !== null}
+                  className="group flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer hover:bg-muted/80 focus:bg-muted/80 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="size-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Copy className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground tracking-tight">JSON Dataset</div>
+                      <div className="text-[10px] text-muted-foreground truncate">Structured server payload</div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground/90 border border-border/50 shrink-0">
+                    .json
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportPDF}
+                  disabled={exporting !== null}
+                  className="group flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer hover:bg-muted/80 focus:bg-muted/80 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="size-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <FileCheck className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground tracking-tight">PDF Document</div>
+                      <div className="text-[10px] text-muted-foreground truncate">Formatted print report</div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground/90 border border-border/50 shrink-0">
+                    .pdf
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Add patient action */}
             <Button
