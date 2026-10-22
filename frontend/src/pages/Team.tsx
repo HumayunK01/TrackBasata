@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import {
   useTeamProfiles,
   useTeamDailyLogs,
@@ -14,25 +14,20 @@ import {
   type TeamFaxedBackDoc,
 } from "@/hooks/useTeamData";
 import { useCategories } from "@/hooks/useCategories";
-import { colorForKey } from "@/lib/cat-colors";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, useProfile } from "@/hooks/useProfile";
-import { useDebouncedValue } from "@/hooks/useDebounce";
-import { isoDate, totalForLog, formatTableDate, formatDayName, isWeekend, type DailyLog } from "@/types/log";
+import { isoDate, totalForLog, type DailyLog } from "@/types/log";
 import { downloadCSV, downloadPDF, formatUSDate } from "@/lib/log-utils";
 import {
   Users,
   CalendarCheck,
   Search,
   ArrowLeft,
-  BedDouble,
   Shield,
   FileCheck2,
   Tags,
   History,
   LayoutGrid,
-  Loader2,
-  CheckCheck,
   X,
   Ban,
   UserCheck,
@@ -41,7 +36,7 @@ import {
 } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FigHeader, EmptyState } from "@/components/ar/industrial";
+import { EmptyState } from "@/components/ar/industrial";
 import { labelFor, pageNumbersArr } from "@/components/ar/tracker/tracker-helpers";
 import { Pagination } from "@/components/Pagination";
 import { NewMemberDialog } from "@/components/ar/team/NewMemberDialog";
@@ -66,6 +61,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeamMemberCard, type TeamMemberItem } from "@/components/ar/team/TeamMemberCard";
 import { TeamOverviewTab } from "@/components/ar/team/TeamOverviewTab";
+import { TeamStatsGrid } from "@/components/ar/team/TeamStatsGrid";
+import { TeamAnalyticsCharts } from "@/components/ar/team/TeamAnalyticsCharts";
+import { TeamTableView } from "@/components/ar/team/TeamTableView";
+import { TeamMemberLogsTab } from "@/components/ar/team/TeamMemberLogsTab";
+import { TeamMemberFaxedBackTab } from "@/components/ar/team/TeamMemberFaxedBackTab";
+import { TeamMemberCategoriesTab } from "@/components/ar/team/TeamMemberCategoriesTab";
+import { List as TableIcon, ArrowUpDown } from "lucide-react";
 
 function computeStats(logs: DailyLog[]) {
   const working = logs.filter((l) => !l.is_off_day);
@@ -84,31 +86,6 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "categories", label: "Categories", icon: Tags },
   { id: "activity", label: "Activity", icon: History },
 ];
-
-// Highlights the first case-insensitive match of `query` in `text`.
-function Highlight({ text, query }: { text: string; query: string }) {
-  const q = query.trim();
-  if (!q || !text) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-primary/15 text-primary rounded-sm px-0.5">{text.slice(idx, idx + q.length)}</mark>
-      {text.slice(idx + q.length)}
-    </>
-  );
-}
-
-function FBStatusIcon({ status }: { status: string }) {
-  if (status === "Pending") return <Loader2 className="size-3.5 text-emerald-500 animate-spin" />;
-  if (status === "Sent") return <CheckCheck className="size-3.5 text-emerald-500" />;
-  if (status === "Failed") return <X className="size-3.5 text-rose-500" />;
-  if (status === "Rejected") return <Ban className="size-3.5 text-amber-500" />;
-  return null;
-}
-
-const FB_FILTERS_INITIAL = { search: "" };
 
 const withPdf = (name: string) => (/\.pdf$/i.test(name) ? name : `${name}.pdf`);
 
@@ -134,18 +111,6 @@ function faxedBackCSV(rows: TeamFaxedBackDoc[]): string {
       .join(","),
   );
   return [headers.join(","), ...body].join("\n");
-}
-
-function SectionCard({ title, sub, children, actions }: { title: string; sub?: string; children: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
-        <FigHeader title={title} sub={sub} />
-        {actions}
-      </div>
-      {children}
-    </div>
-  );
 }
 
 function describeEvent(
@@ -245,29 +210,146 @@ export default function TeamPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [disableTarget, setDisableTarget] = useState<{ id: string; name: string; shouldDisable: boolean } | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("overview");
-  const [searchMember, setSearchMember] = useState("");
-  const [search, setSearch] = useState("");
-  const [pages, setPages] = useState({ logs: 1, faxedBack: 1, categories: 1, activity: 1 });
-  const [faxFilters, setFaxFilters] = useState(FB_FILTERS_INITIAL);
-  const debouncedFaxSearch = useDebouncedValue(faxFilters.search);
   const [exporting, setExporting] = useState<"logs-csv" | "logs-pdf" | "faxed" | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null | undefined>, replace = true) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, val] of Object.entries(updates)) {
+            if (val === null || val === undefined || val === "") {
+              next.delete(key);
+            } else {
+              next.set(key, val);
+            }
+          }
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const rawUserParam = searchParams.get("user") || null;
+  const rawTabParam = searchParams.get("tab")?.toLowerCase();
+  const tab: Tab =
+    rawTabParam === "overview" ||
+    rawTabParam === "logs" ||
+    rawTabParam === "faxed-back" ||
+    rawTabParam === "categories" ||
+    rawTabParam === "activity"
+      ? (rawTabParam as Tab)
+      : "overview";
+
+  const viewMode = (searchParams.get("view") === "table" ? "table" : "grid") as "grid" | "table";
+
+  const roleFilter = useMemo(() => {
+    const r = searchParams.get("role")?.toLowerCase();
+    if (r === "admin" || r === "user") return r as "admin" | "user";
+    return "all";
+  }, [searchParams]);
+
+  const statusFilter = useMemo(() => {
+    const s = searchParams.get("status")?.toLowerCase();
+    if (s === "active-today" || s === "inactive-today" || s === "disabled") {
+      return s as "active-today" | "inactive-today" | "disabled";
+    }
+    return "all";
+  }, [searchParams]);
+
+  const sortBy = useMemo(() => {
+    const s = searchParams.get("sort")?.toLowerCase();
+    if (s === "docs" || s === "avg" || s === "days") {
+      return s as "docs" | "avg" | "days";
+    }
+    return "name";
+  }, [searchParams]);
+
+  const [searchMember, setSearchMember] = useState(() => searchParams.get("q") ?? "");
+  const [search, setSearch] = useState(() => searchParams.get("date") ?? "");
+  const [faxSearch, setFaxSearch] = useState(() => searchParams.get("fb_search") ?? "");
+
+  useEffect(() => {
+    const urlQ = searchParams.get("q") ?? "";
+    if (urlQ !== searchMember) setSearchMember(urlQ);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlQ = searchParams.get("q") ?? "";
+    const trimmed = searchMember.trim();
+    if (trimmed === currentUrlQ) return;
+    const t = setTimeout(() => {
+      updateUrlParams({ q: trimmed || null }, true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchMember, searchParams, updateUrlParams]);
+
+  useEffect(() => {
+    const urlDate = searchParams.get("date") ?? "";
+    if (urlDate !== search) setSearch(urlDate);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlDate = searchParams.get("date") ?? "";
+    const trimmed = search.trim();
+    if (trimmed === currentUrlDate) return;
+    const t = setTimeout(() => {
+      updateUrlParams({ date: trimmed || null, page: null }, true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search, searchParams, updateUrlParams]);
+
+  useEffect(() => {
+    const urlFb = searchParams.get("fb_search") ?? "";
+    if (urlFb !== faxSearch) setFaxSearch(urlFb);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlFb = searchParams.get("fb_search") ?? "";
+    const trimmed = faxSearch.trim();
+    if (trimmed === currentUrlFb) return;
+    const t = setTimeout(() => {
+      updateUrlParams({ fb_search: trimmed || null, page: null }, true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [faxSearch, searchParams, updateUrlParams]);
+
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+
+  const matchedProfile = useMemo(() => {
+    if (!rawUserParam) return null;
+    const q = rawUserParam.toLowerCase();
+    return (
+      profiles.find(
+        (p) =>
+          p.id.toLowerCase() === q ||
+          `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase().replace(/\s+/g, "-") === q ||
+          `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase() === q,
+      ) || null
+    );
+  }, [rawUserParam, profiles]);
+
+  const selectedUserId = matchedProfile?.id ?? rawUserParam;
 
   const { data: logsPage = { rows: [], total: 0 }, isLoading: logsLoading2 } = useTeamUserLogs(
     selectedUserId,
-    pages.logs,
+    tab === "logs" ? currentPage : 1,
     search.trim() || undefined,
   );
   const { data: faxedBackPage = { rows: [], total: 0 }, isLoading: faxedBackLoading } = useTeamUserFaxedBack(
     selectedUserId,
-    pages.faxedBack,
-    { search: debouncedFaxSearch.trim() || undefined },
+    tab === "faxed-back" ? currentPage : 1,
+    { search: faxSearch.trim() || undefined },
   );
   const { data: allCategories = [], isLoading: categoriesLoading } = useCategories();
   const { data: auditPage = { rows: [], total: 0 }, isLoading: auditLoading } = useTeamUserAuditLogs(
     selectedUserId,
-    pages.activity,
+    tab === "activity" ? currentPage : 1,
   );
 
   const selectedLogs = logsPage.rows;
@@ -329,7 +411,7 @@ export default function TeamPage() {
   const selectedCategories = userCategoryContributions;
   const categoriesTotal = userCategoryContributions.length;
 
-  // Compute stats and maintain strict alphabetical sorting A-Z
+  // Compute stats and maintain strict alphabetical sorting A-Z as base
   const memberCards: TeamMemberItem[] = useMemo(() => {
     const list = profiles.map((p) => {
       const logs = logsByUser.get(p.id) ?? [];
@@ -344,20 +426,135 @@ export default function TeamPage() {
     });
   }, [profiles, logsByUser]);
 
-  // Filter members by search input
-  const filteredMembers = useMemo(() => {
-    const q = searchMember.trim().toLowerCase();
-    if (!q) return memberCards;
+  const today = isoDate();
+
+  // Rank mapping based on totalDocs
+  const membersWithRank = useMemo(() => {
+    const sortedByDocs = [...memberCards].sort((a, b) => b.totalDocs - a.totalDocs);
+    const rankMap = new Map<string, number>();
+    sortedByDocs.forEach((m, idx) => rankMap.set(m.id, idx + 1));
+    const topDocsMax = Math.max(...memberCards.map((m) => m.totalDocs), 1);
+    return { rankMap, topDocsMax };
+  }, [memberCards]);
+
+  // Aggregate Team KPIs
+  const totalTeamDocs = useMemo(
+    () => memberCards.reduce((acc, m) => acc + m.totalDocs, 0),
+    [memberCards]
+  );
+
+  const totalWorkingDays = useMemo(
+    () => memberCards.reduce((acc, m) => acc + m.daysWorked, 0),
+    [memberCards]
+  );
+
+  const teamDailyAvg = totalWorkingDays > 0 ? Math.round(totalTeamDocs / totalWorkingDays) : 0;
+
+  const activeTodayCount = useMemo(() => {
     return memberCards.filter((m) => {
-      const fullName = `${m.first_name || ""} ${m.last_name || ""}`.toLowerCase();
-      const role = m.role.toLowerCase();
-      return fullName.includes(q) || role.includes(q);
+      const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+      return entry && !entry.is_off_day && totalForLog(entry) > 0;
+    }).length;
+  }, [memberCards, logsByUser, today]);
+
+  const topPerformer = useMemo(() => {
+    return [...memberCards].sort((a, b) => b.totalDocs - a.totalDocs)[0] || null;
+  }, [memberCards]);
+
+  // Filter & sort members for views
+  const filteredAndSortedMembers = useMemo(() => {
+    let list = [...memberCards];
+
+    // Search query
+    const q = searchMember.trim().toLowerCase();
+    if (q) {
+      list = list.filter((m) => {
+        const fullName = `${m.first_name || ""} ${m.last_name || ""}`.toLowerCase();
+        const role = m.role.toLowerCase();
+        return fullName.includes(q) || role.includes(q);
+      });
+    }
+
+    // Role filter
+    if (roleFilter !== "all") {
+      list = list.filter((m) => m.role === roleFilter);
+    }
+
+    // Status filter
+    if (statusFilter === "disabled") {
+      list = list.filter((m) => m.is_disabled);
+    } else if (statusFilter === "active-today") {
+      list = list.filter((m) => {
+        const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+        return entry && !entry.is_off_day && totalForLog(entry) > 0;
+      });
+    } else if (statusFilter === "inactive-today") {
+      list = list.filter((m) => {
+        const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+        return !entry || entry.is_off_day || totalForLog(entry) === 0;
+      });
+    }
+
+    // Sort order
+    if (sortBy === "name") {
+      list.sort((a, b) => {
+        const nameA = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+        const nameB = `${b.first_name || ""} ${b.last_name || ""}`.trim();
+        return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+      });
+    } else if (sortBy === "docs") {
+      list.sort((a, b) => b.totalDocs - a.totalDocs);
+    } else if (sortBy === "avg") {
+      list.sort((a, b) => b.avg - a.avg);
+    } else if (sortBy === "days") {
+      list.sort((a, b) => b.daysWorked - a.daysWorked);
+    }
+
+    return list;
+  }, [memberCards, searchMember, roleFilter, statusFilter, sortBy, logsByUser, today]);
+
+  const filteredMembers = filteredAndSortedMembers;
+
+  const handleExportTeamRoster = () => {
+    const headers = [
+      "Rank",
+      "Associate Name",
+      "Role",
+      "Status",
+      "Total Documents",
+      "Days Worked",
+      "Daily Average",
+      "Today Output",
+      "Total Entries Recorded",
+    ];
+    const rows = filteredAndSortedMembers.map((m, idx) => {
+      const todayEntry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+      const todayCount = todayEntry && !todayEntry.is_off_day ? totalForLog(todayEntry) : 0;
+      const rank = membersWithRank.rankMap.get(m.id) ?? idx + 1;
+      const name = `${m.first_name || ""} ${m.last_name || ""}`.trim() || "User";
+      const status = m.is_disabled
+        ? "Disabled"
+        : todayCount > 0
+        ? "Active Today"
+        : "No Logs Today";
+      return [
+        rank,
+        `"${name}"`,
+        m.role,
+        status,
+        m.totalDocs,
+        m.daysWorked,
+        m.avg,
+        todayCount,
+        m.logCount,
+      ].join(",");
     });
-  }, [memberCards, searchMember]);
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    downloadTextFile(csvContent, `trackbasata-team-roster-${today}.csv`, "text/csv;charset=utf-8;");
+  };
 
   const selectedMember = selectedUserId ? memberCards.find((m) => m.id === selectedUserId) : null;
 
-  const today = isoDate();
   const todayEntry = selectedUserId
     ? (logsByUser.get(selectedUserId) ?? []).find((l) => l.log_date === today)
     : null;
@@ -504,7 +701,7 @@ export default function TeamPage() {
     if (!selectedUserId) return;
     setExporting("faxed");
     try {
-      const rows = await fetchAllUserFaxedBack(selectedUserId, { search: debouncedFaxSearch.trim() || undefined });
+      const rows = await fetchAllUserFaxedBack(selectedUserId, { search: faxSearch.trim() || undefined });
       downloadTextFile(faxedBackCSV(rows), `${memberSlug}-faxed-back.csv`, "text/csv;charset=utf-8;");
     } finally {
       setExporting(null);
@@ -514,46 +711,38 @@ export default function TeamPage() {
   if (loading || profilePending) return null;
   if (!isAdmin) return <Navigate to="/log" replace />;
 
-  // ── Team grid overview ─────────────────────────────────────────────────────
+  // ── Full-Fledged Team Operations Dashboard ─────────────────────────────────
   if (!selectedUserId) {
     return (
       <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6">
         <div className="w-full space-y-5">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          {/* Dashboard Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Team Management</h1>
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-card border border-border/50 rounded-full px-2.5 py-0.5 shadow-xs">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  Team Operations Dashboard
+                </h1>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5 shadow-xs font-mono">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Metrics
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                {profiles.length} team members · Sorted alphabetically A–Z
+                {profiles.length} team members registered · {activeTodayCount} active today
               </p>
             </div>
 
-            {/* Search & Actions toolbar */}
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  className="pl-9 pr-8 h-9 text-xs w-full bg-card border-border/60 focus-visible:border-primary/50 shadow-xs"
-                  placeholder="Search member by name or role…"
-                  value={searchMember}
-                  onChange={(e) => setSearchMember(e.target.value)}
-                />
-                {searchMember && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchMember("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                    aria-label="Clear search"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                )}
-              </div>
+            {/* Quick Global Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportTeamRoster}
+                title="Export team productivity summary to CSV"
+                className="h-9 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/60 rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                <Download className="size-3.5" />
+                <span>Export CSV</span>
+              </button>
 
               {isAdmin && (
                 <Button
@@ -567,7 +756,158 @@ export default function TeamPage() {
             </div>
           </div>
 
-          {/* Cards Grid */}
+          {/* 1. Aggregate Team KPIs Grid */}
+          <TeamStatsGrid
+            members={memberCards}
+            activeTodayCount={activeTodayCount}
+            totalTeamDocs={totalTeamDocs}
+            totalWorkingDays={totalWorkingDays}
+            teamDailyAvg={teamDailyAvg}
+            topPerformer={topPerformer}
+            onSelectMember={(id) => {
+              updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
+            }}
+          />
+
+          {/* 2. Interactive Charts & Visualizations */}
+          <TeamAnalyticsCharts
+            members={memberCards}
+            allLogs={allLogs}
+            onSelectMember={(id) => {
+              updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
+            }}
+          />
+
+          {/* 3. Operational Controls Toolbar */}
+          <div className="bg-card border border-border/60 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              {/* Search Bar */}
+              <div className="relative w-full lg:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  className="pl-9 pr-8 h-9 text-xs w-full bg-background border-border/60 focus-visible:border-primary/50 shadow-xs"
+                  placeholder="Search associate by name or role…"
+                  value={searchMember}
+                  onChange={(e) => setSearchMember(e.target.value)}
+                />
+                {searchMember && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchMember("");
+                      updateUrlParams({ q: null }, true);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    aria-label="Clear search"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* View Switcher, Sort & Filter Row */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Role Filter Pills */}
+                <div className="flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
+                  {(["all", "admin", "user"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => updateUrlParams({ role: r === "all" ? null : r }, true)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer capitalize",
+                        roleFilter === r
+                          ? "bg-card text-foreground shadow-2xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {r === "all" ? "All Roles" : r === "admin" ? "Admins" : "Members"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Status Filter */}
+                <select
+                  aria-label="Filter members by activity status"
+                  value={statusFilter}
+                  onChange={(e) => updateUrlParams({ status: e.target.value === "all" ? null : e.target.value }, true)}
+                  className="h-8 px-2.5 text-xs bg-muted/40 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active-today">Active Today</option>
+                  <option value="inactive-today">No Logs Today</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+
+                {/* Sort Order Selector */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <ArrowUpDown className="size-3.5" />
+                  <select
+                    aria-label="Sort team members"
+                    value={sortBy}
+                    onChange={(e) => updateUrlParams({ sort: e.target.value === "name" ? null : e.target.value }, true)}
+                    className="h-8 px-2.5 text-xs bg-muted/40 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+                  >
+                    <option value="name">Name (A–Z)</option>
+                    <option value="docs">Most Documents</option>
+                    <option value="avg">Highest Daily Avg</option>
+                    <option value="days">Most Days Worked</option>
+                  </select>
+                </div>
+
+                {/* Grid vs Table Layout Switcher */}
+                <div className="flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => updateUrlParams({ view: null }, true)}
+                    title="Cards view"
+                    className={cn(
+                      "size-7 rounded-md grid place-items-center transition-all cursor-pointer",
+                      viewMode === "grid"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateUrlParams({ view: "table" }, true)}
+                    title="Dense table view"
+                    className={cn(
+                      "size-7 rounded-md grid place-items-center transition-all cursor-pointer",
+                      viewMode === "table"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <TableIcon className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Results Counter Bar */}
+            <div className="flex items-center justify-between text-2xs text-muted-foreground pt-1 border-t border-border/40 font-mono">
+              <span>
+                Showing {filteredMembers.length} of {memberCards.length} associates
+              </span>
+              {(searchMember || roleFilter !== "all" || statusFilter !== "all" || sortBy !== "name") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchMember("");
+                    updateUrlParams({ q: null, role: null, status: null, sort: null }, true);
+                  }}
+                  className="text-primary hover:underline cursor-pointer"
+                >
+                  Reset all filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 4. Main Members Listing (Cards or Table) */}
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -588,32 +928,60 @@ export default function TeamPage() {
             <EmptyState icon={Users} title="No Team Members Found" hint="Invite team members to begin tracking." />
           ) : filteredMembers.length === 0 ? (
             <div className="bg-card border border-border/60 rounded-xl p-8 text-center space-y-3">
-              <p className="text-sm font-medium text-foreground">No members match "{searchMember}"</p>
-              <p className="text-xs text-muted-foreground">Try clearing your search query to view all team members.</p>
+              <p className="text-sm font-medium text-foreground">No members match your active filters</p>
+              <p className="text-xs text-muted-foreground">Try clearing your filters or search query.</p>
               <button
                 type="button"
-                onClick={() => setSearchMember("")}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                onClick={() => {
+                  setSearchMember("");
+                  updateUrlParams({ q: null, role: null, status: null, sort: null }, true);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
-                Clear search filter
+                Reset filters
               </button>
             </div>
+          ) : viewMode === "table" ? (
+            <TeamTableView
+              members={filteredMembers}
+              logsByUser={logsByUser}
+              currentUserId={user?.id}
+              today={today}
+              topDocsMax={membersWithRank.topDocsMax}
+              onSelectMember={(id) => {
+                updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
+              }}
+              onToggleRole={(targetUserId, currentRole) => {
+                setRole.mutate({
+                  targetUserId,
+                  role: currentRole === "admin" ? "user" : "admin",
+                  prevRole: currentRole,
+                });
+              }}
+              onToggleDisabled={(targetUserId, name, shouldDisable) => {
+                setDisableTarget({ id: targetUserId, name, shouldDisable });
+              }}
+              onDeleteRequest={(targetUserId, name) => {
+                setDeleteTarget({ id: targetUserId, name });
+              }}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMembers.map((m) => {
                 const memberTodayLog = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+                const rank = membersWithRank.rankMap.get(m.id);
+                const relativePercent = Math.round((m.totalDocs / membersWithRank.topDocsMax) * 100);
+
                 return (
                   <TeamMemberCard
                     key={m.id}
                     member={m}
                     isMe={m.id === user?.id}
                     todayEntry={memberTodayLog}
+                    rank={rank}
+                    relativePercent={relativePercent}
                     onSelect={() => {
-                      setSelectedUserId(m.id);
-                      setTab("overview");
-                      setSearch("");
-                      setFaxFilters(FB_FILTERS_INITIAL);
-                      setPages({ logs: 1, faxedBack: 1, categories: 1, activity: 1 });
+                      updateUrlParams({ user: m.id, tab: "overview", page: null, date: null, fb_search: null }, false);
                     }}
                     onToggleRole={(targetUserId, currentRole) => {
                       setRole.mutate({
@@ -643,6 +1011,31 @@ export default function TeamPage() {
     );
   }
 
+  // Associate not found fallback when user param is set in URL
+  if (selectedUserId && !profilesLoading && !selectedMember) {
+    return (
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-8">
+        <div className="max-w-md mx-auto text-center space-y-4 bg-card border border-border/60 rounded-2xl p-6 shadow-xs">
+          <div className="size-12 rounded-full bg-muted/60 text-muted-foreground mx-auto grid place-items-center">
+            <Users className="size-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-foreground">Associate Not Found</h3>
+            <p className="text-xs text-muted-foreground">
+              The team member with ID &ldquo;<code className="font-mono text-primary">{selectedUserId}</code>&rdquo; does not exist or was deleted.
+            </p>
+          </div>
+          <Button
+            onClick={() => updateUrlParams({ user: null, tab: null, page: null, date: null, fb_search: null }, false)}
+            className="cursor-pointer"
+          >
+            <ArrowLeft className="size-4 mr-1.5" /> Return to Team Dashboard
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   // ── Drill-down Member View ──────────────────────────────────────────────────
   return (
     <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6">
@@ -652,9 +1045,7 @@ export default function TeamPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                setSelectedUserId(null);
-                setSearch("");
-                setFaxFilters(FB_FILTERS_INITIAL);
+                updateUrlParams({ user: null, tab: null, page: null, date: null, fb_search: null }, false);
               }}
               className="size-9 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:border-border transition-colors shrink-0 grid place-items-center shadow-xs cursor-pointer"
               aria-label="Back to team overview"
@@ -734,7 +1125,9 @@ export default function TeamPage() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  updateUrlParams({ tab: t.id, page: null }, false);
+                }}
                 className={cn(
                   "shrink-0 inline-flex items-center gap-1.5 px-3.5 h-8 rounded-lg text-xs font-medium transition-all cursor-pointer",
                   active
@@ -783,286 +1176,112 @@ export default function TeamPage() {
             selectedAudit={selectedAudit}
             auditLoading={auditLoading}
             profiles={profiles}
+            allUserLogs={logsByUser.get(selectedMember.id) ?? []}
+            rank={membersWithRank.rankMap.get(selectedMember.id)}
+            onExportLogs={handleExportLogs}
+            onSelectTab={(t) => updateUrlParams({ tab: t, page: null }, false)}
             describeEvent={describeEvent}
           />
         )}
 
         {/* Tab 2: Daily Logs */}
         {tab === "logs" && (
-          <SectionCard
-            title="Daily Logs"
-            sub={`${logsTotal} total recorded days`}
-            actions={
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleExportLogs("csv")}
-                  disabled={exporting !== null}
-                  className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
-                >
-                  <Download className="size-3.5" /> CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExportLogs("pdf")}
-                  disabled={exporting !== null}
-                  className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
-                >
-                  <Download className="size-3.5" /> PDF
-                </button>
-              </div>
-            }
-          >
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                className="pl-9 h-9 text-xs w-full bg-card border-border/60"
-                placeholder="Search by date (YYYY-MM-DD)…"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPages((p) => ({ ...p, logs: 1 }));
-                }}
-              />
-            </div>
-            <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-xs">
-              {logsLoading2 ? (
-                <div className="space-y-2 p-4">
-                  <Skeleton height={40} count={4} />
-                </div>
-              ) : selectedLogs.length === 0 ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                  No log entries found for this member matching the filter.
-                </div>
-              ) : (
-                <div className="divide-y divide-border/40">
-                  {selectedLogs.map((l) => {
-                    const weekend = isWeekend(l.log_date);
-                    const isOff = l.is_off_day;
-                    const total = totalForLog(l);
-                    return (
-                      <div key={l.id} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/10 transition-colors">
-                        <div className="tabular-nums text-xs font-medium min-w-[120px]">
-                          <div className="flex flex-col leading-tight">
-                            <span className="font-semibold text-foreground">{formatTableDate(l.log_date)}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-heading">
-                              {formatDayName(l.log_date)}
-                            </span>
-                          </div>
-                        </div>
-                        {isOff ? (
-                          <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase font-heading flex items-center gap-1.5 bg-muted/40 px-2 py-0.5 rounded border border-border/40">
-                            <BedDouble className="size-3.5" /> {weekend ? "Weekend" : "Off Day"}
-                          </span>
-                        ) : (
-                          <>
-                            <div className="flex-1 flex flex-wrap gap-1.5">
-                              {selectedCategories.map((c) => {
-                                const v = (l.counts ?? {})[c.key] ?? 0;
-                                return v > 0 ? (
-                                  <span
-                                    key={c.key}
-                                    className="text-xs font-medium px-2 py-0.5 rounded-md tabular-nums bg-muted/50 border border-border/40 text-foreground"
-                                  >
-                                    <span className="text-muted-foreground mr-1">{c.short}</span>
-                                    <strong className="text-primary">{v}</strong>
-                                  </span>
-                                ) : null;
-                              })}
-                            </div>
-                            <span className="text-base font-bold tabular-nums text-primary">{total}</span>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            {logsTotal > 30 && (
-              <Pagination
-                page={pages.logs}
-                totalPages={Math.ceil(logsTotal / 30)}
-                pageNumbers={pageNumbersArr(Math.ceil(logsTotal / 30), pages.logs)}
-                onPageChange={(p) => setPages((prev) => ({ ...prev, logs: p }))}
-                total={logsTotal}
-                pageSize={30}
-                entityLabel="logs"
-              />
-            )}
-          </SectionCard>
+          <TeamMemberLogsTab
+            logs={selectedLogs}
+            allUserLogs={logsByUser.get(selectedMember?.id || "") ?? []}
+            totalLogsCount={logsTotal}
+            loading={logsLoading2}
+            page={tab === "logs" ? currentPage : 1}
+            pageSize={30}
+            search={search}
+            onSearchChange={(q) => setSearch(q)}
+            onPageChange={(p) => updateUrlParams({ page: p > 1 ? String(p) : null }, false)}
+            onExport={handleExportLogs}
+            exporting={exporting !== null}
+            selectedCategories={selectedCategories}
+          />
         )}
 
         {/* Tab 3: Faxed Back */}
         {tab === "faxed-back" && (
-          <SectionCard
-            title="Faxed Back"
-            sub={`${faxedBackTotal} documents logged`}
-            actions={
-              <button
-                type="button"
-                onClick={handleExportFaxedBack}
-                disabled={exporting !== null}
-                title="Export all matching results as CSV"
-                className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
-              >
-                <Download className="size-3.5" /> CSV
-              </button>
-            }
-          >
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                className="pl-9 h-9 text-xs w-full bg-card border-border/60"
-                placeholder="Search file name, patient name, notes…"
-                value={faxFilters.search}
-                onChange={(e) => {
-                  setFaxFilters((f) => ({ ...f, search: e.target.value }));
-                  setPages((p) => ({ ...p, faxedBack: 1 }));
-                }}
-              />
-            </div>
-            {faxedBackLoading ? (
-              <div className="space-y-2">
-                <Skeleton height={44} count={4} />
-              </div>
-            ) : selectedFaxedBack.length === 0 ? (
-              <div className="bg-card border border-border/60 rounded-xl p-8 text-center text-xs text-muted-foreground">
-                No faxed-back documents found for this member.
-              </div>
-            ) : (
-              <>
-                <div className="bg-card border border-border/60 rounded-xl overflow-x-auto shadow-xs">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/40 bg-muted/10">
-                        <th className="px-4 py-2.5 font-semibold">File</th>
-                        <th className="px-3 py-2.5 font-semibold">Patient</th>
-                        <th className="px-3 py-2.5 font-semibold">Worked On</th>
-                        <th className="px-3 py-2.5 font-semibold">Status</th>
-                        <th className="px-3 py-2.5 font-semibold">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {selectedFaxedBack.map((d) => (
-                        <tr key={d.id} className="hover:bg-muted/10 transition-colors">
-                          <td className="px-4 py-2.5 font-medium truncate max-w-[220px]">
-                            <span className="inline-flex items-center">
-                              <img src="/pdf.png" alt="" className="size-5 shrink-0 object-contain mr-1.5" />
-                              <Highlight text={d.file_name} query={faxFilters.search} />
-                              {!/\.pdf$/i.test(d.file_name) && <span>.pdf</span>}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 truncate max-w-[160px]">
-                            {d.patient_name ? <Highlight text={d.patient_name} query={faxFilters.search} /> : "—"}
-                          </td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{formatTableDate(d.worked_on)}</td>
-                          <td className="px-3 py-2.5">
-                            <span className="inline-flex items-center gap-1.5 font-medium">
-                              <FBStatusIcon status={d.status} />
-                              {d.status}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-muted-foreground truncate max-w-[200px]">
-                            {d.notes ? <Highlight text={d.notes} query={faxFilters.search} /> : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  page={pages.faxedBack}
-                  totalPages={Math.ceil(faxedBackTotal / 25)}
-                  pageNumbers={pageNumbersArr(Math.ceil(faxedBackTotal / 25), pages.faxedBack)}
-                  onPageChange={(p) => setPages((prev) => ({ ...prev, faxedBack: p }))}
-                  total={faxedBackTotal}
-                  pageSize={25}
-                  entityLabel="documents"
-                />
-              </>
-            )}
-          </SectionCard>
+          <TeamMemberFaxedBackTab
+            documents={selectedFaxedBack}
+            totalCount={faxedBackTotal}
+            loading={faxedBackLoading}
+            page={tab === "faxed-back" ? currentPage : 1}
+            pageSize={25}
+            search={faxSearch}
+            onSearchChange={(q) => setFaxSearch(q)}
+            onPageChange={(p) => updateUrlParams({ page: p > 1 ? String(p) : null }, false)}
+            onExport={handleExportFaxedBack}
+            exporting={exporting !== null}
+          />
         )}
 
         {/* Tab 4: Categories */}
         {tab === "categories" && (
-          <SectionCard
-            title="Categories"
-            sub={
-              categoriesTotal === 0
-                ? "No categories with logged contributions"
-                : categoriesTotal === 1
-                ? "1 category with logged contributions"
-                : `${categoriesTotal} categories with logged contributions`
-            }
-          >
-            {categoriesLoading ? (
-              <div className="space-y-2">
-                <Skeleton height={44} count={4} />
-              </div>
-            ) : selectedCategories.length === 0 ? (
-              <div className="bg-card border border-border/60 rounded-xl p-8 text-center text-xs text-muted-foreground">
-                No category contributions recorded for {memberName} yet.
-              </div>
-            ) : (
-              <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-xs">
-                <div className="divide-y divide-border/40">
-                  {selectedCategories.map((c) => (
-                    <div key={c.key} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors">
-                      <span
-                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border font-mono"
-                        style={{
-                          backgroundColor: `${colorForKey(c.key)}15`,
-                          color: colorForKey(c.key),
-                          borderColor: `${colorForKey(c.key)}35`,
-                        }}
-                      >
-                        {c.key}
-                      </span>
-                      <span className="text-xs font-semibold text-foreground">{c.label}</span>
-                      <span className="text-[10px] text-muted-foreground px-2 py-0.5 rounded bg-muted/40 border border-border/40">
-                        {c.short}
-                      </span>
-                      <div className="ml-auto flex items-center gap-3">
-                        <span className="text-xs font-bold tabular-nums text-primary">
-                          {c.totalDocs.toLocaleString()} docs
-                        </span>
-                        <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-muted/50 px-2 py-0.5 rounded border border-border/40">
-                          {c.share}% of total
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </SectionCard>
+          <TeamMemberCategoriesTab
+            categories={selectedCategories}
+            loading={categoriesLoading}
+            memberName={memberName}
+          />
         )}
 
         {/* Tab 5: Activity */}
         {tab === "activity" && (
           <div className="space-y-4">
+            {/* Activity Summary KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-card border border-border/60 rounded-xl p-3.5 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                  Recorded Audit Events
+                </span>
+                <div className="text-xl font-bold tabular-nums text-foreground mt-1 flex items-center gap-1.5">
+                  <History className="size-4 text-primary" />
+                  <span>{auditTotal} events</span>
+                </div>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-3.5 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                  Current Page View
+                </span>
+                <div className="text-xl font-bold tabular-nums text-foreground mt-1 flex items-center gap-1.5 font-mono">
+                  <span className="text-xs text-muted-foreground font-normal">Page</span>
+                  <span>{tab === "activity" ? currentPage : 1}</span>
+                  <span className="text-xs text-muted-foreground font-normal">of {Math.max(1, Math.ceil(auditTotal / 25))}</span>
+                </div>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-3.5 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                  Audit Scope
+                </span>
+                <div className="text-sm font-semibold text-emerald-500 mt-1 flex items-center gap-1.5">
+                  <Shield className="size-4" />
+                  <span>Immutable User Log</span>
+                </div>
+              </div>
+            </div>
+
             {auditLoading ? (
               <div className="space-y-2">
                 <Skeleton height={44} count={4} />
               </div>
             ) : selectedAudit.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground border border-border/60 rounded-xl bg-card shadow-xs">
+              <div className="p-8 text-center text-xs text-muted-foreground border border-border/60 rounded-2xl bg-card shadow-xs">
                 No audit activity logged for {memberName} yet.
               </div>
             ) : (
               <>
                 <InteractiveLogsTable
                   title={`${memberName} · Audit Trail`}
-                  subtitle={`Showing ${memberAuditLogs.length} events · Total: ${auditTotal} recorded (Page ${pages.activity} of ${Math.ceil(auditTotal / 25)})`}
+                  subtitle={`Showing ${memberAuditLogs.length} events · Total: ${auditTotal} recorded (Page ${tab === "activity" ? currentPage : 1} of ${Math.ceil(auditTotal / 25)})`}
                   logs={memberAuditLogs}
                 />
                 <Pagination
-                  page={pages.activity}
+                  page={tab === "activity" ? currentPage : 1}
                   totalPages={Math.ceil(auditTotal / 25)}
-                  pageNumbers={pageNumbersArr(Math.ceil(auditTotal / 25), pages.activity)}
-                  onPageChange={(p) => setPages((prev) => ({ ...prev, activity: p }))}
+                  pageNumbers={pageNumbersArr(Math.ceil(auditTotal / 25), tab === "activity" ? currentPage : 1)}
+                  onPageChange={(p) => updateUrlParams({ page: p > 1 ? String(p) : null }, false)}
                   total={auditTotal}
                   pageSize={25}
                   entityLabel="events"
