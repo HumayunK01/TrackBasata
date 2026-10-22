@@ -22,6 +22,9 @@ import {
   FacilitiesPage,
   ScenariosPage,
   ResourcePage,
+  PrivacyPolicyPage,
+  CookiesPolicyPage,
+  TermsOfServicePage,
   NotFound,
 } from "@/lib/routePreload";
 import { initQueryPersistence } from "@/lib/queryPersister";
@@ -65,13 +68,16 @@ const TITLES: Record<string, string> = {
   "/scenarios": "Scenarios & SOP Guide",
   "/resources/cheat-sheet": "Cheat Sheet",
   "/resources/test-patients": "Labeling Guide",
+  "/privacy": "Privacy Policy",
+  "/cookies": "Cookie Policy",
+  "/terms": "Terms of Service",
 };
 
 // ponytail: title map keyed by route; new pages must add an entry here
 const TitleSync = () => {
   const { pathname } = useLocation();
   useEffect(() => {
-    document.title = `${TITLES[pathname] ?? "Page Not Found"} · Basata.ai Tracker`;
+    document.title = `${TITLES[pathname] ?? "Page Not Found"} · TrackBasata`;
   }, [pathname]);
   return null;
 };
@@ -94,6 +100,11 @@ const App = () => (
                     }
                   >
                     <Routes>
+                      {/* Standalone Legal & Compliance Transparency Routes */}
+                      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/cookies" element={<CookiesPolicyPage />} />
+                      <Route path="/terms" element={<TermsOfServicePage />} />
+
                       <Route element={<AppLayout><Outlet /></AppLayout>}>
                         <Route path="/" element={<Navigate to="/console" replace />} />
                         <Route path="/console" element={<ConsolePage />} />
