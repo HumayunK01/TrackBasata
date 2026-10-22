@@ -1,5 +1,5 @@
 import { useReducer, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuditEvent } from "@/hooks/useAuditLog";
@@ -392,7 +392,20 @@ export default function SettingsPage() {
                 <span className="font-mono text-muted-foreground text-2xs">Supabase JWT</span>
               </div>
               <div className="pt-2 border-t border-border/40 text-[11px] text-muted-foreground leading-relaxed">
-                TrackBasata AR Workstation Engine. Real-time document indexing &amp; compliance logs.
+                TrackBasata Personal AR Workstation. Real-time document indexing &amp; personal productivity logs.
+              </div>
+              <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground select-none">
+                <Link to="/terms" className="hover:text-foreground hover:underline transition-colors">
+                  Terms
+                </Link>
+                <span>•</span>
+                <Link to="/privacy" className="hover:text-foreground hover:underline transition-colors">
+                  Privacy
+                </Link>
+                <span>•</span>
+                <Link to="/cookies" className="hover:text-foreground hover:underline transition-colors">
+                  Cookies
+                </Link>
               </div>
             </div>
           </aside>
@@ -486,6 +499,21 @@ export default function SettingsPage() {
               )}
             </AnimatePresence>
           </section>
+        </div>
+
+        {/* Mobile footer links */}
+        <div className="md:hidden pt-6 pb-2 flex items-center justify-center gap-4 text-xs text-muted-foreground select-none border-t border-border/40 mt-8">
+          <Link to="/terms" className="hover:text-foreground hover:underline transition-colors">
+            Terms of Service
+          </Link>
+          <span>•</span>
+          <Link to="/privacy" className="hover:text-foreground hover:underline transition-colors">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link to="/cookies" className="hover:text-foreground hover:underline transition-colors">
+            Cookie Policy
+          </Link>
         </div>
       </div>
     </main>

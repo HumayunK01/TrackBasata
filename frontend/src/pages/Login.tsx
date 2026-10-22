@@ -1,13 +1,15 @@
 import { useReducer, useRef, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Mail, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { Loader2, Eye, EyeOff, Sun, Moon, Check, X, RefreshCw } from "@/components/ui/icons";
 import { useTheme } from "@/hooks/useTheme";
 import { AppLogo } from "@/components/ar/AppLogo";
 import { AppFavicon } from "@/components/ar/AppFavicon";
+import { cn } from "@/lib/utils";
 
 const PASSWORD_RULES = [
   { id: "len", label: "At least 6 characters", test: (p: string) => p.length >= 6 },
@@ -111,6 +113,13 @@ export default function LoginPage() {
   const attemptTimestamps = useRef<number[]>([]);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [pwFocused, setPwFocused] = useState(false);
+  const [firstFocused, setFirstFocused] = useState(false);
+  const [lastFocused, setLastFocused] = useState(false);
+  const [pwToggleCount, setPwToggleCount] = useState(0);
+  const [emailKeyCount, setEmailKeyCount] = useState(0);
+  const [pwKeyCount, setPwKeyCount] = useState(0);
 
   useEffect(() => {
     if (mode === "signup") {
@@ -244,13 +253,7 @@ export default function LoginPage() {
       </div>
 
       {/* Main card */}
-      <div className="relative z-10 w-full max-w-[380px]">
-        
-        {/* Brand logo */}
-        <div className="mb-6 flex justify-center">
-          <AppLogo className="h-9 object-contain" />
-        </div>
-
+      <div className="relative z-10 w-full max-w-[416px]">
         <div className="bg-card/90 backdrop-blur-xl border border-border/70 rounded-2xl p-6 sm:p-7 shadow-xl">
           <AnimatePresence mode="wait">
             {confirmEmail ? (
@@ -349,116 +352,233 @@ export default function LoginPage() {
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="space-y-5"
               >
-                {/* Header */}
-                <div className="space-y-1 text-center">
-                  <h1 className="text-lg font-semibold tracking-tight text-foreground font-heading">
-                    {mode === "login"
-                      ? "Sign in to Basata Tracker"
-                      : mode === "signup"
-                      ? "Create an account"
-                      : "Reset password"}
-                  </h1>
-                  <p className="text-xs text-muted-foreground">
-                    {mode === "login"
-                      ? "Enter your credentials to continue"
-                      : mode === "signup"
-                      ? "Enter your details to get started"
-                      : "Enter your email to receive a reset link"}
-                  </p>
-                </div>
+                {/* Header: Logo inside card for login, or title for signup/forgot */}
+                {mode === "login" ? (
+                  <div className="flex justify-center pt-1 pb-0.5">
+                    <AppLogo className="h-9 w-auto object-contain" />
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-center">
+                    <div className="flex justify-center pb-2">
+                      <AppLogo className="h-8 w-auto object-contain" />
+                    </div>
+                    <h1 className="text-lg font-semibold tracking-tight text-foreground font-heading">
+                      {mode === "signup" ? "Create an account" : "Reset password"}
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                      {mode === "signup"
+                        ? "Enter your details to get started"
+                        : "Enter your email to receive a reset link"}
+                    </p>
+                  </div>
+                )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 pt-1">
                   {/* First & Last name for signup */}
                   {mode === "signup" && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="grid grid-cols-2 gap-3 overflow-hidden"
+                      className="grid grid-cols-2 gap-4 overflow-hidden pt-1"
                     >
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-foreground">
+                      <div className="relative pt-3.5 pb-0.5">
+                        <label
+                          htmlFor="login-first-name"
+                          className={cn(
+                            "pointer-events-none absolute left-0 transition-all duration-200 ease-out select-none",
+                            firstFocused || firstName
+                              ? "top-0 text-xs font-medium " + (firstFocused ? "text-emerald-500" : "text-muted-foreground")
+                              : "top-3.5 text-sm font-normal text-muted-foreground/75"
+                          )}
+                        >
                           First name
                         </label>
-                        <Input
+                        <input
+                          id="login-first-name"
                           type="text"
-                          aria-label="First name"
-                          placeholder="First name"
                           value={firstName}
                           onChange={(e) => dispatch({ type: "set_first", v: e.target.value })}
+                          onFocus={() => setFirstFocused(true)}
+                          onBlur={() => setFirstFocused(false)}
                           required
                           autoComplete="given-name"
-                          className="h-10 px-3 rounded-lg bg-background border-border text-sm text-foreground placeholder:text-muted-foreground/50 hover:border-border/80 focus-visible:ring-1 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500"
+                          className="w-full bg-transparent border-0 border-b border-border/70 py-1 px-0 text-sm text-foreground focus:outline-none focus:ring-0 placeholder-transparent transition-colors"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 origin-left transition-transform duration-200 ease-out pointer-events-none",
+                            firstFocused ? "scale-x-100" : "scale-x-0"
+                          )}
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-foreground">
+
+                      <div className="relative pt-3.5 pb-0.5">
+                        <label
+                          htmlFor="login-last-name"
+                          className={cn(
+                            "pointer-events-none absolute left-0 transition-all duration-200 ease-out select-none",
+                            lastFocused || lastName
+                              ? "top-0 text-xs font-medium " + (lastFocused ? "text-emerald-500" : "text-muted-foreground")
+                              : "top-3.5 text-sm font-normal text-muted-foreground/75"
+                          )}
+                        >
                           Last name
                         </label>
-                        <Input
+                        <input
+                          id="login-last-name"
                           type="text"
-                          aria-label="Last name"
-                          placeholder="Last name"
                           value={lastName}
                           onChange={(e) => dispatch({ type: "set_last", v: e.target.value })}
+                          onFocus={() => setLastFocused(true)}
+                          onBlur={() => setLastFocused(false)}
                           required
                           autoComplete="family-name"
-                          className="h-10 px-3 rounded-lg bg-background border-border text-sm text-foreground placeholder:text-muted-foreground/50 hover:border-border/80 focus-visible:ring-1 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500"
+                          className="w-full bg-transparent border-0 border-b border-border/70 py-1 px-0 text-sm text-foreground focus:outline-none focus:ring-0 placeholder-transparent transition-colors"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 origin-left transition-transform duration-200 ease-out pointer-events-none",
+                            lastFocused ? "scale-x-100" : "scale-x-0"
+                          )}
                         />
                       </div>
                     </motion.div>
                   )}
 
                   {/* Email */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-foreground">
-                      Email
+                  <div className="relative pt-3.5 pb-0.5">
+                    <label
+                      htmlFor="login-email"
+                      className={cn(
+                        "pointer-events-none absolute left-0 inline-flex items-center gap-1.5 transition-all duration-200 ease-out select-none",
+                        emailFocused || email
+                          ? "top-0 text-xs font-medium " + (emailFocused ? "text-emerald-500" : "text-muted-foreground")
+                          : "top-3.5 text-sm font-normal text-muted-foreground/75"
+                      )}
+                    >
+                      <Mail className="size-3.5 shrink-0" strokeWidth={1.75} />
+                      <span>Email address</span>
                     </label>
-                    <Input
+                    <motion.input
+                      id="login-email"
                       type="email"
-                      placeholder="name@example.com"
-                      aria-label="Email address"
                       value={email}
-                      onChange={(e) => dispatch({ type: "set_email", v: e.target.value })}
+                      onChange={(e) => {
+                        dispatch({ type: "set_email", v: e.target.value });
+                        setEmailKeyCount((c) => c + 1);
+                      }}
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
+                      animate={
+                        emailKeyCount > 0
+                          ? {
+                              scale: [1.004, 1],
+                              filter: ["brightness(1.12)", "brightness(1)"],
+                            }
+                          : {}
+                      }
+                      transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
                       required
                       autoComplete="email"
-                      className="h-10 px-3 rounded-lg bg-background border-border text-sm text-foreground placeholder:text-muted-foreground/50 hover:border-border/80 focus-visible:ring-1 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500"
+                      className="w-full bg-transparent border-0 border-b border-border/70 py-1 px-0 text-sm text-foreground caret-emerald-500 focus:outline-none focus:ring-0 placeholder-transparent transition-colors"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 origin-left transition-all duration-200 ease-out pointer-events-none",
+                        emailFocused ? "scale-x-100 shadow-[0_0_8px_rgba(16,185,129,0.45)]" : "scale-x-0"
+                      )}
                     />
                   </div>
 
                   {/* Password */}
                   {mode !== "forgot" && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-foreground">
-                        Password
+                    <div className="relative pt-3.5 pb-0.5">
+                      <label
+                        htmlFor="login-password"
+                        className={cn(
+                          "pointer-events-none absolute left-0 inline-flex items-center gap-1.5 transition-all duration-200 ease-out select-none",
+                          pwFocused || password
+                            ? "top-0 text-xs font-medium " + (pwFocused ? "text-emerald-500" : "text-muted-foreground")
+                            : "top-3.5 text-sm font-normal text-muted-foreground/75"
+                        )}
+                      >
+                        <Lock className="size-3.5 shrink-0" strokeWidth={1.75} />
+                        <span>Password</span>
                       </label>
-                      <div className="relative">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••••••"
-                          aria-label="Password"
-                          value={password}
-                          onChange={(e) => dispatch({ type: "set_password", v: e.target.value })}
-                          required
-                          minLength={6}
-                          autoComplete={mode === "login" ? "current-password" : "new-password"}
-                          className="h-10 px-3 pr-10 rounded-lg bg-background border-border text-sm text-foreground placeholder:text-muted-foreground/50 hover:border-border/80 focus-visible:ring-1 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => dispatch({ type: "toggle_pw" })}
-                          tabIndex={-1}
-                          title={showPassword ? "Hide password" : "Show password"}
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="size-4" strokeWidth={1.75} />
-                          ) : (
-                            <Eye className="size-4" strokeWidth={1.75} />
-                          )}
-                        </button>
-                      </div>
+                      <motion.input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => {
+                          dispatch({ type: "set_password", v: e.target.value });
+                          setPwKeyCount((c) => c + 1);
+                        }}
+                        onFocus={() => setPwFocused(true)}
+                        onBlur={() => setPwFocused(false)}
+                        animate={
+                          pwToggleCount > 0
+                            ? {
+                                filter: ["blur(6px)", "blur(0px)"],
+                                letterSpacing: showPassword ? ["0.08em", "0em"] : ["0.16em", "0em"],
+                                opacity: [0.35, 1],
+                                x: [showPassword ? -3 : 3, 0],
+                              }
+                            : pwKeyCount > 0
+                            ? {
+                                scale: [1.005, 1],
+                                filter: ["brightness(1.15)", "brightness(1)"],
+                              }
+                            : {}
+                        }
+                        transition={{
+                          duration: pwToggleCount > 0 ? 0.24 : 0.14,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
+                        required
+                        minLength={6}
+                        autoComplete={mode === "login" ? "current-password" : "new-password"}
+                        className="w-full bg-transparent border-0 border-b border-border/70 py-1 pr-8 pl-0 text-sm text-foreground caret-emerald-500 focus:outline-none focus:ring-0 placeholder-transparent transition-colors"
+                      />
+                      <motion.button
+                        type="button"
+                        onClick={() => {
+                          dispatch({ type: "toggle_pw" });
+                          setPwToggleCount((c) => c + 1);
+                        }}
+                        whileTap={{ scale: 0.85 }}
+                        tabIndex={-1}
+                        title={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute right-0 bottom-1 size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer overflow-hidden"
+                      >
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={showPassword ? "eye-off" : "eye"}
+                            initial={{ opacity: 0, scale: 0.6, rotate: showPassword ? -20 : 20 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                            exit={{ opacity: 0, scale: 0.6, rotate: showPassword ? 20 : -20 }}
+                            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                            className="inline-flex items-center justify-center"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="size-4" strokeWidth={1.75} />
+                            ) : (
+                              <Eye className="size-4" strokeWidth={1.75} />
+                            )}
+                          </motion.span>
+                        </AnimatePresence>
+                      </motion.button>
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 origin-left transition-transform duration-200 ease-out pointer-events-none",
+                          pwFocused ? "scale-x-100" : "scale-x-0"
+                        )}
+                      />
                     </div>
                   )}
 
@@ -503,7 +623,7 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-10 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium shadow-xs shadow-emerald-600/20 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
+                    className="w-full h-10 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium shadow-xs shadow-emerald-600/20 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-1"
                   >
                     {loading && <Loader2 className="size-4 animate-spin" />}
                     {mode === "login"
@@ -512,11 +632,30 @@ export default function LoginPage() {
                       ? "Create account"
                       : "Send reset link"}
                   </Button>
+
+                  {/* Legal Consent Notice */}
+                  <p className="text-center text-[11px] text-muted-foreground/85 leading-relaxed mt-3 px-1 select-none">
+                    By signing in, you agree to the{" "}
+                    <Link
+                      to="/terms"
+                      className="text-foreground hover:underline font-medium transition-colors"
+                    >
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      to="/privacy"
+                      className="text-foreground hover:underline font-medium transition-colors"
+                    >
+                      Privacy Policy
+                    </Link>
+                    .
+                  </p>
                 </form>
 
                 {/* Mode toggle / navigation links */}
                 {mode !== "login" && (
-                  <div className="pt-2 text-center text-xs text-muted-foreground">
+                  <div className="pt-1 text-center text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => dispatch({ type: "set_mode", mode: "login" })}
@@ -529,6 +668,21 @@ export default function LoginPage() {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Footer policy links */}
+        <div className="mt-5 flex items-center justify-center gap-3 text-2xs text-muted-foreground/70 select-none">
+          <Link to="/terms" className="hover:text-foreground transition-colors hover:underline">
+            Terms
+          </Link>
+          <span>•</span>
+          <Link to="/privacy" className="hover:text-foreground transition-colors hover:underline">
+            Privacy
+          </Link>
+          <span>•</span>
+          <Link to="/cookies" className="hover:text-foreground transition-colors hover:underline">
+            Cookies
+          </Link>
         </div>
       </div>
     </div>

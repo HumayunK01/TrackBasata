@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Sun,
   Moon,
@@ -7,6 +8,10 @@ import {
   Globe,
   Clock,
   Check,
+  ShieldCheck,
+  Cookie,
+  ArrowUpRight,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -323,6 +328,89 @@ export function PreferencesCard({ tzPreference, onTzChange }: PreferencesCardPro
               </p>
             </div>
           </label>
+        </div>
+      </div>
+
+      {/* ── 4. Legal & Privacy Policies ── */}
+      <div className="bg-card/90 backdrop-blur-md border border-border/70 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <ShieldCheck className="size-4.5" strokeWidth={1.75} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground font-heading">Privacy &amp; Policies</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Personal data handling, local storage &amp; cookies</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono">
+            Transparency
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+          {/* Terms of Service Link */}
+          <Link
+            to="/terms"
+            className="group flex items-start gap-3.5 p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/40 hover:border-emerald-500/40 transition-all cursor-pointer"
+          >
+            <div className="size-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 group-hover:scale-105 transition-transform">
+              <Scale className="size-4.5" strokeWidth={1.75} />
+            </div>
+            <div className="space-y-1 flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  Terms of Service
+                </span>
+                <ArrowUpRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Personal use agreement, AS-IS disclaimers, liability limits, and no-PHI rules.
+              </p>
+            </div>
+          </Link>
+
+          {/* Privacy Policy Link */}
+          <Link
+            to="/privacy"
+            className="group flex items-start gap-3.5 p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/40 hover:border-emerald-500/40 transition-all cursor-pointer"
+          >
+            <div className="size-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="size-4.5" strokeWidth={1.75} />
+            </div>
+            <div className="space-y-1 flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                  Privacy Policy
+                </span>
+                <ArrowUpRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Review data collection limits, personal workspace storage, and zero-telemetry commitments.
+              </p>
+            </div>
+          </Link>
+
+          {/* Cookie Policy Link */}
+          <Link
+            to="/cookies"
+            className="group flex items-start gap-3.5 p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/40 hover:border-amber-500/40 transition-all cursor-pointer"
+          >
+            <div className="size-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
+              <Cookie className="size-4.5" strokeWidth={1.75} />
+            </div>
+            <div className="space-y-1 flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                  Cookie Policy
+                </span>
+                <ArrowUpRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Learn how authentication tokens, theme preferences, and local storage keys are managed.
+              </p>
+            </div>
+          </Link>
         </div>
       </div>
     </div>

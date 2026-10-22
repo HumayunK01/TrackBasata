@@ -730,3 +730,123 @@
   80% { opacity: 0.8; }
   100% { opacity: 0; transform: translateY(-320px) scale(0.8) rotate(-15deg); }
 }
+
+/* ── Print Optimization System: Crisp Light Mode & Vector Anti-Blur ── */
+@media print {
+  @page {
+    margin: 12mm 15mm;
+    size: auto;
+  }
+
+  /* Force pure light-mode tokens regardless of active dark mode state */
+  :root,
+  html,
+  html.dark,
+  .dark,
+  body {
+    --background: 0 0% 100% !important;
+    --foreground: 222 47% 11% !important;
+    --card: 0 0% 100% !important;
+    --card-foreground: 222 47% 11% !important;
+    --popover: 0 0% 100% !important;
+    --popover-foreground: 222 47% 11% !important;
+    --muted: 210 40% 96% !important;
+    --muted-foreground: 215 16% 40% !important;
+    --accent: 210 40% 96% !important;
+    --accent-foreground: 222 47% 11% !important;
+    --border: 214 32% 85% !important;
+    --input: 214 32% 85% !important;
+    --primary: 160 84% 39% !important;
+    --primary-foreground: 0 0% 100% !important;
+    color-scheme: light !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 11pt !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
+  }
+
+  /* Completely eliminate rasterizing backdrop filters, shadows, and 3D transforms that cause low-DPI text/icon pixelation and blur */
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Crisp vector SVGs */
+  svg {
+    shape-rendering: geometricPrecision !important;
+    vector-effect: non-scaling-stroke !important;
+  }
+
+  /* High contrast images */
+  img {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
+
+  /* Prevent page breaks from slicing cards, sections, tables, or list items mid-text */
+  section,
+  article,
+  tr,
+  table,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  h1, h2, h3, h4 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+    color: #000000 !important;
+  }
+
+  /* Clear heavy dark-mode backgrounds & replace with crisp paper-friendly borders */
+  .bg-card,
+  .bg-muted,
+  .bg-muted\/20,
+  .bg-muted\/30,
+  .bg-muted\/40,
+  .bg-muted\/50,
+  .bg-muted\/60,
+  .bg-background\/50,
+  .bg-sidebar {
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .border,
+  .border-border,
+  .border-border\/40,
+  .border-border\/50,
+  .border-border\/60,
+  .border-border\/70,
+  .border-border\/80 {
+    border-color: #d1d5db !important;
+  }
+
+  .text-muted-foreground {
+    color: #374151 !important;
+  }
+
+  .text-foreground {
+    color: #111827 !important;
+  }
+
+  /* Hide interactive toolbar actions and buttons during print */
+  button,
+  .print-hidden,
+  [data-print-hidden="true"] {
+    display: none !important;
+  }
+}

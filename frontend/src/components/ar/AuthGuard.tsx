@@ -7,16 +7,29 @@ import LoginPage from "@/pages/Login";
 import { Ban } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 
+import { useLocation } from "react-router-dom";
+
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const queryClient = useQueryClient();
+  const location = useLocation();
+
+  const isPublicLegalRoute =
+    location.pathname === "/privacy" ||
+    location.pathname === "/cookies" ||
+    location.pathname === "/terms";
 
   useEffect(() => {
     if (!user && !loading) {
       queryClient.clear();
     }
   }, [user, loading, queryClient]);
+
+  // Public legal transparency routes are accessible without signing in
+  if (isPublicLegalRoute && !user) {
+    return <>{children}</>;
+  }
 
   if (loading || (user && profileLoading)) {
     return (
