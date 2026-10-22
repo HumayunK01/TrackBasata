@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import {
   useTeamProfiles,
   useTeamDailyLogs,
@@ -16,7 +16,6 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, useProfile } from "@/hooks/useProfile";
-import { useDebouncedValue } from "@/hooks/useDebounce";
 import { isoDate, totalForLog, type DailyLog } from "@/types/log";
 import { downloadCSV, downloadPDF, formatUSDate } from "@/lib/log-utils";
 import {
@@ -87,8 +86,6 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "categories", label: "Categories", icon: Tags },
   { id: "activity", label: "Activity", icon: History },
 ];
-
-const FB_FILTERS_INITIAL = { search: "" };
 
 const withPdf = (name: string) => (/\.pdf$/i.test(name) ? name : `${name}.pdf`);
 
@@ -213,29 +210,146 @@ export default function TeamPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [disableTarget, setDisableTarget] = useState<{ id: string; name: string; shouldDisable: boolean } | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("overview");
-  const [searchMember, setSearchMember] = useState("");
-  const [search, setSearch] = useState("");
-  const [pages, setPages] = useState({ logs: 1, faxedBack: 1, categories: 1, activity: 1 });
-  const [faxFilters, setFaxFilters] = useState(FB_FILTERS_INITIAL);
-  const debouncedFaxSearch = useDebouncedValue(faxFilters.search);
   const [exporting, setExporting] = useState<"logs-csv" | "logs-pdf" | "faxed" | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null | undefined>, replace = true) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, val] of Object.entries(updates)) {
+            if (val === null || val === undefined || val === "") {
+              next.delete(key);
+            } else {
+              next.set(key, val);
+            }
+          }
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const rawUserParam = searchParams.get("user") || null;
+  const rawTabParam = searchParams.get("tab")?.toLowerCase();
+  const tab: Tab =
+    rawTabParam === "overview" ||
+    rawTabParam === "logs" ||
+    rawTabParam === "faxed-back" ||
+    rawTabParam === "categories" ||
+    rawTabParam === "activity"
+      ? (rawTabParam as Tab)
+      : "overview";
+
+  const viewMode = (searchParams.get("view") === "table" ? "table" : "grid") as "grid" | "table";
+
+  const roleFilter = useMemo(() => {
+    const r = searchParams.get("role")?.toLowerCase();
+    if (r === "admin" || r === "user") return r as "admin" | "user";
+    return "all";
+  }, [searchParams]);
+
+  const statusFilter = useMemo(() => {
+    const s = searchParams.get("status")?.toLowerCase();
+    if (s === "active-today" || s === "inactive-today" || s === "disabled") {
+      return s as "active-today" | "inactive-today" | "disabled";
+    }
+    return "all";
+  }, [searchParams]);
+
+  const sortBy = useMemo(() => {
+    const s = searchParams.get("sort")?.toLowerCase();
+    if (s === "docs" || s === "avg" || s === "days") {
+      return s as "docs" | "avg" | "days";
+    }
+    return "name";
+  }, [searchParams]);
+
+  const [searchMember, setSearchMember] = useState(() => searchParams.get("q") ?? "");
+  const [search, setSearch] = useState(() => searchParams.get("date") ?? "");
+  const [faxSearch, setFaxSearch] = useState(() => searchParams.get("fb_search") ?? "");
+
+  useEffect(() => {
+    const urlQ = searchParams.get("q") ?? "";
+    if (urlQ !== searchMember) setSearchMember(urlQ);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlQ = searchParams.get("q") ?? "";
+    const trimmed = searchMember.trim();
+    if (trimmed === currentUrlQ) return;
+    const t = setTimeout(() => {
+      updateUrlParams({ q: trimmed || null }, true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchMember, searchParams, updateUrlParams]);
+
+  useEffect(() => {
+    const urlDate = searchParams.get("date") ?? "";
+    if (urlDate !== search) setSearch(urlDate);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlDate = searchParams.get("date") ?? "";
+    const trimmed = search.trim();
+    if (trimmed === currentUrlDate) return;
+    const t = setTimeout(() => {
+      updateUrlParams({ date: trimmed || null, page: null }, true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search, searchParams, updateUrlParams]);
+
+  useEffect(() => {
+    const urlFb = searchParams.get("fb_search") ?? "";
+    if (urlFb !== faxSearch) setFaxSearch(urlFb);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentUrlFb = searchParams.get("fb_search") ?? "";
+    const trimmed = faxSearch.trim();
+    if (trimmed === currentUrlFb) return;
+    const t = setTimeout(() => {
+      updateUrlParams({ fb_search: trimmed || null, page: null }, true);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [faxSearch, searchParams, updateUrlParams]);
+
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+
+  const matchedProfile = useMemo(() => {
+    if (!rawUserParam) return null;
+    const q = rawUserParam.toLowerCase();
+    return (
+      profiles.find(
+        (p) =>
+          p.id.toLowerCase() === q ||
+          `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase().replace(/\s+/g, "-") === q ||
+          `${p.first_name || ""} ${p.last_name || ""}`.trim().toLowerCase() === q,
+      ) || null
+    );
+  }, [rawUserParam, profiles]);
+
+  const selectedUserId = matchedProfile?.id ?? rawUserParam;
 
   const { data: logsPage = { rows: [], total: 0 }, isLoading: logsLoading2 } = useTeamUserLogs(
     selectedUserId,
-    pages.logs,
+    tab === "logs" ? currentPage : 1,
     search.trim() || undefined,
   );
   const { data: faxedBackPage = { rows: [], total: 0 }, isLoading: faxedBackLoading } = useTeamUserFaxedBack(
     selectedUserId,
-    pages.faxedBack,
-    { search: debouncedFaxSearch.trim() || undefined },
+    tab === "faxed-back" ? currentPage : 1,
+    { search: faxSearch.trim() || undefined },
   );
   const { data: allCategories = [], isLoading: categoriesLoading } = useCategories();
   const { data: auditPage = { rows: [], total: 0 }, isLoading: auditLoading } = useTeamUserAuditLogs(
     selectedUserId,
-    pages.activity,
+    tab === "activity" ? currentPage : 1,
   );
 
   const selectedLogs = logsPage.rows;
@@ -296,11 +410,6 @@ export default function TeamPage() {
 
   const selectedCategories = userCategoryContributions;
   const categoriesTotal = userCategoryContributions.length;
-
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "user">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active-today" | "inactive-today" | "disabled">("all");
-  const [sortBy, setSortBy] = useState<"name" | "docs" | "avg" | "days">("name");
 
   // Compute stats and maintain strict alphabetical sorting A-Z as base
   const memberCards: TeamMemberItem[] = useMemo(() => {
@@ -592,7 +701,7 @@ export default function TeamPage() {
     if (!selectedUserId) return;
     setExporting("faxed");
     try {
-      const rows = await fetchAllUserFaxedBack(selectedUserId, { search: debouncedFaxSearch.trim() || undefined });
+      const rows = await fetchAllUserFaxedBack(selectedUserId, { search: faxSearch.trim() || undefined });
       downloadTextFile(faxedBackCSV(rows), `${memberSlug}-faxed-back.csv`, "text/csv;charset=utf-8;");
     } finally {
       setExporting(null);
@@ -656,8 +765,7 @@ export default function TeamPage() {
             teamDailyAvg={teamDailyAvg}
             topPerformer={topPerformer}
             onSelectMember={(id) => {
-              setSelectedUserId(id);
-              setTab("overview");
+              updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
             }}
           />
 
@@ -666,8 +774,7 @@ export default function TeamPage() {
             members={memberCards}
             allLogs={allLogs}
             onSelectMember={(id) => {
-              setSelectedUserId(id);
-              setTab("overview");
+              updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
             }}
           />
 
@@ -686,7 +793,10 @@ export default function TeamPage() {
                 {searchMember && (
                   <button
                     type="button"
-                    onClick={() => setSearchMember("")}
+                    onClick={() => {
+                      setSearchMember("");
+                      updateUrlParams({ q: null }, true);
+                    }}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                     aria-label="Clear search"
                   >
@@ -703,7 +813,7 @@ export default function TeamPage() {
                     <button
                       key={r}
                       type="button"
-                      onClick={() => setRoleFilter(r)}
+                      onClick={() => updateUrlParams({ role: r === "all" ? null : r }, true)}
                       className={cn(
                         "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer capitalize",
                         roleFilter === r
@@ -720,7 +830,7 @@ export default function TeamPage() {
                 <select
                   aria-label="Filter members by activity status"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  onChange={(e) => updateUrlParams({ status: e.target.value === "all" ? null : e.target.value }, true)}
                   className="h-8 px-2.5 text-xs bg-muted/40 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
                 >
                   <option value="all">All Status</option>
@@ -735,7 +845,7 @@ export default function TeamPage() {
                   <select
                     aria-label="Sort team members"
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
+                    onChange={(e) => updateUrlParams({ sort: e.target.value === "name" ? null : e.target.value }, true)}
                     className="h-8 px-2.5 text-xs bg-muted/40 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
                   >
                     <option value="name">Name (A–Z)</option>
@@ -749,7 +859,7 @@ export default function TeamPage() {
                 <div className="flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
                   <button
                     type="button"
-                    onClick={() => setViewMode("grid")}
+                    onClick={() => updateUrlParams({ view: null }, true)}
                     title="Cards view"
                     className={cn(
                       "size-7 rounded-md grid place-items-center transition-all cursor-pointer",
@@ -762,7 +872,7 @@ export default function TeamPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewMode("table")}
+                    onClick={() => updateUrlParams({ view: "table" }, true)}
                     title="Dense table view"
                     className={cn(
                       "size-7 rounded-md grid place-items-center transition-all cursor-pointer",
@@ -782,13 +892,12 @@ export default function TeamPage() {
               <span>
                 Showing {filteredMembers.length} of {memberCards.length} associates
               </span>
-              {(searchMember || roleFilter !== "all" || statusFilter !== "all") && (
+              {(searchMember || roleFilter !== "all" || statusFilter !== "all" || sortBy !== "name") && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchMember("");
-                    setRoleFilter("all");
-                    setStatusFilter("all");
+                    updateUrlParams({ q: null, role: null, status: null, sort: null }, true);
                   }}
                   className="text-primary hover:underline cursor-pointer"
                 >
@@ -825,8 +934,7 @@ export default function TeamPage() {
                 type="button"
                 onClick={() => {
                   setSearchMember("");
-                  setRoleFilter("all");
-                  setStatusFilter("all");
+                  updateUrlParams({ q: null, role: null, status: null, sort: null }, true);
                 }}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
@@ -841,11 +949,7 @@ export default function TeamPage() {
               today={today}
               topDocsMax={membersWithRank.topDocsMax}
               onSelectMember={(id) => {
-                setSelectedUserId(id);
-                setTab("overview");
-                setSearch("");
-                setFaxFilters(FB_FILTERS_INITIAL);
-                setPages({ logs: 1, faxedBack: 1, categories: 1, activity: 1 });
+                updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
               }}
               onToggleRole={(targetUserId, currentRole) => {
                 setRole.mutate({
@@ -877,11 +981,7 @@ export default function TeamPage() {
                     rank={rank}
                     relativePercent={relativePercent}
                     onSelect={() => {
-                      setSelectedUserId(m.id);
-                      setTab("overview");
-                      setSearch("");
-                      setFaxFilters(FB_FILTERS_INITIAL);
-                      setPages({ logs: 1, faxedBack: 1, categories: 1, activity: 1 });
+                      updateUrlParams({ user: m.id, tab: "overview", page: null, date: null, fb_search: null }, false);
                     }}
                     onToggleRole={(targetUserId, currentRole) => {
                       setRole.mutate({
@@ -911,6 +1011,31 @@ export default function TeamPage() {
     );
   }
 
+  // Associate not found fallback when user param is set in URL
+  if (selectedUserId && !profilesLoading && !selectedMember) {
+    return (
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-8">
+        <div className="max-w-md mx-auto text-center space-y-4 bg-card border border-border/60 rounded-2xl p-6 shadow-xs">
+          <div className="size-12 rounded-full bg-muted/60 text-muted-foreground mx-auto grid place-items-center">
+            <Users className="size-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-foreground">Associate Not Found</h3>
+            <p className="text-xs text-muted-foreground">
+              The team member with ID &ldquo;<code className="font-mono text-primary">{selectedUserId}</code>&rdquo; does not exist or was deleted.
+            </p>
+          </div>
+          <Button
+            onClick={() => updateUrlParams({ user: null, tab: null, page: null, date: null, fb_search: null }, false)}
+            className="cursor-pointer"
+          >
+            <ArrowLeft className="size-4 mr-1.5" /> Return to Team Dashboard
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   // ── Drill-down Member View ──────────────────────────────────────────────────
   return (
     <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6">
@@ -920,9 +1045,7 @@ export default function TeamPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                setSelectedUserId(null);
-                setSearch("");
-                setFaxFilters(FB_FILTERS_INITIAL);
+                updateUrlParams({ user: null, tab: null, page: null, date: null, fb_search: null }, false);
               }}
               className="size-9 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:border-border transition-colors shrink-0 grid place-items-center shadow-xs cursor-pointer"
               aria-label="Back to team overview"
@@ -1002,7 +1125,9 @@ export default function TeamPage() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  updateUrlParams({ tab: t.id, page: null }, false);
+                }}
                 className={cn(
                   "shrink-0 inline-flex items-center gap-1.5 px-3.5 h-8 rounded-lg text-xs font-medium transition-all cursor-pointer",
                   active
@@ -1054,6 +1179,7 @@ export default function TeamPage() {
             allUserLogs={logsByUser.get(selectedMember.id) ?? []}
             rank={membersWithRank.rankMap.get(selectedMember.id)}
             onExportLogs={handleExportLogs}
+            onSelectTab={(t) => updateUrlParams({ tab: t, page: null }, false)}
             describeEvent={describeEvent}
           />
         )}
@@ -1065,14 +1191,11 @@ export default function TeamPage() {
             allUserLogs={logsByUser.get(selectedMember?.id || "") ?? []}
             totalLogsCount={logsTotal}
             loading={logsLoading2}
-            page={pages.logs}
+            page={tab === "logs" ? currentPage : 1}
             pageSize={30}
             search={search}
-            onSearchChange={(q) => {
-              setSearch(q);
-              setPages((p) => ({ ...p, logs: 1 }));
-            }}
-            onPageChange={(p) => setPages((prev) => ({ ...prev, logs: p }))}
+            onSearchChange={(q) => setSearch(q)}
+            onPageChange={(p) => updateUrlParams({ page: p > 1 ? String(p) : null }, false)}
             onExport={handleExportLogs}
             exporting={exporting !== null}
             selectedCategories={selectedCategories}
@@ -1085,14 +1208,11 @@ export default function TeamPage() {
             documents={selectedFaxedBack}
             totalCount={faxedBackTotal}
             loading={faxedBackLoading}
-            page={pages.faxedBack}
+            page={tab === "faxed-back" ? currentPage : 1}
             pageSize={25}
-            search={faxFilters.search}
-            onSearchChange={(q) => {
-              setFaxFilters((f) => ({ ...f, search: q }));
-              setPages((p) => ({ ...p, faxedBack: 1 }));
-            }}
-            onPageChange={(p) => setPages((prev) => ({ ...prev, faxedBack: p }))}
+            search={faxSearch}
+            onSearchChange={(q) => setFaxSearch(q)}
+            onPageChange={(p) => updateUrlParams({ page: p > 1 ? String(p) : null }, false)}
             onExport={handleExportFaxedBack}
             exporting={exporting !== null}
           />
@@ -1127,7 +1247,7 @@ export default function TeamPage() {
                 </span>
                 <div className="text-xl font-bold tabular-nums text-foreground mt-1 flex items-center gap-1.5 font-mono">
                   <span className="text-xs text-muted-foreground font-normal">Page</span>
-                  <span>{pages.activity}</span>
+                  <span>{tab === "activity" ? currentPage : 1}</span>
                   <span className="text-xs text-muted-foreground font-normal">of {Math.max(1, Math.ceil(auditTotal / 25))}</span>
                 </div>
               </div>
@@ -1154,14 +1274,14 @@ export default function TeamPage() {
               <>
                 <InteractiveLogsTable
                   title={`${memberName} · Audit Trail`}
-                  subtitle={`Showing ${memberAuditLogs.length} events · Total: ${auditTotal} recorded (Page ${pages.activity} of ${Math.ceil(auditTotal / 25)})`}
+                  subtitle={`Showing ${memberAuditLogs.length} events · Total: ${auditTotal} recorded (Page ${tab === "activity" ? currentPage : 1} of ${Math.ceil(auditTotal / 25)})`}
                   logs={memberAuditLogs}
                 />
                 <Pagination
-                  page={pages.activity}
+                  page={tab === "activity" ? currentPage : 1}
                   totalPages={Math.ceil(auditTotal / 25)}
-                  pageNumbers={pageNumbersArr(Math.ceil(auditTotal / 25), pages.activity)}
-                  onPageChange={(p) => setPages((prev) => ({ ...prev, activity: p }))}
+                  pageNumbers={pageNumbersArr(Math.ceil(auditTotal / 25), tab === "activity" ? currentPage : 1)}
+                  onPageChange={(p) => updateUrlParams({ page: p > 1 ? String(p) : null }, false)}
                   total={auditTotal}
                   pageSize={25}
                   entityLabel="events"

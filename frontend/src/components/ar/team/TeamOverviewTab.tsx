@@ -105,6 +105,7 @@ interface TeamOverviewTabProps {
   allUserLogs?: DailyLog[];
   rank?: number;
   onExportLogs?: (kind: "csv" | "pdf") => void;
+  onSelectTab?: (tab: "logs" | "faxed-back" | "categories" | "activity") => void;
   describeEvent: (
     event: string,
     details: Record<string, unknown> | null,
@@ -127,6 +128,7 @@ export const TeamOverviewTab = React.memo(function TeamOverviewTab({
   allUserLogs = [],
   rank,
   onExportLogs,
+  onSelectTab,
   describeEvent,
 }: TeamOverviewTabProps) {
   const goalProgress = member.daily_goal
@@ -298,24 +300,36 @@ export const TeamOverviewTab = React.memo(function TeamOverviewTab({
 
       {/* Secondary Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <div className="bg-card/70 border border-border/50 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs shadow-2xs">
+        <button
+          type="button"
+          onClick={() => onSelectTab?.("faxed-back")}
+          className="bg-card/70 hover:bg-card border border-border/50 hover:border-primary/40 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs shadow-2xs transition-colors cursor-pointer text-left"
+        >
           <span className="text-muted-foreground flex items-center gap-2 font-medium">
             <FileCheck2 className="size-3.5 text-primary" /> Faxed Back Documents
           </span>
           <span className="font-bold text-foreground font-mono tabular-nums">{faxedBackTotal}</span>
-        </div>
-        <div className="bg-card/70 border border-border/50 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs shadow-2xs">
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectTab?.("categories")}
+          className="bg-card/70 hover:bg-card border border-border/50 hover:border-primary/40 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs shadow-2xs transition-colors cursor-pointer text-left"
+        >
           <span className="text-muted-foreground flex items-center gap-2 font-medium">
             <Tags className="size-3.5 text-primary" /> Active Categories
           </span>
           <span className="font-bold text-foreground font-mono tabular-nums">{categoriesTotal}</span>
-        </div>
-        <div className="bg-card/70 border border-border/50 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs shadow-2xs">
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectTab?.("activity")}
+          className="bg-card/70 hover:bg-card border border-border/50 hover:border-primary/40 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs shadow-2xs transition-colors cursor-pointer text-left"
+        >
           <span className="text-muted-foreground flex items-center gap-2 font-medium">
             <History className="size-3.5 text-primary" /> Audit Trail Events
           </span>
           <span className="font-bold text-foreground font-mono tabular-nums">{auditTotal}</span>
-        </div>
+        </button>
       </div>
 
       {/* 3. Production Velocity Area Chart */}
@@ -496,9 +510,20 @@ export const TeamOverviewTab = React.memo(function TeamOverviewTab({
               <Tags className="size-3.5 text-primary" />
               Category Contributions
             </h4>
-            <span className="text-2xs text-muted-foreground font-mono">
-              {categoriesTotal} active categories
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-2xs text-muted-foreground font-mono">
+                {categoriesTotal} active categories
+              </span>
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab("categories")}
+                  className="text-2xs font-semibold text-primary hover:underline cursor-pointer ml-1"
+                >
+                  View all →
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4">
@@ -551,7 +576,18 @@ export const TeamOverviewTab = React.memo(function TeamOverviewTab({
             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider font-mono">
               Recent Daily Logs
             </h4>
-            <span className="text-[10px] text-muted-foreground font-mono">Latest 6 logs</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground font-mono">Latest 6 logs</span>
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab("logs")}
+                  className="text-2xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  View all →
+                </button>
+              )}
+            </div>
           </div>
           {logsLoading ? (
             <div className="p-4 space-y-2">
@@ -596,7 +632,18 @@ export const TeamOverviewTab = React.memo(function TeamOverviewTab({
             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider font-mono">
               Recent Activity Trail
             </h4>
-            <span className="text-[10px] text-muted-foreground font-mono">Latest 6 events</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground font-mono">Latest 6 events</span>
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab("activity")}
+                  className="text-2xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  View all →
+                </button>
+              )}
+            </div>
           </div>
           {auditLoading ? (
             <div className="p-4 space-y-2">
