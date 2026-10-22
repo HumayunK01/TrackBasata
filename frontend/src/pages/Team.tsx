@@ -14,25 +14,21 @@ import {
   type TeamFaxedBackDoc,
 } from "@/hooks/useTeamData";
 import { useCategories } from "@/hooks/useCategories";
-import { colorForKey } from "@/lib/cat-colors";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, useProfile } from "@/hooks/useProfile";
 import { useDebouncedValue } from "@/hooks/useDebounce";
-import { isoDate, totalForLog, formatTableDate, formatDayName, isWeekend, type DailyLog } from "@/types/log";
+import { isoDate, totalForLog, type DailyLog } from "@/types/log";
 import { downloadCSV, downloadPDF, formatUSDate } from "@/lib/log-utils";
 import {
   Users,
   CalendarCheck,
   Search,
   ArrowLeft,
-  BedDouble,
   Shield,
   FileCheck2,
   Tags,
   History,
   LayoutGrid,
-  Loader2,
-  CheckCheck,
   X,
   Ban,
   UserCheck,
@@ -41,7 +37,7 @@ import {
 } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FigHeader, EmptyState } from "@/components/ar/industrial";
+import { EmptyState } from "@/components/ar/industrial";
 import { labelFor, pageNumbersArr } from "@/components/ar/tracker/tracker-helpers";
 import { Pagination } from "@/components/Pagination";
 import { NewMemberDialog } from "@/components/ar/team/NewMemberDialog";
@@ -69,6 +65,9 @@ import { TeamOverviewTab } from "@/components/ar/team/TeamOverviewTab";
 import { TeamStatsGrid } from "@/components/ar/team/TeamStatsGrid";
 import { TeamAnalyticsCharts } from "@/components/ar/team/TeamAnalyticsCharts";
 import { TeamTableView } from "@/components/ar/team/TeamTableView";
+import { TeamMemberLogsTab } from "@/components/ar/team/TeamMemberLogsTab";
+import { TeamMemberFaxedBackTab } from "@/components/ar/team/TeamMemberFaxedBackTab";
+import { TeamMemberCategoriesTab } from "@/components/ar/team/TeamMemberCategoriesTab";
 import { List as TableIcon, ArrowUpDown } from "lucide-react";
 
 function computeStats(logs: DailyLog[]) {
@@ -88,29 +87,6 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "categories", label: "Categories", icon: Tags },
   { id: "activity", label: "Activity", icon: History },
 ];
-
-// Highlights the first case-insensitive match of `query` in `text`.
-function Highlight({ text, query }: { text: string; query: string }) {
-  const q = query.trim();
-  if (!q || !text) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-primary/15 text-primary rounded-sm px-0.5">{text.slice(idx, idx + q.length)}</mark>
-      {text.slice(idx + q.length)}
-    </>
-  );
-}
-
-function FBStatusIcon({ status }: { status: string }) {
-  if (status === "Pending") return <Loader2 className="size-3.5 text-emerald-500 animate-spin" />;
-  if (status === "Sent") return <CheckCheck className="size-3.5 text-emerald-500" />;
-  if (status === "Failed") return <X className="size-3.5 text-rose-500" />;
-  if (status === "Rejected") return <Ban className="size-3.5 text-amber-500" />;
-  return null;
-}
 
 const FB_FILTERS_INITIAL = { search: "" };
 
@@ -138,18 +114,6 @@ function faxedBackCSV(rows: TeamFaxedBackDoc[]): string {
       .join(","),
   );
   return [headers.join(","), ...body].join("\n");
-}
-
-function SectionCard({ title, sub, children, actions }: { title: string; sub?: string; children: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
-        <FigHeader title={title} sub={sub} />
-        {actions}
-      </div>
-      {children}
-    </div>
-  );
 }
 
 function describeEvent(
@@ -1096,266 +1060,94 @@ export default function TeamPage() {
 
         {/* Tab 2: Daily Logs */}
         {tab === "logs" && (
-          <SectionCard
-            title="Daily Logs"
-            sub={`${logsTotal} total recorded days`}
-            actions={
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleExportLogs("csv")}
-                  disabled={exporting !== null}
-                  className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
-                >
-                  <Download className="size-3.5" /> CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExportLogs("pdf")}
-                  disabled={exporting !== null}
-                  className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
-                >
-                  <Download className="size-3.5" /> PDF
-                </button>
-              </div>
-            }
-          >
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                className="pl-9 h-9 text-xs w-full bg-card border-border/60"
-                placeholder="Search by date (YYYY-MM-DD)…"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPages((p) => ({ ...p, logs: 1 }));
-                }}
-              />
-            </div>
-            <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-xs">
-              {logsLoading2 ? (
-                <div className="space-y-2 p-4">
-                  <Skeleton height={40} count={4} />
-                </div>
-              ) : selectedLogs.length === 0 ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                  No log entries found for this member matching the filter.
-                </div>
-              ) : (
-                <div className="divide-y divide-border/40">
-                  {selectedLogs.map((l) => {
-                    const weekend = isWeekend(l.log_date);
-                    const isOff = l.is_off_day;
-                    const total = totalForLog(l);
-                    return (
-                      <div key={l.id} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/10 transition-colors">
-                        <div className="tabular-nums text-xs font-medium min-w-[120px]">
-                          <div className="flex flex-col leading-tight">
-                            <span className="font-semibold text-foreground">{formatTableDate(l.log_date)}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-heading">
-                              {formatDayName(l.log_date)}
-                            </span>
-                          </div>
-                        </div>
-                        {isOff ? (
-                          <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase font-heading flex items-center gap-1.5 bg-muted/40 px-2 py-0.5 rounded border border-border/40">
-                            <BedDouble className="size-3.5" /> {weekend ? "Weekend" : "Off Day"}
-                          </span>
-                        ) : (
-                          <>
-                            <div className="flex-1 flex flex-wrap gap-1.5">
-                              {selectedCategories.map((c) => {
-                                const v = (l.counts ?? {})[c.key] ?? 0;
-                                return v > 0 ? (
-                                  <span
-                                    key={c.key}
-                                    className="text-xs font-medium px-2 py-0.5 rounded-md tabular-nums bg-muted/50 border border-border/40 text-foreground"
-                                  >
-                                    <span className="text-muted-foreground mr-1">{c.short}</span>
-                                    <strong className="text-primary">{v}</strong>
-                                  </span>
-                                ) : null;
-                              })}
-                            </div>
-                            <span className="text-base font-bold tabular-nums text-primary">{total}</span>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            {logsTotal > 30 && (
-              <Pagination
-                page={pages.logs}
-                totalPages={Math.ceil(logsTotal / 30)}
-                pageNumbers={pageNumbersArr(Math.ceil(logsTotal / 30), pages.logs)}
-                onPageChange={(p) => setPages((prev) => ({ ...prev, logs: p }))}
-                total={logsTotal}
-                pageSize={30}
-                entityLabel="logs"
-              />
-            )}
-          </SectionCard>
+          <TeamMemberLogsTab
+            logs={selectedLogs}
+            allUserLogs={logsByUser.get(selectedMember?.id || "") ?? []}
+            totalLogsCount={logsTotal}
+            loading={logsLoading2}
+            page={pages.logs}
+            pageSize={30}
+            search={search}
+            onSearchChange={(q) => {
+              setSearch(q);
+              setPages((p) => ({ ...p, logs: 1 }));
+            }}
+            onPageChange={(p) => setPages((prev) => ({ ...prev, logs: p }))}
+            onExport={handleExportLogs}
+            exporting={exporting !== null}
+            selectedCategories={selectedCategories}
+          />
         )}
 
         {/* Tab 3: Faxed Back */}
         {tab === "faxed-back" && (
-          <SectionCard
-            title="Faxed Back"
-            sub={`${faxedBackTotal} documents logged`}
-            actions={
-              <button
-                type="button"
-                onClick={handleExportFaxedBack}
-                disabled={exporting !== null}
-                title="Export all matching results as CSV"
-                className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
-              >
-                <Download className="size-3.5" /> CSV
-              </button>
-            }
-          >
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                className="pl-9 h-9 text-xs w-full bg-card border-border/60"
-                placeholder="Search file name, patient name, notes…"
-                value={faxFilters.search}
-                onChange={(e) => {
-                  setFaxFilters((f) => ({ ...f, search: e.target.value }));
-                  setPages((p) => ({ ...p, faxedBack: 1 }));
-                }}
-              />
-            </div>
-            {faxedBackLoading ? (
-              <div className="space-y-2">
-                <Skeleton height={44} count={4} />
-              </div>
-            ) : selectedFaxedBack.length === 0 ? (
-              <div className="bg-card border border-border/60 rounded-xl p-8 text-center text-xs text-muted-foreground">
-                No faxed-back documents found for this member.
-              </div>
-            ) : (
-              <>
-                <div className="bg-card border border-border/60 rounded-xl overflow-x-auto shadow-xs">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/40 bg-muted/10">
-                        <th className="px-4 py-2.5 font-semibold">File</th>
-                        <th className="px-3 py-2.5 font-semibold">Patient</th>
-                        <th className="px-3 py-2.5 font-semibold">Worked On</th>
-                        <th className="px-3 py-2.5 font-semibold">Status</th>
-                        <th className="px-3 py-2.5 font-semibold">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {selectedFaxedBack.map((d) => (
-                        <tr key={d.id} className="hover:bg-muted/10 transition-colors">
-                          <td className="px-4 py-2.5 font-medium truncate max-w-[220px]">
-                            <span className="inline-flex items-center">
-                              <img src="/pdf.png" alt="" className="size-5 shrink-0 object-contain mr-1.5" />
-                              <Highlight text={d.file_name} query={faxFilters.search} />
-                              {!/\.pdf$/i.test(d.file_name) && <span>.pdf</span>}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 truncate max-w-[160px]">
-                            {d.patient_name ? <Highlight text={d.patient_name} query={faxFilters.search} /> : "—"}
-                          </td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{formatTableDate(d.worked_on)}</td>
-                          <td className="px-3 py-2.5">
-                            <span className="inline-flex items-center gap-1.5 font-medium">
-                              <FBStatusIcon status={d.status} />
-                              {d.status}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-muted-foreground truncate max-w-[200px]">
-                            {d.notes ? <Highlight text={d.notes} query={faxFilters.search} /> : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  page={pages.faxedBack}
-                  totalPages={Math.ceil(faxedBackTotal / 25)}
-                  pageNumbers={pageNumbersArr(Math.ceil(faxedBackTotal / 25), pages.faxedBack)}
-                  onPageChange={(p) => setPages((prev) => ({ ...prev, faxedBack: p }))}
-                  total={faxedBackTotal}
-                  pageSize={25}
-                  entityLabel="documents"
-                />
-              </>
-            )}
-          </SectionCard>
+          <TeamMemberFaxedBackTab
+            documents={selectedFaxedBack}
+            totalCount={faxedBackTotal}
+            loading={faxedBackLoading}
+            page={pages.faxedBack}
+            pageSize={25}
+            search={faxFilters.search}
+            onSearchChange={(q) => {
+              setFaxFilters((f) => ({ ...f, search: q }));
+              setPages((p) => ({ ...p, faxedBack: 1 }));
+            }}
+            onPageChange={(p) => setPages((prev) => ({ ...prev, faxedBack: p }))}
+            onExport={handleExportFaxedBack}
+            exporting={exporting !== null}
+          />
         )}
 
         {/* Tab 4: Categories */}
         {tab === "categories" && (
-          <SectionCard
-            title="Categories"
-            sub={
-              categoriesTotal === 0
-                ? "No categories with logged contributions"
-                : categoriesTotal === 1
-                ? "1 category with logged contributions"
-                : `${categoriesTotal} categories with logged contributions`
-            }
-          >
-            {categoriesLoading ? (
-              <div className="space-y-2">
-                <Skeleton height={44} count={4} />
-              </div>
-            ) : selectedCategories.length === 0 ? (
-              <div className="bg-card border border-border/60 rounded-xl p-8 text-center text-xs text-muted-foreground">
-                No category contributions recorded for {memberName} yet.
-              </div>
-            ) : (
-              <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-xs">
-                <div className="divide-y divide-border/40">
-                  {selectedCategories.map((c) => (
-                    <div key={c.key} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors">
-                      <span
-                        className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border font-mono"
-                        style={{
-                          backgroundColor: `${colorForKey(c.key)}15`,
-                          color: colorForKey(c.key),
-                          borderColor: `${colorForKey(c.key)}35`,
-                        }}
-                      >
-                        {c.key}
-                      </span>
-                      <span className="text-xs font-semibold text-foreground">{c.label}</span>
-                      <span className="text-[10px] text-muted-foreground px-2 py-0.5 rounded bg-muted/40 border border-border/40">
-                        {c.short}
-                      </span>
-                      <div className="ml-auto flex items-center gap-3">
-                        <span className="text-xs font-bold tabular-nums text-primary">
-                          {c.totalDocs.toLocaleString()} docs
-                        </span>
-                        <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-muted/50 px-2 py-0.5 rounded border border-border/40">
-                          {c.share}% of total
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </SectionCard>
+          <TeamMemberCategoriesTab
+            categories={selectedCategories}
+            loading={categoriesLoading}
+            memberName={memberName}
+          />
         )}
 
         {/* Tab 5: Activity */}
         {tab === "activity" && (
           <div className="space-y-4">
+            {/* Activity Summary KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-card border border-border/60 rounded-xl p-3.5 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                  Recorded Audit Events
+                </span>
+                <div className="text-xl font-bold tabular-nums text-foreground mt-1 flex items-center gap-1.5">
+                  <History className="size-4 text-primary" />
+                  <span>{auditTotal} events</span>
+                </div>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-3.5 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                  Current Page View
+                </span>
+                <div className="text-xl font-bold tabular-nums text-foreground mt-1 flex items-center gap-1.5 font-mono">
+                  <span className="text-xs text-muted-foreground font-normal">Page</span>
+                  <span>{pages.activity}</span>
+                  <span className="text-xs text-muted-foreground font-normal">of {Math.max(1, Math.ceil(auditTotal / 25))}</span>
+                </div>
+              </div>
+              <div className="bg-card border border-border/60 rounded-xl p-3.5 shadow-2xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+                  Audit Scope
+                </span>
+                <div className="text-sm font-semibold text-emerald-500 mt-1 flex items-center gap-1.5">
+                  <Shield className="size-4" />
+                  <span>Immutable User Log</span>
+                </div>
+              </div>
+            </div>
+
             {auditLoading ? (
               <div className="space-y-2">
                 <Skeleton height={44} count={4} />
               </div>
             ) : selectedAudit.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground border border-border/60 rounded-xl bg-card shadow-xs">
+              <div className="p-8 text-center text-xs text-muted-foreground border border-border/60 rounded-2xl bg-card shadow-xs">
                 No audit activity logged for {memberName} yet.
               </div>
             ) : (
