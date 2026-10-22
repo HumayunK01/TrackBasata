@@ -41,6 +41,8 @@ interface TeamMemberCardProps {
   member: TeamMemberItem;
   isMe: boolean;
   todayEntry?: DailyLog | null;
+  rank?: number;
+  relativePercent?: number;
   onSelect: () => void;
   onToggleRole: (targetUserId: string, currentRole: "admin" | "user") => void;
   onDeleteRequest: (targetUserId: string, name: string) => void;
@@ -53,6 +55,8 @@ export const TeamMemberCard = React.memo(function TeamMemberCard({
   member,
   isMe,
   todayEntry,
+  rank,
+  relativePercent,
   onSelect,
   onToggleRole,
   onDeleteRequest,
@@ -89,8 +93,15 @@ export const TeamMemberCard = React.memo(function TeamMemberCard({
       {/* Top row: Avatar, Name, Role, Actions */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="size-11 rounded-xl bg-primary/[0.08] border border-primary/20 grid place-items-center text-sm font-bold text-primary shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-xs">
-            {initials}
+          <div className="relative">
+            <div className="size-11 rounded-xl bg-primary/[0.08] border border-primary/20 grid place-items-center text-sm font-bold text-primary shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-xs">
+              {initials}
+            </div>
+            {rank && rank <= 3 && member.totalDocs > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 text-xs filter drop-shadow">
+                {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+              </span>
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -217,6 +228,21 @@ export const TeamMemberCard = React.memo(function TeamMemberCard({
           <p className="text-base font-bold tabular-nums text-foreground mt-0.5">{member.avg}</p>
         </div>
       </div>
+
+      {relativePercent !== undefined && relativePercent > 0 && (
+        <div className="w-full -mt-2">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 font-mono">
+            <span>Share of top output</span>
+            <span className="font-semibold text-foreground tabular-nums">{relativePercent}%</span>
+          </div>
+          <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.max(0, relativePercent))}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Footer row: Today's activity chip and drill-down affordance */}
       <div className="flex items-center justify-between pt-1 border-t border-border/40 text-xs">

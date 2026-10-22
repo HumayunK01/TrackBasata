@@ -66,6 +66,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeamMemberCard, type TeamMemberItem } from "@/components/ar/team/TeamMemberCard";
 import { TeamOverviewTab } from "@/components/ar/team/TeamOverviewTab";
+import { TeamStatsGrid } from "@/components/ar/team/TeamStatsGrid";
+import { TeamAnalyticsCharts } from "@/components/ar/team/TeamAnalyticsCharts";
+import { TeamTableView } from "@/components/ar/team/TeamTableView";
+import { List as TableIcon, ArrowUpDown } from "lucide-react";
 
 function computeStats(logs: DailyLog[]) {
   const working = logs.filter((l) => !l.is_off_day);
@@ -329,7 +333,12 @@ export default function TeamPage() {
   const selectedCategories = userCategoryContributions;
   const categoriesTotal = userCategoryContributions.length;
 
-  // Compute stats and maintain strict alphabetical sorting A-Z
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "user">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active-today" | "inactive-today" | "disabled">("all");
+  const [sortBy, setSortBy] = useState<"name" | "docs" | "avg" | "days">("name");
+
+  // Compute stats and maintain strict alphabetical sorting A-Z as base
   const memberCards: TeamMemberItem[] = useMemo(() => {
     const list = profiles.map((p) => {
       const logs = logsByUser.get(p.id) ?? [];
@@ -344,20 +353,135 @@ export default function TeamPage() {
     });
   }, [profiles, logsByUser]);
 
-  // Filter members by search input
-  const filteredMembers = useMemo(() => {
-    const q = searchMember.trim().toLowerCase();
-    if (!q) return memberCards;
+  const today = isoDate();
+
+  // Rank mapping based on totalDocs
+  const membersWithRank = useMemo(() => {
+    const sortedByDocs = [...memberCards].sort((a, b) => b.totalDocs - a.totalDocs);
+    const rankMap = new Map<string, number>();
+    sortedByDocs.forEach((m, idx) => rankMap.set(m.id, idx + 1));
+    const topDocsMax = Math.max(...memberCards.map((m) => m.totalDocs), 1);
+    return { rankMap, topDocsMax };
+  }, [memberCards]);
+
+  // Aggregate Team KPIs
+  const totalTeamDocs = useMemo(
+    () => memberCards.reduce((acc, m) => acc + m.totalDocs, 0),
+    [memberCards]
+  );
+
+  const totalWorkingDays = useMemo(
+    () => memberCards.reduce((acc, m) => acc + m.daysWorked, 0),
+    [memberCards]
+  );
+
+  const teamDailyAvg = totalWorkingDays > 0 ? Math.round(totalTeamDocs / totalWorkingDays) : 0;
+
+  const activeTodayCount = useMemo(() => {
     return memberCards.filter((m) => {
-      const fullName = `${m.first_name || ""} ${m.last_name || ""}`.toLowerCase();
-      const role = m.role.toLowerCase();
-      return fullName.includes(q) || role.includes(q);
+      const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+      return entry && !entry.is_off_day && totalForLog(entry) > 0;
+    }).length;
+  }, [memberCards, logsByUser, today]);
+
+  const topPerformer = useMemo(() => {
+    return [...memberCards].sort((a, b) => b.totalDocs - a.totalDocs)[0] || null;
+  }, [memberCards]);
+
+  // Filter & sort members for views
+  const filteredAndSortedMembers = useMemo(() => {
+    let list = [...memberCards];
+
+    // Search query
+    const q = searchMember.trim().toLowerCase();
+    if (q) {
+      list = list.filter((m) => {
+        const fullName = `${m.first_name || ""} ${m.last_name || ""}`.toLowerCase();
+        const role = m.role.toLowerCase();
+        return fullName.includes(q) || role.includes(q);
+      });
+    }
+
+    // Role filter
+    if (roleFilter !== "all") {
+      list = list.filter((m) => m.role === roleFilter);
+    }
+
+    // Status filter
+    if (statusFilter === "disabled") {
+      list = list.filter((m) => m.is_disabled);
+    } else if (statusFilter === "active-today") {
+      list = list.filter((m) => {
+        const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+        return entry && !entry.is_off_day && totalForLog(entry) > 0;
+      });
+    } else if (statusFilter === "inactive-today") {
+      list = list.filter((m) => {
+        const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+        return !entry || entry.is_off_day || totalForLog(entry) === 0;
+      });
+    }
+
+    // Sort order
+    if (sortBy === "name") {
+      list.sort((a, b) => {
+        const nameA = `${a.first_name || ""} ${a.last_name || ""}`.trim();
+        const nameB = `${b.first_name || ""} ${b.last_name || ""}`.trim();
+        return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
+      });
+    } else if (sortBy === "docs") {
+      list.sort((a, b) => b.totalDocs - a.totalDocs);
+    } else if (sortBy === "avg") {
+      list.sort((a, b) => b.avg - a.avg);
+    } else if (sortBy === "days") {
+      list.sort((a, b) => b.daysWorked - a.daysWorked);
+    }
+
+    return list;
+  }, [memberCards, searchMember, roleFilter, statusFilter, sortBy, logsByUser, today]);
+
+  const filteredMembers = filteredAndSortedMembers;
+
+  const handleExportTeamRoster = () => {
+    const headers = [
+      "Rank",
+      "Associate Name",
+      "Role",
+      "Status",
+      "Total Documents",
+      "Days Worked",
+      "Daily Average",
+      "Today Output",
+      "Total Entries Recorded",
+    ];
+    const rows = filteredAndSortedMembers.map((m, idx) => {
+      const todayEntry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+      const todayCount = todayEntry && !todayEntry.is_off_day ? totalForLog(todayEntry) : 0;
+      const rank = membersWithRank.rankMap.get(m.id) ?? idx + 1;
+      const name = `${m.first_name || ""} ${m.last_name || ""}`.trim() || "User";
+      const status = m.is_disabled
+        ? "Disabled"
+        : todayCount > 0
+        ? "Active Today"
+        : "No Logs Today";
+      return [
+        rank,
+        `"${name}"`,
+        m.role,
+        status,
+        m.totalDocs,
+        m.daysWorked,
+        m.avg,
+        todayCount,
+        m.logCount,
+      ].join(",");
     });
-  }, [memberCards, searchMember]);
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    downloadTextFile(csvContent, `trackbasata-team-roster-${today}.csv`, "text/csv;charset=utf-8;");
+  };
 
   const selectedMember = selectedUserId ? memberCards.find((m) => m.id === selectedUserId) : null;
 
-  const today = isoDate();
   const todayEntry = selectedUserId
     ? (logsByUser.get(selectedUserId) ?? []).find((l) => l.log_date === today)
     : null;
@@ -514,32 +638,84 @@ export default function TeamPage() {
   if (loading || profilePending) return null;
   if (!isAdmin) return <Navigate to="/log" replace />;
 
-  // ── Team grid overview ─────────────────────────────────────────────────────
+  // ── Full-Fledged Team Operations Dashboard ─────────────────────────────────
   if (!selectedUserId) {
     return (
       <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6">
         <div className="w-full space-y-5">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          {/* Dashboard Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Team Management</h1>
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-card border border-border/50 rounded-full px-2.5 py-0.5 shadow-xs">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  Team Operations Dashboard
+                </h1>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5 shadow-xs font-mono">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Metrics
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                {profiles.length} team members · Sorted alphabetically A–Z
+                {profiles.length} team members registered · {activeTodayCount} active today
               </p>
             </div>
 
-            {/* Search & Actions toolbar */}
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              <div className="relative w-full sm:w-72">
+            {/* Quick Global Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportTeamRoster}
+                title="Export team productivity summary to CSV"
+                className="h-9 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border/60 rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                <Download className="size-3.5" />
+                <span>Export CSV</span>
+              </button>
+
+              {isAdmin && (
+                <Button
+                  onClick={() => setAddMemberOpen(true)}
+                  className="bg-primary hover:bg-primary/95 text-primary-foreground shadow-xs shadow-primary/20 h-9 px-3.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0"
+                >
+                  <UserPlus className="size-3.5 mr-1.5" />
+                  <span>Add Member</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* 1. Aggregate Team KPIs Grid */}
+          <TeamStatsGrid
+            members={memberCards}
+            activeTodayCount={activeTodayCount}
+            totalTeamDocs={totalTeamDocs}
+            totalWorkingDays={totalWorkingDays}
+            teamDailyAvg={teamDailyAvg}
+            topPerformer={topPerformer}
+            onSelectMember={(id) => {
+              setSelectedUserId(id);
+              setTab("overview");
+            }}
+          />
+
+          {/* 2. Interactive Charts & Visualizations */}
+          <TeamAnalyticsCharts
+            members={memberCards}
+            allLogs={allLogs}
+            onSelectMember={(id) => {
+              setSelectedUserId(id);
+              setTab("overview");
+            }}
+          />
+
+          {/* 3. Operational Controls Toolbar */}
+          <div className="bg-card border border-border/60 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              {/* Search Bar */}
+              <div className="relative w-full lg:w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
                 <Input
-                  className="pl-9 pr-8 h-9 text-xs w-full bg-card border-border/60 focus-visible:border-primary/50 shadow-xs"
-                  placeholder="Search member by name or role…"
+                  className="pl-9 pr-8 h-9 text-xs w-full bg-background border-border/60 focus-visible:border-primary/50 shadow-xs"
+                  placeholder="Search associate by name or role…"
                   value={searchMember}
                   onChange={(e) => setSearchMember(e.target.value)}
                 />
@@ -555,19 +731,110 @@ export default function TeamPage() {
                 )}
               </div>
 
-              {isAdmin && (
-                <Button
-                  onClick={() => setAddMemberOpen(true)}
-                  className="bg-primary hover:bg-primary/95 text-primary-foreground shadow-xs shadow-primary/20 h-9 px-3.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0"
+              {/* View Switcher, Sort & Filter Row */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Role Filter Pills */}
+                <div className="flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
+                  {(["all", "admin", "user"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRoleFilter(r)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer capitalize",
+                        roleFilter === r
+                          ? "bg-card text-foreground shadow-2xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {r === "all" ? "All Roles" : r === "admin" ? "Admins" : "Members"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Status Filter */}
+                <select
+                  aria-label="Filter members by activity status"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="h-8 px-2.5 text-xs bg-muted/40 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
                 >
-                  <UserPlus className="size-3.5 mr-1.5" />
-                  <span>Add Member</span>
-                </Button>
+                  <option value="all">All Status</option>
+                  <option value="active-today">Active Today</option>
+                  <option value="inactive-today">No Logs Today</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+
+                {/* Sort Order Selector */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <ArrowUpDown className="size-3.5" />
+                  <select
+                    aria-label="Sort team members"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="h-8 px-2.5 text-xs bg-muted/40 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+                  >
+                    <option value="name">Name (A–Z)</option>
+                    <option value="docs">Most Documents</option>
+                    <option value="avg">Highest Daily Avg</option>
+                    <option value="days">Most Days Worked</option>
+                  </select>
+                </div>
+
+                {/* Grid vs Table Layout Switcher */}
+                <div className="flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    title="Cards view"
+                    className={cn(
+                      "size-7 rounded-md grid place-items-center transition-all cursor-pointer",
+                      viewMode === "grid"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("table")}
+                    title="Dense table view"
+                    className={cn(
+                      "size-7 rounded-md grid place-items-center transition-all cursor-pointer",
+                      viewMode === "table"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <TableIcon className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Results Counter Bar */}
+            <div className="flex items-center justify-between text-2xs text-muted-foreground pt-1 border-t border-border/40 font-mono">
+              <span>
+                Showing {filteredMembers.length} of {memberCards.length} associates
+              </span>
+              {(searchMember || roleFilter !== "all" || statusFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchMember("");
+                    setRoleFilter("all");
+                    setStatusFilter("all");
+                  }}
+                  className="text-primary hover:underline cursor-pointer"
+                >
+                  Reset all filters
+                </button>
               )}
             </div>
           </div>
 
-          {/* Cards Grid */}
+          {/* 4. Main Members Listing (Cards or Table) */}
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -588,26 +855,63 @@ export default function TeamPage() {
             <EmptyState icon={Users} title="No Team Members Found" hint="Invite team members to begin tracking." />
           ) : filteredMembers.length === 0 ? (
             <div className="bg-card border border-border/60 rounded-xl p-8 text-center space-y-3">
-              <p className="text-sm font-medium text-foreground">No members match "{searchMember}"</p>
-              <p className="text-xs text-muted-foreground">Try clearing your search query to view all team members.</p>
+              <p className="text-sm font-medium text-foreground">No members match your active filters</p>
+              <p className="text-xs text-muted-foreground">Try clearing your filters or search query.</p>
               <button
                 type="button"
-                onClick={() => setSearchMember("")}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                onClick={() => {
+                  setSearchMember("");
+                  setRoleFilter("all");
+                  setStatusFilter("all");
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
-                Clear search filter
+                Reset filters
               </button>
             </div>
+          ) : viewMode === "table" ? (
+            <TeamTableView
+              members={filteredMembers}
+              logsByUser={logsByUser}
+              currentUserId={user?.id}
+              today={today}
+              topDocsMax={membersWithRank.topDocsMax}
+              onSelectMember={(id) => {
+                setSelectedUserId(id);
+                setTab("overview");
+                setSearch("");
+                setFaxFilters(FB_FILTERS_INITIAL);
+                setPages({ logs: 1, faxedBack: 1, categories: 1, activity: 1 });
+              }}
+              onToggleRole={(targetUserId, currentRole) => {
+                setRole.mutate({
+                  targetUserId,
+                  role: currentRole === "admin" ? "user" : "admin",
+                  prevRole: currentRole,
+                });
+              }}
+              onToggleDisabled={(targetUserId, name, shouldDisable) => {
+                setDisableTarget({ id: targetUserId, name, shouldDisable });
+              }}
+              onDeleteRequest={(targetUserId, name) => {
+                setDeleteTarget({ id: targetUserId, name });
+              }}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMembers.map((m) => {
                 const memberTodayLog = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+                const rank = membersWithRank.rankMap.get(m.id);
+                const relativePercent = Math.round((m.totalDocs / membersWithRank.topDocsMax) * 100);
+
                 return (
                   <TeamMemberCard
                     key={m.id}
                     member={m}
                     isMe={m.id === user?.id}
                     todayEntry={memberTodayLog}
+                    rank={rank}
+                    relativePercent={relativePercent}
                     onSelect={() => {
                       setSelectedUserId(m.id);
                       setTab("overview");
