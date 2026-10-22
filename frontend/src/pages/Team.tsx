@@ -1087,6 +1087,9 @@ export default function TeamPage() {
             selectedAudit={selectedAudit}
             auditLoading={auditLoading}
             profiles={profiles}
+            allUserLogs={logsByUser.get(selectedMember.id) ?? []}
+            rank={membersWithRank.rankMap.get(selectedMember.id)}
+            onExportLogs={handleExportLogs}
             describeEvent={describeEvent}
           />
         )}
