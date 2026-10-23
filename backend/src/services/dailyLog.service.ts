@@ -74,7 +74,23 @@ export async function incrementTap(
   userId: string,
   dto: IncrementTapDTO
 ): Promise<DailyLog> {
-  // Fetch existing day log
+  // 1. Primary path: Atomic in-database JSONB increment via PostgreSQL RPC
+  const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc("increment_daily_log_count", {
+    p_user_id: userId,
+    p_log_date: dto.log_date,
+    p_key: dto.key,
+    p_delta: dto.delta,
+  });
+
+  if (!rpcError && rpcData) {
+    const row = rpcData as DailyLog;
+    return {
+      ...row,
+      counts: (row.counts || {}) as Record<string, number>,
+    };
+  }
+
+  // 2. Fallback path for unmigrated environments
   const existing = await getLogByDate(userId, dto.log_date);
 
   const existingCounts = existing?.counts || {};

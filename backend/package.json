@@ -8,7 +8,7 @@
                     "build":  "tsc",
                     "start":  "node dist/server.js",
                     "typecheck":  "tsc --noEmit",
-                    "test":  "node test/boot.test.mjs && node test/security.test.mjs && node test/tracker-export.test.mjs"
+                    "test":  "node test/boot.test.mjs && node test/security.test.mjs && node test/tracker-export.test.mjs && node test/atomic-increment.test.mjs"
                 },
     "dependencies":  {
                          "@supabase/supabase-js":  "^2.49.1",
