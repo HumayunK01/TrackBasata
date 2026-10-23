@@ -541,7 +541,7 @@ export default function FacilitiesPage() {
                       {isNewSection && (
                         <div
                           id={`facility-letter-${firstChar}`}
-                          className="col-span-full pt-4 pb-1 scroll-mt-28 flex items-center gap-3"
+                          className="col-span-full sticky top-11 z-10 py-2.5 bg-background/90 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 flex items-center gap-3 border-b border-border/40 shadow-2xs scroll-mt-28 transition-all"
                         >
                           <div className="flex items-center gap-2">
                             <span className="size-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shadow-2xs">
@@ -584,7 +584,7 @@ export default function FacilitiesPage() {
                       {isNewSection && (
                         <div
                           id={`facility-letter-${firstChar}`}
-                          className="pt-4 pb-1 scroll-mt-28 flex items-center gap-3"
+                          className="sticky top-11 z-10 py-2.5 bg-background/90 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 flex items-center gap-3 border-b border-border/40 shadow-2xs scroll-mt-28 transition-all"
                         >
                           <div className="flex items-center gap-2">
                             <span className="size-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shadow-2xs">

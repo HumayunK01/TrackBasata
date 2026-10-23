@@ -120,7 +120,7 @@ function DesktopTable({
     <div className="flex flex-col bg-card border border-border/60 rounded-xl overflow-hidden shadow-xs">
       <div className="overflow-x-auto no-scrollbar">
         <Table className="min-w-[600px] [&_tbody_tr]:border-0 text-xs">
-          <TableHeader className="relative z-10 bg-muted/25 border-b border-border/50">
+          <TableHeader className="sticky top-0 z-10 bg-card/90 backdrop-blur-md border-b border-border/60 shadow-2xs">
             <TableRow className="hover:bg-transparent">
               <TableHead className={`${thCls} w-28`}>
                 <span>Date</span>

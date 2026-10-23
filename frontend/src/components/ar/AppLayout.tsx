@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import Lenis from "lenis";
+import { useLenis } from "@/hooks/useLenis";
 import { useLocation } from "react-router-dom";
 import { AppSidebar } from "@/components/ar/AppSidebar";
 import { MobileTabBar } from "@/components/ar/MobileTabBar";
@@ -31,147 +31,12 @@ export function AnimatedPage({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion();
   const pageRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (reduce) return;
-
-    let lenisInstance: Lenis | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-    let mutationObserver: MutationObserver | null = null;
-    let isCancelled = false;
-
-    const setupLenis = (scrollContainer: HTMLElement) => {
-      lenisInstance = new Lenis({
-        wrapper: scrollContainer,
-        content: scrollContainer,
-        autoRaf: true,
-        lerp: 0.12, // Snappy 120Hz responsive interpolation; eliminates lag
-        smoothWheel: true,
-        syncTouch: false,
-        wheelMultiplier: 0.85,
-        touchMultiplier: 1,
-        prevent: (node) => {
-          return (
-            node.hasAttribute("data-lenis-prevent") ||
-            Boolean(node.closest("[data-lenis-prevent], [role='dialog'], [role='menu'], [role='listbox']"))
-          );
-        },
-      });
-
-      // Ensure Lenis evaluates live scroll boundaries dynamically on every check instead of
-      // relying on stale cached initial height, preventing mid-page scroll lockups on dynamic content.
-      Object.defineProperty(lenisInstance, "limit", {
-        get() {
-          return Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
-        },
-        configurable: true,
-      });
-
-      if (lenisInstance.dimensions) {
-        Object.defineProperty(lenisInstance.dimensions, "limit", {
-          get() {
-            return {
-              x: Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth),
-              y: Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight),
-            };
-          },
-          configurable: true,
-        });
-        Object.defineProperty(lenisInstance.dimensions, "scrollHeight", {
-          get() {
-            return scrollContainer.scrollHeight;
-          },
-          configurable: true,
-        });
-        Object.defineProperty(lenisInstance.dimensions, "scrollWidth", {
-          get() {
-            return scrollContainer.scrollWidth;
-          },
-          configurable: true,
-        });
-        Object.defineProperty(lenisInstance.dimensions, "height", {
-          get() {
-            return scrollContainer.clientHeight;
-          },
-          configurable: true,
-        });
-        Object.defineProperty(lenisInstance.dimensions, "width", {
-          get() {
-            return scrollContainer.clientWidth;
-          },
-          configurable: true,
-        });
-      }
-
-      // Synchronize Lenis state when native scrollbar is dragged
-      const handleNativeScroll = () => {
-        if (!lenisInstance) return;
-        const currentScroll = scrollContainer.scrollTop;
-        if (Math.abs(currentScroll - lenisInstance.animatedScroll) > 1) {
-          lenisInstance.animatedScroll = currentScroll;
-          lenisInstance.targetScroll = currentScroll;
-        }
-      };
-      scrollContainer.addEventListener("scroll", handleNativeScroll, { passive: true });
-
-      // Observe content and child elements to trigger recalculations whenever content updates
-      resizeObserver = new ResizeObserver(() => {
-        lenisInstance?.resize();
-      });
-      resizeObserver.observe(scrollContainer);
-      Array.from(scrollContainer.children).forEach((child) => {
-        resizeObserver?.observe(child);
-      });
-
-      mutationObserver = new MutationObserver(() => {
-        Array.from(scrollContainer.children).forEach((child) => {
-          resizeObserver?.observe(child);
-        });
-        lenisInstance?.resize();
-      });
-      mutationObserver.observe(scrollContainer, {
-        childList: true,
-        subtree: true,
-      });
-
-      (window as unknown as { __lenis?: Lenis }).__lenis = lenisInstance;
-
-      return () => {
-        scrollContainer.removeEventListener("scroll", handleNativeScroll);
-        resizeObserver?.disconnect();
-        mutationObserver?.disconnect();
-      };
-    };
-
-    let cleanupListeners: (() => void) | null = null;
-    const initialMain = pageRef.current?.querySelector("main") as HTMLElement | null;
-
-    if (initialMain) {
-      cleanupListeners = setupLenis(initialMain);
-    } else {
-      const mountObserver = new MutationObserver(() => {
-        const main = pageRef.current?.querySelector("main") as HTMLElement | null;
-        if (main && !isCancelled) {
-          mountObserver.disconnect();
-          cleanupListeners = setupLenis(main);
-        }
-      });
-      if (pageRef.current) {
-        mountObserver.observe(pageRef.current, { childList: true, subtree: true });
-      }
-      cleanupListeners = () => mountObserver.disconnect();
-    }
-
-    return () => {
-      isCancelled = true;
-      if (cleanupListeners) cleanupListeners();
-      if (lenisInstance) {
-        lenisInstance.destroy();
-        if ((window as unknown as { __lenis?: Lenis }).__lenis === lenisInstance) {
-          delete (window as unknown as { __lenis?: unknown }).__lenis;
-        }
-      }
-    };
-  }, [reduce]);
+  useLenis({
+    containerRef: pageRef,
+    targetSelector: "main",
+    lerp: 0.12,
+    wheelMultiplier: 0.85,
+  });
 
   return (
     <motion.div

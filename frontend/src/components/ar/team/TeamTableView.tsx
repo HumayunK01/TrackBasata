@@ -46,9 +46,9 @@ export const TeamTableView = React.memo(function TeamTableView({
   return (
     <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-xs">
       <div className="overflow-x-auto">
-        <table className="w-full text-xs text-left">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20 text-muted-foreground uppercase text-[10px] font-semibold tracking-wider font-mono">
+        <table className="w-full text-xs text-left relative">
+          <thead className="sticky top-0 z-10 bg-card/90 backdrop-blur-md shadow-2xs">
+            <tr className="border-b border-border/60 text-muted-foreground uppercase text-[10px] font-semibold tracking-wider font-mono">
               <th className="px-4 py-3 text-center w-12">#</th>
               <th className="px-4 py-3">Associate</th>
               <th className="px-3 py-3">Role</th>

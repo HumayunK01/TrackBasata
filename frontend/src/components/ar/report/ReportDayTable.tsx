@@ -51,8 +51,8 @@ export function ReportDayTable({
         </div>
       </div>
       <div className="overflow-x-auto no-scrollbar">
-        <Table className="[&_td]:py-3 [&_th]:py-2.5">
-          <TableHeader>
+        <Table className="[&_td]:py-3 [&_th]:py-2.5 relative">
+          <TableHeader className="sticky top-0 z-10 bg-card/90 backdrop-blur-md shadow-2xs">
             <TableRow className="hover:bg-transparent border-b border-border/60 bg-muted/30">
               <TableHead className="font-mono font-semibold text-[11px] uppercase tracking-wider text-muted-foreground text-center">
                 Date

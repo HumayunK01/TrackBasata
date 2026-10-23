@@ -213,9 +213,9 @@ export const TeamMemberFaxedBackTab = React.memo(function TeamMemberFaxedBackTab
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-border/50 bg-muted/20 text-muted-foreground uppercase text-[10px] font-semibold tracking-wider font-mono">
+            <table className="w-full text-xs text-left relative">
+              <thead className="sticky top-0 z-10 bg-card/90 backdrop-blur-md shadow-2xs">
+                <tr className="border-b border-border/60 text-muted-foreground uppercase text-[10px] font-semibold tracking-wider font-mono">
                   <th className="px-4 py-3">File Document</th>
                   <th className="px-3 py-3">Patient Details</th>
                   <th className="px-3 py-3">Worked On</th>
