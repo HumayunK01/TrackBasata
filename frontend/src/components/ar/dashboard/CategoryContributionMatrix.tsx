@@ -14,6 +14,7 @@ import {
 import type { DailyLog } from "@/types/log";
 import type { Category } from "@/hooks/useCategories";
 import type { Profile } from "@/hooks/useProfile";
+import type { TeamProductivitySummary } from "@/hooks/useTeamData";
 import { colorForKey } from "@/lib/cat-colors";
 import { cn } from "@/lib/utils";
 import { CheckCheck, ChevronLeft, ChevronRight } from "@/components/ui/icons";
@@ -21,7 +22,8 @@ import { PieChart as PieIcon, BarChart3, LayoutGrid } from "lucide-react";
 
 interface Props {
   categories: Category[];
-  logs: DailyLog[];
+  logs?: DailyLog[];
+  teamSummaries?: TeamProductivitySummary[];
   profiles: Profile[];
   currentUserId?: string;
   className?: string;
@@ -174,7 +176,8 @@ const CustomPieTooltip = ({ active, payload }: any) => {
 
 export const CategoryContributionMatrix = React.memo(function CategoryContributionMatrix({
   categories,
-  logs,
+  logs = [],
+  teamSummaries,
   profiles,
   currentUserId,
   className,
@@ -230,19 +233,33 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
 
   // Aggregate category workload: Category -> contributors & share of 100%
   const categoryWorkload: CategoryWorkloadItem[] = useMemo(() => {
-    const workingLogs = logs.filter((l) => !l.is_off_day);
     const catTotals: Record<string, number> = {};
     const catUserTotals: Record<string, Record<string, number>> = {};
 
-    for (const log of workingLogs) {
-      if (!log.counts) continue;
-      const uid = log.user_id;
-      for (const [k, v] of Object.entries(log.counts)) {
-        if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
-        if (typeof v === "number" && v > 0) {
-          catTotals[k] = (catTotals[k] ?? 0) + v;
-          if (!catUserTotals[k]) catUserTotals[k] = {};
-          catUserTotals[k][uid] = (catUserTotals[k][uid] ?? 0) + v;
+    if (teamSummaries && teamSummaries.length > 0) {
+      for (const summary of teamSummaries) {
+        const uid = summary.user_id;
+        for (const [k, v] of Object.entries(summary.category_totals)) {
+          if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
+          if (typeof v === "number" && v > 0) {
+            catTotals[k] = (catTotals[k] ?? 0) + v;
+            if (!catUserTotals[k]) catUserTotals[k] = {};
+            catUserTotals[k][uid] = (catUserTotals[k][uid] ?? 0) + v;
+          }
+        }
+      }
+    } else {
+      const workingLogs = logs.filter((l) => !l.is_off_day);
+      for (const log of workingLogs) {
+        if (!log.counts) continue;
+        const uid = log.user_id;
+        for (const [k, v] of Object.entries(log.counts)) {
+          if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
+          if (typeof v === "number" && v > 0) {
+            catTotals[k] = (catTotals[k] ?? 0) + v;
+            if (!catUserTotals[k]) catUserTotals[k] = {};
+            catUserTotals[k][uid] = (catUserTotals[k][uid] ?? 0) + v;
+          }
         }
       }
     }
@@ -285,23 +302,37 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
         };
       })
       .sort((a, b) => b.totalDocs - a.totalDocs);
-  }, [categories, logs, profiles, catMap, profileMap]);
+  }, [categories, logs, teamSummaries, profiles, catMap, profileMap]);
 
   // Aggregate member workload: Member -> category shares of 100%
   const memberWorkload: MemberWorkloadItem[] = useMemo(() => {
-    const workingLogs = logs.filter((l) => !l.is_off_day);
     const userTotals: Record<string, number> = {};
     const userCatTotals: Record<string, Record<string, number>> = {};
 
-    for (const log of workingLogs) {
-      if (!log.counts) continue;
-      const uid = log.user_id;
-      for (const [k, v] of Object.entries(log.counts)) {
-        if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
-        if (typeof v === "number" && v > 0) {
-          userTotals[uid] = (userTotals[uid] ?? 0) + v;
-          if (!userCatTotals[uid]) userCatTotals[uid] = {};
-          userCatTotals[uid][k] = (userCatTotals[uid][k] ?? 0) + v;
+    if (teamSummaries && teamSummaries.length > 0) {
+      for (const summary of teamSummaries) {
+        const uid = summary.user_id;
+        for (const [k, v] of Object.entries(summary.category_totals)) {
+          if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
+          if (typeof v === "number" && v > 0) {
+            userTotals[uid] = (userTotals[uid] ?? 0) + v;
+            if (!userCatTotals[uid]) userCatTotals[uid] = {};
+            userCatTotals[uid][k] = (userCatTotals[uid][k] ?? 0) + v;
+          }
+        }
+      }
+    } else {
+      const workingLogs = logs.filter((l) => !l.is_off_day);
+      for (const log of workingLogs) {
+        if (!log.counts) continue;
+        const uid = log.user_id;
+        for (const [k, v] of Object.entries(log.counts)) {
+          if (isConsoleExcludedCategory(k, catMap.get(k)?.label)) continue;
+          if (typeof v === "number" && v > 0) {
+            userTotals[uid] = (userTotals[uid] ?? 0) + v;
+            if (!userCatTotals[uid]) userCatTotals[uid] = {};
+            userCatTotals[uid][k] = (userCatTotals[uid][k] ?? 0) + v;
+          }
         }
       }
     }
@@ -344,7 +375,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
         };
       })
       .sort((a, b) => b.totalDocs - a.totalDocs);
-  }, [categories, logs, profiles, catMap, profileMap]);
+  }, [categories, logs, teamSummaries, profiles, catMap, profileMap]);
 
   // Selected category in Donut view (default to top category)
   const currentCategory = useMemo(() => {

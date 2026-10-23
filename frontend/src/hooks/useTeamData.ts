@@ -19,6 +19,130 @@ export function useTeamProfiles() {
   });
 }
 
+export interface TeamProductivitySummary {
+  user_id: string;
+  total_docs: number;
+  days_worked: number;
+  daily_avg: number;
+  log_count: number;
+  active_today: boolean;
+  category_totals: Record<string, number>;
+}
+
+export function useTeamProductivitySummary(today?: string) {
+  const isAdmin = useIsAdmin();
+  return useQuery<TeamProductivitySummary[]>({
+    queryKey: ["team_productivity_summary", today],
+    enabled: isAdmin,
+    staleTime: 30_000,
+    queryFn: async () => {
+      // 1. Primary path: Server-side aggregate RPC
+      const { data, error } = await supabase.rpc("get_team_productivity_summary", {
+        p_today: today || undefined,
+      });
+
+      if (!error && Array.isArray(data)) {
+        return (data as any[]).map((row) => ({
+          user_id: row.user_id,
+          total_docs: Number(row.total_docs ?? 0),
+          days_worked: Number(row.days_worked ?? 0),
+          daily_avg: Number(row.daily_avg ?? 0),
+          log_count: Number(row.log_count ?? 0),
+          active_today: Boolean(row.active_today),
+          category_totals: (row.category_totals ?? {}) as Record<string, number>,
+        }));
+      }
+
+      // 2. Fallback path for unmigrated environments
+      const { data: rawLogs, error: rawError } = await supabase.rpc("get_team_daily_logs", { limit_count: 2000 });
+      if (rawError) throw rawError;
+
+      const logs = (rawLogs ?? []) as DailyLog[];
+      const userMap = new Map<string, {
+        total_docs: number;
+        days_worked: number;
+        log_count: number;
+        active_today: boolean;
+        category_totals: Record<string, number>;
+      }>();
+
+      const targetToday = today || new Date().toISOString().slice(0, 10);
+
+      for (const log of logs) {
+        let entry = userMap.get(log.user_id);
+        if (!entry) {
+          entry = {
+            total_docs: 0,
+            days_worked: 0,
+            log_count: 0,
+            active_today: false,
+            category_totals: {},
+          };
+          userMap.set(log.user_id, entry);
+        }
+
+        entry.log_count++;
+        const counts = (log.counts ?? {}) as Record<string, number>;
+        let dayTotal = 0;
+        for (const [k, v] of Object.entries(counts)) {
+          if (typeof v === "number" && v > 0) {
+            dayTotal += v;
+            if (!log.is_off_day) {
+              entry.category_totals[k] = (entry.category_totals[k] || 0) + v;
+            }
+          }
+        }
+
+        if (!log.is_off_day) {
+          entry.days_worked++;
+          entry.total_docs += dayTotal;
+        }
+
+        if (log.log_date === targetToday && !log.is_off_day && dayTotal > 0) {
+          entry.active_today = true;
+        }
+      }
+
+      return Array.from(userMap.entries()).map(([userId, stats]) => ({
+        user_id: userId,
+        total_docs: stats.total_docs,
+        days_worked: stats.days_worked,
+        daily_avg: stats.days_worked > 0 ? Math.round(stats.total_docs / stats.days_worked) : 0,
+        log_count: stats.log_count,
+        active_today: stats.active_today,
+        category_totals: stats.category_totals,
+      }));
+    },
+  });
+}
+
+export function useTeamRecentLogs(daysBack: number = 14) {
+  const isAdmin = useIsAdmin();
+  return useQuery<DailyLog[]>({
+    queryKey: ["team_recent_logs", daysBack],
+    enabled: isAdmin,
+    staleTime: 30_000,
+    queryFn: async () => {
+      // 1. Try get_team_recent_logs RPC
+      const { data, error } = await supabase.rpc("get_team_recent_logs", { days_back: daysBack });
+      if (!error && Array.isArray(data)) {
+        return (data as DailyLog[]).map((row) => ({
+          ...row,
+          counts: (row.counts ?? {}) as Record<string, number>,
+        }));
+      }
+
+      // 2. Fallback to limit_count 500
+      const { data: fallbackData, error: fallbackError } = await supabase.rpc("get_team_daily_logs", { limit_count: 500 });
+      if (fallbackError) throw fallbackError;
+      return ((fallbackData ?? []) as DailyLog[]).map((row) => ({
+        ...row,
+        counts: (row.counts ?? {}) as Record<string, number>,
+      }));
+    },
+  });
+}
+
 export function useTeamDailyLogs() {
   const isAdmin = useIsAdmin();
   return useQuery<DailyLog[]>({

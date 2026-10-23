@@ -3,7 +3,7 @@ import { LineChart } from "@/components/ui/icons";
 import Skeleton from "react-loading-skeleton";
 import { useDailyLogs } from "@/hooks/useDailyLogs";
 import { useCategories } from "@/hooks/useCategories";
-import { useTeamProfiles, useTeamDailyLogs } from "@/hooks/useTeamData";
+import { useTeamProfiles, useTeamProductivitySummary } from "@/hooks/useTeamData";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useFaxResolvedByDay, FAX_CATEGORY_KEY, FAX_CATEGORY_LABEL } from "@/hooks/useFaxTracker";
@@ -21,7 +21,7 @@ const Console = () => {
   const { data: logs = [], isLoading } = useDailyLogs();
   const { data: categories = [] } = useCategories();
   const { data: teamProfiles = [] } = useTeamProfiles();
-  const { data: teamLogs = [] } = useTeamDailyLogs();
+  const { data: teamSummaries = [] } = useTeamProductivitySummary();
   const { data: faxByDay = {} } = useFaxResolvedByDay();
   const { data: indexableByDay = {} } = useIndexableResolvedByDay();
 
@@ -30,11 +30,6 @@ const Console = () => {
     if (profile) return [profile];
     return [];
   }, [teamProfiles, profile]);
-
-  const effectiveLogs = useMemo(() => {
-    if (teamLogs.length > 0) return teamLogs;
-    return logs;
-  }, [teamLogs, logs]);
 
   const visibleCategories = useMemo(() => {
     return categories.filter((c) => !isConsoleExcludedCategory(c.key, c.label));
@@ -149,7 +144,8 @@ const Console = () => {
               <FigHeader title="Team Work Breakdown" sub="See who worked on each category and how much each person completed" />
               <CategoryContributionMatrix
                 categories={visibleCategories}
-                logs={effectiveLogs}
+                teamSummaries={teamSummaries}
+                logs={teamSummaries.length === 0 ? logs : undefined}
                 profiles={effectiveProfiles}
                 currentUserId={user?.id}
               />

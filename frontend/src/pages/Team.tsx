@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import {
   useTeamProfiles,
-  useTeamDailyLogs,
+  useTeamProductivitySummary,
+  useTeamRecentLogs,
   useSetUserRole,
   useDeleteUser,
   useSetUserDisabled,
@@ -12,11 +13,12 @@ import {
   fetchAllUserLogs,
   fetchAllUserFaxedBack,
   type TeamFaxedBackDoc,
+  type TeamProductivitySummary,
 } from "@/hooks/useTeamData";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, useProfile } from "@/hooks/useProfile";
-import { isoDate, totalForLog, type DailyLog } from "@/types/log";
+import { isoDate, type DailyLog } from "@/types/log";
 import { downloadCSV, downloadPDF, formatUSDate } from "@/lib/log-utils";
 import {
   Users,
@@ -68,14 +70,6 @@ import { TeamMemberLogsTab } from "@/components/ar/team/TeamMemberLogsTab";
 import { TeamMemberFaxedBackTab } from "@/components/ar/team/TeamMemberFaxedBackTab";
 import { TeamMemberCategoriesTab } from "@/components/ar/team/TeamMemberCategoriesTab";
 import { List as TableIcon, ArrowUpDown } from "lucide-react";
-
-function computeStats(logs: DailyLog[]) {
-  const working = logs.filter((l) => !l.is_off_day);
-  const daysWorked = working.length;
-  const totalDocs = working.reduce((s, l) => s + totalForLog(l), 0);
-  const avg = working.length > 0 ? Math.round(totalDocs / working.length) : 0;
-  return { daysWorked, totalDocs, avg };
-}
 
 type Tab = "overview" | "logs" | "faxed-back" | "categories" | "activity";
 
@@ -201,7 +195,8 @@ function statusLabel(value: unknown): string {
 export default function TeamPage() {
   const { user, loading } = useAuth();
   const { data: profiles = [], isLoading: profilesLoading } = useTeamProfiles();
-  const { data: allLogs = [], isLoading: logsLoading } = useTeamDailyLogs();
+  const { data: teamSummaries = [], isLoading: summariesLoading } = useTeamProductivitySummary();
+  const { data: recentLogs = [], isLoading: logsLoading } = useTeamRecentLogs(14);
   const isAdmin = useIsAdmin();
   const { isPending: profilePending } = useProfile();
   const setRole = useSetUserRole();
@@ -359,34 +354,29 @@ export default function TeamPage() {
   const faxedBackTotal = faxedBackPage.total;
   const auditTotal = auditPage.total;
 
-  const isLoading = profilesLoading || logsLoading;
+  const isLoading = profilesLoading || summariesLoading || logsLoading;
 
-  const logsByUser = useMemo(() => {
+  const summaryMap = useMemo(() => {
+    return new Map<string, TeamProductivitySummary>(teamSummaries.map((s) => [s.user_id, s]));
+  }, [teamSummaries]);
+
+  const recentLogsByUser = useMemo(() => {
     const map = new Map<string, DailyLog[]>();
-    for (const log of allLogs) {
+    for (const log of recentLogs) {
       const arr = map.get(log.user_id);
       if (arr) arr.push(log);
       else map.set(log.user_id, [log]);
     }
     return map;
-  }, [allLogs]);
+  }, [recentLogs]);
 
   // Category contributions for the selected user:
   // For users having 0 contribution in any category, do NOT show it!
   const userCategoryContributions = useMemo(() => {
     if (!selectedUserId) return [];
-    const userLogs = logsByUser.get(selectedUserId) ?? [];
-    const totals: Record<string, number> = {};
-    let userTotalDocs = 0;
-    for (const l of userLogs) {
-      if (l.is_off_day || !l.counts) continue;
-      for (const [k, v] of Object.entries(l.counts)) {
-        if (typeof v === "number" && v > 0) {
-          totals[k] = (totals[k] ?? 0) + v;
-          userTotalDocs += v;
-        }
-      }
-    }
+    const summary = summaryMap.get(selectedUserId);
+    const totals = summary?.category_totals ?? {};
+    const userTotalDocs = summary?.total_docs ?? 0;
 
     const catMap = new Map(allCategories.map((c) => [c.key, c]));
 
@@ -406,7 +396,7 @@ export default function TeamPage() {
         };
       })
       .sort((a, b) => b.totalDocs - a.totalDocs);
-  }, [selectedUserId, logsByUser, allCategories]);
+  }, [selectedUserId, summaryMap, allCategories]);
 
   const selectedCategories = userCategoryContributions;
   const categoriesTotal = userCategoryContributions.length;
@@ -414,9 +404,14 @@ export default function TeamPage() {
   // Compute stats and maintain strict alphabetical sorting A-Z as base
   const memberCards: TeamMemberItem[] = useMemo(() => {
     const list = profiles.map((p) => {
-      const logs = logsByUser.get(p.id) ?? [];
-      const stats = computeStats(logs);
-      return { ...p, ...stats, logCount: logs.length };
+      const s = summaryMap.get(p.id);
+      return {
+        ...p,
+        totalDocs: s?.total_docs ?? 0,
+        daysWorked: s?.days_worked ?? 0,
+        avg: s?.daily_avg ?? 0,
+        logCount: s?.log_count ?? 0,
+      };
     });
 
     return list.sort((a, b) => {
@@ -424,7 +419,7 @@ export default function TeamPage() {
       const nameB = `${b.first_name || ""} ${b.last_name || ""}`.trim();
       return nameA.localeCompare(nameB, undefined, { sensitivity: "base", numeric: true });
     });
-  }, [profiles, logsByUser]);
+  }, [profiles, summaryMap]);
 
   const today = isoDate();
 
@@ -451,11 +446,8 @@ export default function TeamPage() {
   const teamDailyAvg = totalWorkingDays > 0 ? Math.round(totalTeamDocs / totalWorkingDays) : 0;
 
   const activeTodayCount = useMemo(() => {
-    return memberCards.filter((m) => {
-      const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
-      return entry && !entry.is_off_day && totalForLog(entry) > 0;
-    }).length;
-  }, [memberCards, logsByUser, today]);
+    return teamSummaries.filter((s) => s.active_today).length;
+  }, [teamSummaries]);
 
   const topPerformer = useMemo(() => {
     return [...memberCards].sort((a, b) => b.totalDocs - a.totalDocs)[0] || null;
@@ -484,15 +476,9 @@ export default function TeamPage() {
     if (statusFilter === "disabled") {
       list = list.filter((m) => m.is_disabled);
     } else if (statusFilter === "active-today") {
-      list = list.filter((m) => {
-        const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
-        return entry && !entry.is_off_day && totalForLog(entry) > 0;
-      });
+      list = list.filter((m) => Boolean(summaryMap.get(m.id)?.active_today));
     } else if (statusFilter === "inactive-today") {
-      list = list.filter((m) => {
-        const entry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
-        return !entry || entry.is_off_day || totalForLog(entry) === 0;
-      });
+      list = list.filter((m) => !summaryMap.get(m.id)?.active_today && !m.is_disabled);
     }
 
     // Sort order
@@ -511,7 +497,7 @@ export default function TeamPage() {
     }
 
     return list;
-  }, [memberCards, searchMember, roleFilter, statusFilter, sortBy, logsByUser, today]);
+  }, [memberCards, searchMember, roleFilter, statusFilter, sortBy, today]);
 
   const filteredMembers = filteredAndSortedMembers;
 
@@ -528,13 +514,13 @@ export default function TeamPage() {
       "Total Entries Recorded",
     ];
     const rows = filteredAndSortedMembers.map((m, idx) => {
-      const todayEntry = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
-      const todayCount = todayEntry && !todayEntry.is_off_day ? totalForLog(todayEntry) : 0;
+      const s = summaryMap.get(m.id);
+      const isTodayActive = s?.active_today ?? false;
       const rank = membersWithRank.rankMap.get(m.id) ?? idx + 1;
       const name = `${m.first_name || ""} ${m.last_name || ""}`.trim() || "User";
       const status = m.is_disabled
         ? "Disabled"
-        : todayCount > 0
+        : isTodayActive
         ? "Active Today"
         : "No Logs Today";
       return [
@@ -545,7 +531,7 @@ export default function TeamPage() {
         m.totalDocs,
         m.daysWorked,
         m.avg,
-        todayCount,
+        isTodayActive ? "Yes" : "No",
         m.logCount,
       ].join(",");
     });
@@ -556,7 +542,7 @@ export default function TeamPage() {
   const selectedMember = selectedUserId ? memberCards.find((m) => m.id === selectedUserId) : null;
 
   const todayEntry = selectedUserId
-    ? (logsByUser.get(selectedUserId) ?? []).find((l) => l.log_date === today)
+    ? (selectedLogs.find((l) => l.log_date === today) ?? null)
     : null;
 
   const isMe = selectedUserId === user?.id;
@@ -772,7 +758,7 @@ export default function TeamPage() {
           {/* 2. Interactive Charts & Visualizations */}
           <TeamAnalyticsCharts
             members={memberCards}
-            allLogs={allLogs}
+            allLogs={recentLogs}
             onSelectMember={(id) => {
               updateUrlParams({ user: id, tab: "overview", page: null, date: null, fb_search: null }, false);
             }}
@@ -944,7 +930,7 @@ export default function TeamPage() {
           ) : viewMode === "table" ? (
             <TeamTableView
               members={filteredMembers}
-              logsByUser={logsByUser}
+              logsByUser={recentLogsByUser}
               currentUserId={user?.id}
               today={today}
               topDocsMax={membersWithRank.topDocsMax}
@@ -968,7 +954,7 @@ export default function TeamPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMembers.map((m) => {
-                const memberTodayLog = (logsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
+                const memberTodayLog = (recentLogsByUser.get(m.id) ?? []).find((l) => l.log_date === today);
                 const rank = membersWithRank.rankMap.get(m.id);
                 const relativePercent = Math.round((m.totalDocs / membersWithRank.topDocsMax) * 100);
 
@@ -1176,7 +1162,7 @@ export default function TeamPage() {
             selectedAudit={selectedAudit}
             auditLoading={auditLoading}
             profiles={profiles}
-            allUserLogs={logsByUser.get(selectedMember.id) ?? []}
+            allUserLogs={selectedLogs}
             rank={membersWithRank.rankMap.get(selectedMember.id)}
             onExportLogs={handleExportLogs}
             onSelectTab={(t) => updateUrlParams({ tab: t, page: null }, false)}
@@ -1188,7 +1174,7 @@ export default function TeamPage() {
         {tab === "logs" && (
           <TeamMemberLogsTab
             logs={selectedLogs}
-            allUserLogs={logsByUser.get(selectedMember?.id || "") ?? []}
+            allUserLogs={selectedLogs}
             totalLogsCount={logsTotal}
             loading={logsLoading2}
             page={tab === "logs" ? currentPage : 1}
