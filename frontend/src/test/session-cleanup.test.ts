@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { clearSessionLocalStorage } from "@/hooks/useAuth";
+import { getCachedProfile, setCachedProfile, type Profile } from "@/hooks/useProfile";
 
 describe("clearSessionLocalStorage", () => {
   beforeEach(() => {
@@ -25,16 +26,28 @@ describe("clearSessionLocalStorage", () => {
     expect(sessionStorage.getItem("temp_key")).toBeNull();
   });
 
-  it("preserves visual theme and variant preferences across session resets", () => {
+  it("preserves visual theme, variant preferences, and profile role cache across session resets", () => {
+    const adminProfile: Profile = {
+      id: "admin-uid-1",
+      first_name: "Humayun",
+      last_name: "Khan",
+      updated_at: "2026-10-30T00:00:00Z",
+      daily_goal: 100,
+      role: "admin",
+      is_disabled: false,
+    };
+
     localStorage.setItem("counter_counts", JSON.stringify({ nextgen: 8 }));
     localStorage.setItem("basata-theme", "dark");
     localStorage.setItem("basata-theme-variant", "modern");
+    setCachedProfile(adminProfile);
 
     clearSessionLocalStorage();
 
     expect(localStorage.getItem("counter_counts")).toBeNull();
     expect(localStorage.getItem("basata-theme")).toBe("dark");
     expect(localStorage.getItem("basata-theme-variant")).toBe("modern");
+    expect(getCachedProfile("admin-uid-1")).toEqual(adminProfile);
   });
 
   it("stages dirty counter counts into counter_pending_rescue before clearing", () => {

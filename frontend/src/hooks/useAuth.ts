@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,9 +12,6 @@ const SESSION_START_KEY = "basata-session-started-at";
 const MAX_SESSION_MS = 10 * 60 * 60 * 1000; // 10 hours
 const WARN_BEFORE_MS = 15 * 60 * 1000; // warn 15 minutes before the cap trips
 
-// Several components mount useAuth; these guard against duplicate
-// signOut calls + toasts when the cap trips or the warning fires.
-// ponytail: intentional module-level singletons for cross-instance dedup — don't move into state.
 let forcedLogoutInFlight = false;
 let capWarningShown = false;
 
@@ -47,11 +44,11 @@ function maybeWarnSessionEnding() {
   );
 }
 
-function markSessionStart() {
+function markSessionStart(reset = false) {
   try {
-    // Only set once per login so refreshes/tab reloads don't extend the cap
-    if (!localStorage.getItem(SESSION_START_KEY)) {
+    if (reset || !localStorage.getItem(SESSION_START_KEY)) {
       localStorage.setItem(SESSION_START_KEY, String(Date.now()));
+      capWarningShown = false;
     }
   } catch {
     // Ignore localStorage failures
@@ -61,10 +58,11 @@ function markSessionStart() {
 function clearSessionLocalStorage() {
   capWarningShown = false;
   try {
-    // ponytail: preserve visual theme preferences and any unsynced counter rescue
-    // payload so a forced 10-hour session logout never destroys unsaved work.
+    // ponytail: preserve visual theme preferences, profile role cache, and any
+    // unsynced counter rescue payload across 10-hour session resets.
     const theme = localStorage.getItem("basata-theme");
     const variant = localStorage.getItem("basata-theme-variant");
+    const profileCache = localStorage.getItem("basata_profile_cache");
     const existingRescue = localStorage.getItem("counter_pending_rescue");
     const isDirty = localStorage.getItem("counter_dirty") === "true";
     const dirtyCounts = localStorage.getItem("counter_counts");
@@ -74,6 +72,7 @@ function clearSessionLocalStorage() {
 
     if (theme) localStorage.setItem("basata-theme", theme);
     if (variant) localStorage.setItem("basata-theme-variant", variant);
+    if (profileCache) localStorage.setItem("basata_profile_cache", profileCache);
     if (isDirty && dirtyCounts && dirtyDate) {
       localStorage.setItem(
         "counter_pending_rescue",
@@ -159,6 +158,11 @@ async function flushDirtyCountsBeforeSignOut(): Promise<void> {
 function forceLogout() {
   if (forcedLogoutInFlight) return;
   forcedLogoutInFlight = true;
+  try {
+    localStorage.removeItem(SESSION_START_KEY);
+  } catch {
+    // Ignore localStorage failures
+  }
   void flushDirtyCountsBeforeSignOut().finally(() => {
     clearSessionLocalStorage();
     supabase.auth.signOut().finally(() => {
@@ -168,28 +172,48 @@ function forceLogout() {
   toast.info("Your session has ended after 10 hours. Please sign in again.");
 }
 
-interface AuthState { user: User | null; session: Session | null; loading: boolean; }
-type AuthAction =
-  | { type: "set"; session: Session | null }
-  | { type: "ready" }
-  | { type: "clear" };
+// ── Shared singleton auth store so 15+ mounted hooks share 1 session listener ──
+interface AuthState {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+}
 
-function authReducer(s: AuthState, a: AuthAction): AuthState {
-  switch (a.type) {
-    case "set": return { user: a.session?.user ?? null, session: a.session, loading: false };
-    case "ready": return { ...s, loading: false };
-    case "clear": return { user: null, session: null, loading: false };
+let currentState: AuthState = {
+  user: null,
+  session: null,
+  loading: true,
+};
+
+const listeners = new Set<() => void>();
+let activeSubscription: { unsubscribe: () => void } | null = null;
+let activeCapInterval: ReturnType<typeof setInterval> | null = null;
+let initialized = false;
+
+function setAuthState(next: AuthState) {
+  if (
+    currentState.user === next.user &&
+    currentState.session === next.session &&
+    currentState.loading === next.loading
+  ) {
+    return;
+  }
+  currentState = next;
+  for (const listener of listeners) {
+    listener();
   }
 }
 
-export function useAuth() {
-  const [state, dispatch] = useReducer(authReducer, { user: null, session: null, loading: true });
+function ensureAuthSubscription() {
+  if (initialized) return;
+  initialized = true;
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+  supabase.auth
+    .getSession()
+    .then(({ data: { session } }) => {
       if (session && (isExpired(session) || sessionCapExceeded())) {
         forceLogout();
-        dispatch({ type: "clear" });
+        setAuthState({ user: null, session: null, loading: false });
       } else {
         if (session) {
           markSessionStart();
@@ -197,51 +221,100 @@ export function useAuth() {
         } else {
           clearSessionLocalStorage();
         }
-        dispatch({ type: "set", session });
+        setAuthState({
+          user: session?.user ?? null,
+          session: session ?? null,
+          loading: false,
+        });
       }
+    })
+    .catch(() => {
+      setAuthState({ user: null, session: null, loading: false });
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        clearSessionLocalStorage();
-        dispatch({ type: "set", session: null });
-        return;
-      }
-      if (isExpired(session) || sessionCapExceeded()) {
-        forceLogout();
-        dispatch({ type: "clear" });
-        return;
-      }
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT" || !session) {
+      clearSessionLocalStorage();
+      setAuthState({ user: null, session: null, loading: false });
+      return;
+    }
+
+    // On a fresh sign-in (or user switch), reset the 10-hour session start clock
+    // so a stale timestamp from the previous day never kicks out a newly signed-in user.
+    const isNewSignIn =
+      event === "SIGNED_IN" &&
+      (!currentState.user || currentState.user.id !== session.user.id || sessionCapExceeded());
+
+    if (isNewSignIn) {
+      markSessionStart(true);
+    } else if (isExpired(session) || sessionCapExceeded()) {
+      forceLogout();
+      setAuthState({ user: null, session: null, loading: false });
+      return;
+    } else {
       markSessionStart();
-      dispatch({ type: "set", session });
+    }
+
+    setAuthState({
+      user: session.user ?? null,
+      session,
+      loading: false,
     });
+  });
 
-    // Periodic check so the cap also trips mid-session (or on laptop wake)
-    const capInterval = setInterval(() => {
-      if (sessionCapExceeded()) {
-        forceLogout();
-        dispatch({ type: "clear" });
-      } else {
-        maybeWarnSessionEnding();
-      }
-    }, 60_000);
+  activeSubscription = subscription;
 
-    return () => {
-      subscription.unsubscribe();
-      clearInterval(capInterval);
-    };
-  }, []);
-
-  const signOut = async () => {
-    await flushDirtyCountsBeforeSignOut();
-    clearSessionLocalStorage();
-    return supabase.auth.signOut();
-  };
-
-  const refreshSession = async (): Promise<boolean> => {
+  activeCapInterval = setInterval(() => {
     if (sessionCapExceeded()) {
       forceLogout();
-      dispatch({ type: "clear" });
+      setAuthState({ user: null, session: null, loading: false });
+    } else {
+      maybeWarnSessionEnding();
+    }
+  }, 60_000);
+}
+
+function subscribeAuth(listener: () => void) {
+  ensureAuthSubscription();
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      activeSubscription?.unsubscribe();
+      activeSubscription = null;
+      if (activeCapInterval !== null) {
+        clearInterval(activeCapInterval);
+        activeCapInterval = null;
+      }
+      initialized = false;
+    }
+  };
+}
+
+function getAuthSnapshot(): AuthState {
+  return currentState;
+}
+
+export function getCurrentAccessToken(): string | null {
+  return currentState.session?.access_token ?? null;
+}
+
+export function useAuth() {
+  const state = useSyncExternalStore(subscribeAuth, getAuthSnapshot, getAuthSnapshot);
+
+  const signOut = useCallback(async () => {
+    await flushDirtyCountsBeforeSignOut();
+    clearSessionLocalStorage();
+    setAuthState({ user: null, session: null, loading: false });
+    return supabase.auth.signOut();
+  }, []);
+
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    if (sessionCapExceeded()) {
+      forceLogout();
+      setAuthState({ user: null, session: null, loading: false });
       return false;
     }
     const { data, error } = await supabase.auth.refreshSession();
@@ -249,12 +322,22 @@ export function useAuth() {
       await flushDirtyCountsBeforeSignOut();
       clearSessionLocalStorage();
       await supabase.auth.signOut();
-      dispatch({ type: "clear" });
+      setAuthState({ user: null, session: null, loading: false });
       return false;
     }
-    dispatch({ type: "set", session: data.session });
+    setAuthState({
+      user: data.session.user ?? null,
+      session: data.session,
+      loading: false,
+    });
     return true;
-  };
+  }, []);
 
-  return { user: state.user, session: state.session, loading: state.loading, signOut, refreshSession };
+  return {
+    user: state.user,
+    session: state.session,
+    loading: state.loading,
+    signOut,
+    refreshSession,
+  };
 }

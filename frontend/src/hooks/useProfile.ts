@@ -13,19 +13,62 @@ export interface Profile {
   disabled_at?: string | null;
 }
 
+const PROFILE_CACHE_KEY = "basata_profile_cache";
+
+export function getCachedProfile(userId?: string): Profile | undefined {
+  if (!userId) return undefined;
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return undefined;
+    const map = JSON.parse(raw) as Record<string, Profile>;
+    const cached = map?.[userId];
+    if (cached && cached.id === userId) {
+      return cached;
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return undefined;
+}
+
+export function setCachedProfile(profile: Profile | null, userId?: string): void {
+  const id = profile?.id ?? userId;
+  if (!id) return;
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    const map: Record<string, Profile> = raw ? JSON.parse(raw) : {};
+    if (profile) {
+      map[id] = profile;
+    } else {
+      delete map[id];
+    }
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage quota/access errors
+  }
+}
+
 export function useProfile() {
   const { user } = useAuth();
+  const userId = user?.id;
   return useQuery<Profile | null>({
-    queryKey: ["profile", user?.id],
-    enabled: !!user?.id,
+    queryKey: ["profile", userId],
+    enabled: !!userId,
+    initialData: () => getCachedProfile(userId),
+    // Mark seeded cache as stale (0) so Admin/Team UI renders in 0ms while
+    // React Query immediately revalidates role & is_disabled in the background.
+    initialDataUpdatedAt: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user!.id)
+        .eq("id", userId!)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (data) {
+        setCachedProfile(data as Profile, userId);
+      }
+      return data as Profile | null;
     },
   });
 }

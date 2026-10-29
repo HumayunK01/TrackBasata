@@ -1,21 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-// Current Supabase access token, kept fresh via onAuthStateChange.
+// Current Supabase access token, kept fresh via the shared useAuth store.
 export function useAccessToken(): string | null {
-  const [token, setToken] = useState<string | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setToken(data.session?.access_token ?? null);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setToken(session?.access_token ?? null);
-    });
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
-  return token;
+  const { session } = useAuth();
+  return session?.access_token ?? null;
 }
