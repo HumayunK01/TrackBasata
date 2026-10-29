@@ -1,4 +1,5 @@
 import { AppLogo } from "@/components/ar/AppLogo";
+import { APP_VERSION } from "@/lib/version";
 
 interface AboutCardProps {
   categoriesCount: number;
@@ -14,7 +15,7 @@ export function AboutCard({ categoriesCount, logsCount }: AboutCardProps) {
         <div className="space-y-2 bg-muted/20 border border-border/40 rounded-md p-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-foreground font-medium">Version</span>
-            <span className="font-mono bg-background/80 border border-border/60 text-foreground/95 px-2 py-0.5 rounded text-xs">1.2.0</span>
+            <span className="font-mono bg-background/80 border border-border/60 text-foreground/95 px-2 py-0.5 rounded text-xs">{APP_VERSION}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-foreground font-medium">Categories</span>

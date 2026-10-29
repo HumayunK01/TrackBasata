@@ -34,6 +34,76 @@ export function copyFax(f: Facility): Promise<void> {
     });
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Copies one or more facilities in table format:
+ * Columns: Facility Name | Address | Fax Number
+ * Writes both HTML table (for Word/Docs/Email/Teams) and TSV plain text (for Excel/Sheets/Plain text).
+ */
+export async function copyFacilitiesTable(rows: Facility[]): Promise<void> {
+  if (rows.length === 0) return;
+
+  const plainRows = rows.map((f) => {
+    const name = f.name.trim();
+    const address = (f.address ?? "").trim().replace(/[\r\n\t]+/g, " ") || "—";
+    const fax = formatFax(f.fax_number);
+    return `${name}\t${address}\t${fax}`;
+  });
+  const plainText = `Facility Name\tAddress\tFax Number\n${plainRows.join("\n")}`;
+
+  const htmlBody = rows
+    .map((f) => {
+      const name = f.name.trim();
+      const address = (f.address ?? "").trim() || "—";
+      const fax = formatFax(f.fax_number);
+      return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(address)}</td><td>${escapeHtml(fax)}</td></tr>`;
+    })
+    .join("");
+
+  const htmlTable = `<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px;"><thead><tr style="background:#f3f4f6;font-weight:600;text-align:left;"><th>Facility Name</th><th>Address</th><th>Fax Number</th></tr></thead><tbody>${htmlBody}</tbody></table>`;
+
+  const writeSuccessToast = () => {
+    if (rows.length === 1) {
+      toast.success(`Copied ${rows[0].name.trim()}`);
+    } else {
+      toast.success(`Copied ${rows.length} facilities`);
+    }
+  };
+
+  try {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": new Blob([plainText], { type: "text/plain" }),
+          "text/html": new Blob([htmlTable], { type: "text/html" }),
+        }),
+      ]);
+    } else {
+      await navigator.clipboard.writeText(plainText);
+    }
+    writeSuccessToast();
+  } catch {
+    try {
+      await navigator.clipboard.writeText(plainText);
+      writeSuccessToast();
+    } catch {
+      toast.error("Couldn't copy facility details");
+    }
+  }
+}
+
+export async function copyFacilityTable(f: Facility): Promise<void> {
+  return copyFacilitiesTable([f]);
+}
+
 export function logoSrc(url: string): string {
   return window.location.protocol === "https:" ? `/api/logo?url=${encodeURIComponent(url)}` : url;
 }
@@ -305,4 +375,151 @@ export function filterAndRankFacilities(
     })
     .map((s) => s.facility);
 }
+
+// ── Facilities Directory Export (CSV & PDF) ─────────────────────────────────
+
+export function facilitiesToCSV(rows: Facility[]): string {
+  const escape = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = ["Facility Name", "Fax Number", "Status", "Physical Address"].map(escape).join(",");
+  const body = rows
+    .map((f) =>
+      [
+        f.name,
+        formatFax(f.fax_number),
+        f.verified ? "Verified" : "Standard",
+        f.address ?? "",
+      ]
+        .map(escape)
+        .join(","),
+    )
+    .join("\n");
+  return `${header}\n${body}`;
+}
+
+export function downloadFacilitiesCSV(rows: Facility[], filename = "facilities-directory") {
+  const blob = new Blob([facilitiesToCSV(rows)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Exported ${rows.length} ${rows.length === 1 ? "facility" : "facilities"} to CSV`);
+}
+
+export async function downloadFacilitiesPDF(
+  rows: Facility[],
+  filename = "facilities-directory",
+  title = "Facilities Directory",
+) {
+  const [{ default: JsPdf }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const doc = new JsPdf({ orientation: "landscape", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+
+  try {
+    const img = new Image();
+    img.src = "/lightlogo.png";
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext("2d")!.drawImage(img, 0, 0);
+    const logoH = 28;
+    const logoW = (img.naturalWidth / img.naturalHeight) * logoH;
+    doc.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      pageWidth - margin - logoW,
+      24,
+      logoW,
+      logoH,
+    );
+  } catch {
+    // logo unavailable — skip it
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(30);
+  doc.text(title, margin, 44);
+
+  let y = 60;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(110);
+  doc.text(
+    `Exported ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+    pageWidth - margin,
+    y,
+    { align: "right" },
+  );
+  y += 20;
+
+  const verifiedTotal = rows.filter((r) => r.verified).length;
+  const standardTotal = rows.length - verifiedTotal;
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  doc.text(
+    `${rows.length} facilities (${verifiedTotal} Verified, ${standardTotal} Standard)`,
+    margin,
+    y,
+  );
+  y += 16;
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [["Facility Name", "Fax Number", "Status", "Physical Address"]],
+    body: rows.map((f) => [
+      f.name,
+      formatFax(f.fax_number),
+      f.verified ? "Verified" : "Standard",
+      f.address ?? "—",
+    ]),
+    theme: "grid",
+    styles: {
+      font: "helvetica",
+      fontSize: 8.5,
+      cellPadding: 5,
+      textColor: 40,
+      lineColor: [220, 220, 225],
+      lineWidth: 0.5,
+      overflow: "linebreak",
+    },
+    headStyles: {
+      fillColor: [37, 42, 60],
+      textColor: 255,
+      fontStyle: "bold",
+      halign: "left",
+    },
+    columnStyles: {
+      0: { cellWidth: 180, fontStyle: "bold" },
+      1: { cellWidth: 120 },
+      2: { cellWidth: 90 },
+      3: { cellWidth: "auto" },
+    },
+    didDrawPage: () => {
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${doc.getCurrentPageInfo().pageNumber}`,
+        pageWidth - margin,
+        pageHeight - 20,
+        { align: "right" },
+      );
+    },
+  });
+
+  doc.save(`${filename}.pdf`);
+  toast.success(`Exported ${rows.length} ${rows.length === 1 ? "facility" : "facilities"} to PDF`);
+}
+
 

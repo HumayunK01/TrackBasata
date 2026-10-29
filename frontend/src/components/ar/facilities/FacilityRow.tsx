@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Copy, MoreVertical, Pencil, Trash2, Send } from "@/components/ui/icons";
+import {
+  Building2,
+  Check,
+  CheckCheck,
+  Copy,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Send,
+} from "@/components/ui/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,8 +20,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuthenticatedImage } from "@/hooks/useAuthenticatedImage";
 import type { Facility, useUpsertFacility, useDeleteFacility } from "@/hooks/useFacilities";
-import { formatFax, copyFax, logoSrc } from "./facility-utils";
+import { formatFax, copyFax, copyFacilityTable, logoSrc } from "./facility-utils";
 import { HighlightText } from "@/components/ar/HighlightText";
+import { cn } from "@/lib/utils";
 
 interface FacilityRowProps {
   f: Facility;
@@ -23,6 +33,10 @@ interface FacilityRowProps {
   upsert: ReturnType<typeof useUpsertFacility>;
   deleteFacility: ReturnType<typeof useDeleteFacility>;
   searchQuery?: string;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  onStartSelect?: (id: string) => void;
 }
 
 function RowLogo({ f }: { f: Facility }) {
@@ -31,23 +45,32 @@ function RowLogo({ f }: { f: Facility }) {
   const { src, error } = useAuthenticatedImage(proxyUrl);
 
   if (imgError || error || !src || !f.logo_url) {
+    const initials = f.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("");
+
     return (
-      <div className="size-10 rounded-lg bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 flex items-center justify-center shrink-0 select-none">
-        <span className="text-sm font-bold text-primary">
-          {f.name[0]?.toUpperCase() ?? "F"}
+      <div className="w-20 sm:w-24 h-11 rounded-xl bg-gradient-to-br from-primary/15 via-primary/5 to-muted/40 border border-border/60 flex items-center justify-center shrink-0 select-none relative overflow-hidden">
+        <Building2 className="absolute -right-2 -bottom-2 size-10 text-primary/10 -rotate-12 pointer-events-none" />
+        <span className="text-xs font-extrabold text-primary tracking-wider">
+          {initials || "FC"}
         </span>
       </div>
     );
   }
 
   return (
-    <div className="size-10 rounded-lg overflow-hidden border border-border/80 bg-muted/20 shrink-0 flex items-center justify-center">
+    <div className="w-20 sm:w-24 h-11 relative rounded-xl overflow-hidden bg-muted/30 shrink-0 flex items-center justify-center">
       <img
         src={src}
         alt={`${f.name} logo`}
-        className="size-full object-cover object-center"
+        className="size-full object-cover object-center brightness-[0.88] dark:brightness-[0.78] contrast-[0.96] group-hover:brightness-95 dark:group-hover:brightness-[0.88] transition-all duration-200 ease-out group-hover:scale-[1.03]"
         onError={() => setImgError(true)}
       />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/10 to-black/10 dark:from-black/30 dark:via-black/15 dark:to-black/15 pointer-events-none rounded-xl ring-1 ring-inset ring-black/10 dark:ring-white/5" />
     </div>
   );
 }
@@ -61,6 +84,10 @@ export function FacilityRow({
   upsert,
   deleteFacility,
   searchQuery,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelect,
+  onStartSelect,
 }: FacilityRowProps) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number>(0);
@@ -77,61 +104,140 @@ export function FacilityRow({
   return (
     <div
       role="listitem"
-      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-border/80 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5"
+      onClick={
+        selectionMode && onToggleSelect
+          ? () => onToggleSelect(f.id)
+          : undefined
+      }
+      className={cn(
+        "group relative isolate z-0 grid grid-cols-1 lg:grid-cols-[minmax(240px,1.15fr)_minmax(260px,1.65fr)_auto] items-center gap-3 lg:gap-5 rounded-2xl border px-3.5 py-2.5 transition-[transform,border-color,box-shadow,background-color] duration-200 ease-out",
+        selectionMode && "cursor-pointer select-none",
+        isSelected
+          ? "border-primary/70 ring-1 ring-primary/40 bg-primary/[0.04] shadow-md shadow-primary/10"
+          : "border-border/80 bg-card/95 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5",
+      )}
     >
-      {/* Left section: Logo & Identity */}
-      <div className="flex items-center gap-3 min-w-0 flex-1">
+      {/* ── Column 1: Selection Checkbox, Landscape Logo & Clinic Identity ── */}
+      <div className="flex items-center gap-3 min-w-0">
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect?.(f.id);
+            }}
+            aria-label={isSelected ? `Deselect ${f.name}` : `Select ${f.name}`}
+            className={cn(
+              "flex size-5 items-center justify-center rounded-md border shrink-0 transition-all cursor-pointer",
+              isSelected
+                ? "bg-primary border-primary text-primary-foreground"
+                : "bg-background border-border/80 text-transparent hover:border-primary/60",
+            )}
+          >
+            <Check className="size-3" strokeWidth={3} />
+          </button>
+        )}
+
         <RowLogo f={f} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-bold text-foreground tracking-tight truncate">
+            <h3
+              className="text-sm sm:text-[15px] font-bold text-foreground tracking-tight leading-snug truncate"
+              title={f.name}
+            >
               <HighlightText text={f.name} query={searchQuery} />
             </h3>
             {f.verified ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/25 shrink-0">
                 <Check className="size-2.5" strokeWidth={3} />
                 Verified
               </span>
             ) : (
-              <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground/70 bg-muted/50 px-1.5 py-0.5 rounded-full border border-border/40">
+              <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full border border-border/60 shrink-0">
                 Standard
               </span>
             )}
           </div>
-          {f.address ? (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
-              <HighlightText text={f.address} query={searchQuery} />
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground/50 italic mt-0.5">
-              No street address
-            </p>
-          )}
+
+          {/* Mobile/Tablet inline address fallback (< lg) */}
+          <div className="lg:hidden">
+            {f.address ? (
+              <p className="text-xs text-muted-foreground leading-snug break-words">
+                <HighlightText text={f.address} query={searchQuery} />
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground/50 italic leading-snug">
+                No street address listed
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Right section: Fax Chip & Admin Dropdown */}
-      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
-        <div className="flex items-center gap-2 rounded-lg bg-muted/30 border border-border/50 px-2.5 py-1.5">
-          <Send className="size-3 text-muted-foreground shrink-0" />
-          <span className="text-xs font-mono font-semibold text-foreground tabular-nums tracking-tight">
-            <HighlightText text={formatFax(f.fax_number)} query={searchQuery} />
+      {/* ── Column 2: Aligned Location / Address Column (Desktop lg+) ── */}
+      <div className="hidden lg:flex items-center gap-2.5 min-w-0 pl-4 border-l border-border/50">
+        <Building2 className="size-3.5 text-muted-foreground/60 shrink-0" />
+        {f.address ? (
+          <p className="text-xs text-muted-foreground leading-snug break-words">
+            <HighlightText text={f.address} query={searchQuery} />
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground/45 italic leading-snug">
+            No street address listed
+          </p>
+        )}
+      </div>
+
+      {/* ── Column 3: Unified Fax Strip & Actions ── */}
+      <div
+        className="flex items-center justify-between lg:justify-end gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={handleCopy}
+          title="Click to copy fax number"
+          className={cn(
+            "group/fax flex items-stretch rounded-lg border overflow-hidden transition-all duration-150 cursor-pointer select-none active:scale-[0.99]",
+            copied
+              ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-600 dark:text-emerald-400"
+              : "bg-muted/30 hover:bg-muted/50 border-border/60 hover:border-primary/35",
+          )}
+        >
+          <span className="flex items-center gap-2 px-2.5 py-1.5">
+            <Send
+              className={cn(
+                "size-3 shrink-0 transition-colors",
+                copied
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-muted-foreground group-hover/fax:text-primary",
+              )}
+            />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/80 shrink-0">
+              Fax
+            </span>
+            <span className="text-border select-none shrink-0">•</span>
+            <span className="text-xs sm:text-[13px] font-mono font-semibold text-foreground tabular-nums tracking-tight">
+              <HighlightText text={formatFax(f.fax_number)} query={searchQuery} />
+            </span>
           </span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            title="Copy fax number"
-            className="ml-1 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-background hover:bg-muted text-foreground border border-border/60 transition-all cursor-pointer hover:border-primary/40 active:scale-95 shadow-2xs"
+          <span
+            className={cn(
+              "flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-medium border-l transition-colors min-w-[66px]",
+              copied
+                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "border-border/60 text-muted-foreground group-hover/fax:text-foreground group-hover/fax:bg-muted/60",
+            )}
           >
             <AnimatePresence mode="wait" initial={false}>
               {copied ? (
                 <motion.span
                   key="copied"
-                  initial={{ scale: 0.5, opacity: 0 }}
+                  initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
                   transition={{ duration: 0.12 }}
-                  className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold"
+                  className="flex items-center gap-1 font-semibold"
                 >
                   <Check className="size-3" strokeWidth={3} />
                   <span>Copied</span>
@@ -139,54 +245,101 @@ export function FacilityRow({
               ) : (
                 <motion.span
                   key="copy"
-                  initial={{ scale: 0.5, opacity: 0 }}
+                  initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
                   transition={{ duration: 0.12 }}
-                  className="flex items-center gap-1 text-muted-foreground"
+                  className="flex items-center gap-1"
                 >
                   <Copy className="size-3" />
                   <span>Copy</span>
                 </motion.span>
               )}
             </AnimatePresence>
-          </button>
-        </div>
+          </span>
+        </button>
 
-        {isAdmin && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg cursor-pointer"
-                aria-label={`Actions for ${f.name}`}
-              >
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-lg cursor-pointer transition-colors"
+              aria-label={`Actions for ${f.name}`}
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={6}
+            className="w-48 rounded-xl border border-border/80 dark:border-white/10 bg-popover/95 backdrop-blur-xl p-1.5 shadow-xl shadow-black/25"
+          >
+            <DropdownMenuItem
+              onClick={() => void copyFacilityTable(f)}
+              className="group/copy rounded-lg px-2 py-1.5 text-xs font-medium text-foreground/90 focus:text-foreground focus:bg-muted/80 dark:focus:bg-white/[0.07] gap-2.5 cursor-pointer transition-colors"
+            >
+              <span className="flex size-6 items-center justify-center rounded-md bg-muted/70 dark:bg-white/[0.06] border border-border/60 dark:border-white/10 text-muted-foreground group-focus/copy:text-foreground transition-colors shrink-0">
+                <Copy className="size-3" />
+              </span>
+              <span>Copy Facility</span>
+            </DropdownMenuItem>
+
+            {onStartSelect && (
               <DropdownMenuItem
                 onClick={() => {
-                  setEditing(f);
-                  setDialogOpen(true);
+                  if (selectionMode) {
+                    onToggleSelect?.(f.id);
+                  } else {
+                    onStartSelect(f.id);
+                  }
                 }}
-                disabled={upsert.isPending}
-                className="cursor-pointer"
+                className="group/sel rounded-lg px-2 py-1.5 text-xs font-medium text-foreground/90 focus:text-foreground focus:bg-muted/80 dark:focus:bg-white/[0.07] gap-2.5 cursor-pointer transition-colors"
               >
-                <Pencil className="size-4 mr-2" /> Edit
+                <span className="flex size-6 items-center justify-center rounded-md bg-muted/70 dark:bg-white/[0.06] border border-border/60 dark:border-white/10 text-muted-foreground group-focus/sel:text-foreground transition-colors shrink-0">
+                  <CheckCheck className="size-3.5" />
+                </span>
+                <span>
+                  {selectionMode
+                    ? isSelected
+                      ? "Deselect Facility"
+                      : "Select Facility"
+                    : "Select Multiple"}
+                </span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setDeleteTarget(f)}
-                disabled={deleteFacility.isPending}
-                className="text-destructive focus:text-destructive cursor-pointer"
-              >
-                <Trash2 className="size-4 mr-2" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+            )}
+
+            {isAdmin && (
+              <>
+                <DropdownMenuSeparator className="my-1 mx-1 bg-border/50" />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditing(f);
+                    setDialogOpen(true);
+                  }}
+                  disabled={upsert.isPending}
+                  className="group/edit rounded-lg px-2 py-1.5 text-xs font-medium text-foreground/90 focus:text-foreground focus:bg-muted/80 dark:focus:bg-white/[0.07] gap-2.5 cursor-pointer transition-colors"
+                >
+                  <span className="flex size-6 items-center justify-center rounded-md bg-muted/70 dark:bg-white/[0.06] border border-border/60 dark:border-white/10 text-muted-foreground group-focus/edit:text-foreground transition-colors shrink-0">
+                    <Pencil className="size-3" />
+                  </span>
+                  <span>Edit Facility</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 mx-1 bg-border/50" />
+                <DropdownMenuItem
+                  onClick={() => setDeleteTarget(f)}
+                  disabled={deleteFacility.isPending}
+                  className="group/del rounded-lg px-2 py-1.5 text-xs font-medium text-destructive focus:text-destructive focus:bg-destructive/10 dark:focus:bg-destructive/15 gap-2.5 cursor-pointer transition-colors"
+                >
+                  <span className="flex size-6 items-center justify-center rounded-md bg-destructive/10 border border-destructive/20 text-destructive group-focus/del:bg-destructive/20 transition-colors shrink-0">
+                    <Trash2 className="size-3" />
+                  </span>
+                  <span>Delete Facility</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

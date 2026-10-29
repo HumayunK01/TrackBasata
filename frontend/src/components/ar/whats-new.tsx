@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { Bell, Sparkles, Clock } from "@/components/ui/icons";
 import { ChevronDown } from "lucide-react";
@@ -24,6 +24,40 @@ export interface WhatsNewEntry {
 
 // ── Entries (newest first) ────────────────────────────────────────────────
 export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
+  {
+    id: "version-3-0-1-mini",
+    date: "2026-10-30",
+    title: "Facilities Directory Upgrade",
+    description:
+      "Cleaner clinic cards and list view, easy table copying, and spreadsheet or PDF downloads.",
+    body: [
+      (
+        <>
+          <strong className="text-foreground font-semibold">Clearer Cards &amp; List View:</strong> Clinic logos, full street addresses, Verified badges, and fax numbers sit in their own clean sections so nothing overlaps or gets cut off.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">One-Click Fax Copy:</strong> Click anywhere on a clinic&apos;s fax bar to copy its fax number right away.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Copy Clinic Details as a Table:</strong> Open the three-dot menu on any clinic and click <em>Copy Facility</em> to paste its name, address, and fax number into Excel, Google Sheets, Word, or an email as a ready-to-use table.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Select Multiple to Copy or Export:</strong> Click <em>Select</em> at the top (or <em>Select Multiple</em> in a clinic&apos;s menu) to pick several facilities at once, then copy them all together as one table or download them as a CSV spreadsheet or PDF list.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Pinned Search &amp; Filters:</strong> The search bar and filter tabs stay at the top of the screen while you scroll, and switching between All, Verified, and Standard clinics is smoother.
+        </>
+      ),
+    ],
+  },
   {
     id: "version-3-0-0-major",
     date: "2026-10-11",
@@ -214,24 +248,6 @@ export function groupEntriesByDate(entries: WhatsNewEntry[]): [string, WhatsNewE
   return [...groups.entries()];
 }
 
-const AUTO_OPEN_KEY = "whats_new_auto_opened";
-
-function readAutoOpened(): string {
-  try {
-    return localStorage.getItem(AUTO_OPEN_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeAutoOpened(id: string) {
-  try {
-    localStorage.setItem(AUTO_OPEN_KEY, id);
-  } catch {
-    // storage blocked: harmless
-  }
-}
-
 function longDate(iso: string): string {
   return format(new Date(`${iso}T12:00:00Z`), "d MMMM yyyy").toUpperCase();
 }
@@ -337,22 +353,18 @@ function EntryCard({
 export function WhatsNewButton({ className }: { className?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(WHATS_NEW_ENTRIES[0].id);
-  const { data: reads = [], isSuccess: readsLoaded } = useWhatsNewReads();
+  const { data: reads = [] } = useWhatsNewReads();
   const markRead = useMarkWhatsNewRead();
 
   const unread = unreadIds(WHATS_NEW_ENTRIES, reads);
   const hasNew = unread.length > 0 && !open;
 
-  // Auto-open once: only when there is something unread and this device has
-  // not auto-opened for the newest entry yet.
-  useEffect(() => {
-    if (!readsLoaded || unread.length === 0) return;
-    const newest = WHATS_NEW_ENTRIES[0].id;
-    if (readAutoOpened() === newest) return;
-    setOpen(true);
-    writeAutoOpened(newest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readsLoaded, reads]);
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && expandedId && !reads.includes(expandedId)) {
+      markRead.mutate(expandedId);
+    }
+    setOpen(nextOpen);
+  };
 
   const toggleEntry = (id: string) => {
     setExpandedId((current) => (current === id ? null : id));
@@ -368,7 +380,7 @@ export function WhatsNewButton({ className }: { className?: string } = {}) {
           "relative h-7 w-7 text-foreground/85 hover:text-foreground hover:bg-background/80 dark:hover:bg-white/10 rounded-md transition-colors [&_svg]:!size-[18px]",
           className
         )}
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
         title="What's new"
         aria-label="What's new"
       >
@@ -378,7 +390,7 @@ export function WhatsNewButton({ className }: { className?: string } = {}) {
         )}
       </Button>
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="right"
           className="p-0 gap-0 flex flex-col w-full sm:max-w-[420px] bg-card/95 backdrop-blur-2xl border-l border-border/70 shadow-2xl"

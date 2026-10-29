@@ -115,11 +115,13 @@ export function useLenis(options?: UseLenisOptions) {
       const target: EventTarget = isWindow ? window : scrollContainer!;
       target.addEventListener("scroll", handleNativeScroll, { passive: true });
 
-      // Observe content to trigger recalculations whenever content updates
-      const resizeObserver = new ResizeObserver(() => {
-        lenisInstance.resize();
-      });
+      // Update dimensions without calling lenisInstance.resize() (which resets
+      // targetScroll = actualScroll and cancels in-flight smooth wheel momentum).
+      const refreshDimensions = () => {
+        lenisInstance.dimensions?.resize();
+      };
 
+      const resizeObserver = new ResizeObserver(refreshDimensions);
       let mutationObserver: MutationObserver | null = null;
 
       if (isWindow) {
@@ -132,7 +134,7 @@ export function useLenis(options?: UseLenisOptions) {
           Array.from(scrollContainer!.children).forEach((child) => {
             resizeObserver.observe(child);
           });
-          lenisInstance.resize();
+          refreshDimensions();
         });
         mutationObserver.observe(scrollContainer!, { childList: true, subtree: true });
       }
@@ -152,14 +154,19 @@ export function useLenis(options?: UseLenisOptions) {
 
     if (containerRef && targetSelector) {
       const parent = containerRef.current;
-      const found = parent?.querySelector(targetSelector) as HTMLElement | null;
-      if (found) {
-        cleanupCurrent = setupOnContainer(found);
-      } else if (parent) {
+      if (parent) {
+        let activeTarget = parent.querySelector(targetSelector) as HTMLElement | null;
+        if (activeTarget) {
+          cleanupCurrent = setupOnContainer(activeTarget);
+        }
+        // Keep observing so if the target <main> is replaced (e.g. after Suspense,
+        // loading state transitions, or Vite HMR), Lenis automatically rebinds.
         const mountObserver = new MutationObserver(() => {
+          if (isCancelled) return;
           const el = parent.querySelector(targetSelector) as HTMLElement | null;
-          if (el && !isCancelled) {
-            mountObserver.disconnect();
+          if (el && el !== activeTarget) {
+            if (cleanupCurrent) cleanupCurrent();
+            activeTarget = el;
             cleanupCurrent = setupOnContainer(el);
           }
         });
