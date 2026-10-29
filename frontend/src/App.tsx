@@ -28,6 +28,7 @@ import {
   NotFound,
 } from "@/lib/routePreload";
 import { initQueryPersistence } from "@/lib/queryPersister";
+import { initAutoUpdater } from "@/lib/autoUpdate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +52,7 @@ const queryClient = new QueryClient({
 });
 
 initQueryPersistence(queryClient);
+initAutoUpdater();
 
 
 const TITLES: Record<string, string> = {
