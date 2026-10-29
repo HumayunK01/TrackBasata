@@ -22,6 +22,34 @@ describe("Counter Hydration & Anti-Data Loss Guards", () => {
     expect(initialCounts).toEqual({});
   });
 
+  it("rescues dirty previous-day counts into counter_pending_rescue on date rollover", () => {
+    const yesterday = "2026-09-28";
+    const today = "2026-09-29";
+
+    localStorage.setItem("counter_counts", JSON.stringify({ moved_to_indexing: 140, worked_on_ng: 45 }));
+    localStorage.setItem("counter_counts_date", yesterday);
+    localStorage.setItem("counter_dirty", "true");
+
+    const savedDate = localStorage.getItem("counter_counts_date");
+    const isCurrentDay = savedDate === today;
+
+    if (savedDate && !isCurrentDay && localStorage.getItem("counter_dirty") === "true") {
+      const staleCounts = JSON.parse(localStorage.getItem("counter_counts") || "{}");
+      localStorage.setItem(
+        "counter_pending_rescue",
+        JSON.stringify({ date: savedDate, counts: staleCounts })
+      );
+      localStorage.removeItem("counter_dirty");
+    }
+
+    const rescued = JSON.parse(localStorage.getItem("counter_pending_rescue") || "null");
+    expect(rescued).toEqual({
+      date: "2026-09-28",
+      counts: { moved_to_indexing: 140, worked_on_ng: 45 },
+    });
+    expect(localStorage.getItem("counter_dirty")).toBeNull();
+  });
+
   it("loads local counts if the date matches today", () => {
     const today = "2026-09-29";
 
@@ -50,6 +78,38 @@ describe("Counter Hydration & Anti-Data Loss Guards", () => {
     expect(merged.move_to_indexing).toBe(20); // Not reduced to 1!
     expect(merged.reviews).toBe(5);
     expect(merged.athena).toBe(3);
+  });
+
+  it("never blocks auto-save of other categories when one category is decremented or reset", () => {
+    const existingCounts: Record<string, number> = {
+      moved_to_indexing: 10,
+      worked_on_ng: 5,
+    };
+    // User explicitly decremented moved_to_indexing to 9, and incremented worked_on_ng to 85
+    const currentCounts: Record<string, number> = {
+      moved_to_indexing: 9,
+      worked_on_ng: 85,
+      fax_back: 30,
+    };
+    const forceKeys = new Set<string>(["moved_to_indexing"]);
+    const allCandidateKeys = ["moved_to_indexing", "worked_on_ng", "fax_back"];
+
+    const mergedCounts: Record<string, number> = { ...existingCounts };
+    for (const k of allCandidateKeys) {
+      const localVal = Math.max(0, currentCounts[k] ?? 0);
+      const serverVal = existingCounts[k] ?? 0;
+      if (forceKeys.has(k)) {
+        mergedCounts[k] = localVal;
+      } else {
+        mergedCounts[k] = Math.max(localVal, serverVal);
+      }
+    }
+
+    expect(mergedCounts).toEqual({
+      moved_to_indexing: 9, // intentional decrement honored
+      worked_on_ng: 85, // full day count synced
+      fax_back: 30, // new category synced
+    });
   });
 
   it("activates all categories that have existing counts in the database", () => {

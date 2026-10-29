@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useCategories, type Category } from "@/hooks/useCategories";
 import { useUpsertLog, useDailyLogs } from "@/hooks/useDailyLogs";
-import { isoDate, totalForLog, isWeekend } from "@/types/log";
+import { isoDate, totalForLog, isWeekend, type DailyLog } from "@/types/log";
 import { EmptyState } from "@/components/ar/industrial";
 import { RotateCcw, Hash, Plus, Tag, ChevronRight, RefreshCw, AlertTriangle } from "@/components/ui/icons";
 import { supabase, getUserId } from "@/integrations/supabase/client";
@@ -33,6 +33,8 @@ import { NewCategoryDialog } from "@/components/ar/counter/NewCategoryDialog";
 const COUNTS_KEY = "counter_counts";
 const SELECTED_KEY = "counter_selected_keys";
 const COUNTS_DATE_KEY = "counter_counts_date";
+const COUNTS_DIRTY_KEY = "counter_dirty";
+const PENDING_RESCUE_KEY = "counter_pending_rescue";
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -63,7 +65,10 @@ function counterReducer(s: CounterState, a: CounterAction): CounterState {
     case "set_count":
       return { ...s, counts: { ...s.counts, [a.key]: Math.max(0, a.val) } };
     case "add_key":
-      return { ...s, selectedKeys: [...s.selectedKeys, a.key] };
+      return {
+        ...s,
+        selectedKeys: s.selectedKeys.includes(a.key) ? s.selectedKeys : [...s.selectedKeys, a.key],
+      };
     case "remove_key":
       return { ...s, selectedKeys: s.selectedKeys.filter((k) => k !== a.key) };
     case "set_saved":
@@ -86,12 +91,18 @@ interface KudosItem {
 
 export default function CounterPage() {
   const { data: categories = [], isLoading: catsLoading } = useCategories();
-  const { data: logs = [], isLoading: logsLoading, isFetched: logsFetched } = useDailyLogs();
+  const {
+    data: logs = [],
+    isLoading: logsLoading,
+    isFetched: logsFetched,
+    isFetchedAfterMount: logsFetchedAfterMount,
+    isError: logsError,
+  } = useDailyLogs();
   const upsert = useUpsertLog();
   const { user } = useAuth();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const qc = useQueryClient();
-  const { checkLimit: checkSilentLimit } = useMutationRateLimit({ maxRequests: 20, windowMs: 60_000 });
+  const { checkLimit: checkSilentLimit } = useMutationRateLimit({ maxRequests: 120, windowMs: 60_000 });
 
   const todayIso = isoDate();
   const todayLog = logs.find((l) => l.log_date === todayIso);
@@ -100,23 +111,53 @@ export default function CounterPage() {
   const [{ counts, selectedKeys, saved }, cDispatch] = useReducer(counterReducer, undefined, () => {
     const savedDate = localStorage.getItem(COUNTS_DATE_KEY);
     const isCurrentDay = savedDate === todayIso;
+
+    // If the date rolled over while previous counts were still marked dirty,
+    // stage them into counter_pending_rescue BEFORE resetting for the new day.
+    if (savedDate && !isCurrentDay && localStorage.getItem(COUNTS_DIRTY_KEY) === "true") {
+      const staleCounts = load<Record<string, number>>(COUNTS_KEY, {});
+      const staleTotal = Object.values(staleCounts).reduce((s, v) => s + (v || 0), 0);
+      if (staleTotal > 0) {
+        try {
+          localStorage.setItem(
+            PENDING_RESCUE_KEY,
+            JSON.stringify({ date: savedDate, counts: staleCounts })
+          );
+        } catch {
+          // Ignore storage quota errors
+        }
+      }
+      try {
+        localStorage.removeItem(COUNTS_DIRTY_KEY);
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
     return {
       counts: isCurrentDay ? load<Record<string, number>>(COUNTS_KEY, {}) : {},
       selectedKeys: load<string[]>(SELECTED_KEY, []),
       saved: false,
     };
   });
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [overwriteOpen, setOverwriteOpen] = useState(false);
   const [reducedList, setReducedList] = useState<{ label: string; from: number; to: number }[] | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Cross-device persistence. Saving is manual (Save button) into today's
-  // daily_logs row; on first load the counter hydrates from the server so a
-  // device that wasn't the last writer continues where the others left off.
+  // Cross-device persistence & anti-data-loss tracking
   const hydratedRef = useRef(false);
+  const freshNetworkHydratedRef = useRef(false);
   const skipUnsavedMarkRef = useRef(false);
+  // Keys the user explicitly decremented via '-' in this session (intentional reductions)
+  const forceKeysRef = useRef<Set<string>>(new Set());
+  // In-flight save serialization so concurrent taps never drop or falsely mark saved
+  const isSavingRef = useRef(false);
+  const queuedSaveRef = useRef(false);
+  const activeDateRef = useRef(todayIso);
 
   const [kudosItems, setKudosItems] = useState<KudosItem[]>([]);
   const [announcement, setAnnouncement] = useState("");
@@ -163,13 +204,94 @@ export default function CounterPage() {
     };
   }, [user, triggerKudos]);
 
+  // Flush any rescued counts from a previous date rollover or forced 10-hour session logout
   useEffect(() => {
-    localStorage.setItem(COUNTS_KEY, JSON.stringify(counts));
-    localStorage.setItem(COUNTS_DATE_KEY, todayIso);
+    if (!user?.id) return;
+    const rawRescue = localStorage.getItem(PENDING_RESCUE_KEY);
+    if (!rawRescue) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const parsed = JSON.parse(rawRescue) as { date?: string; counts?: Record<string, number> };
+        if (!parsed?.date || !parsed?.counts) {
+          localStorage.removeItem(PENDING_RESCUE_KEY);
+          return;
+        }
+        const rescueTotal = Object.values(parsed.counts).reduce((s, v) => s + (v || 0), 0);
+        if (rescueTotal <= 0) {
+          localStorage.removeItem(PENDING_RESCUE_KEY);
+          return;
+        }
+
+        const { error: rpcError } = await supabase.rpc("sync_daily_log_counts", {
+          p_user_id: user.id,
+          p_log_date: parsed.date,
+          p_counts: parsed.counts,
+          p_force_keys: [],
+          p_is_off_day: isWeekend(parsed.date),
+          p_notes: null,
+        });
+
+        if (rpcError) {
+          const { data: existing } = await supabase
+            .from("daily_logs")
+            .select("counts, is_off_day, notes")
+            .eq("user_id", user.id)
+            .eq("log_date", parsed.date)
+            .maybeSingle();
+
+          const merged: Record<string, number> = {
+            ...((existing?.counts as Record<string, number>) ?? {}),
+          };
+          for (const [k, v] of Object.entries(parsed.counts)) {
+            merged[k] = Math.max(v || 0, merged[k] || 0);
+          }
+
+          const { error: upsertError } = await supabase
+            .from("daily_logs")
+            .upsert(
+              {
+                user_id: user.id,
+                log_date: parsed.date,
+                counts: merged,
+                is_off_day: existing?.is_off_day ?? isWeekend(parsed.date),
+                notes: existing?.notes ?? null,
+              },
+              { onConflict: "user_id,log_date" }
+            );
+          if (upsertError) return;
+        }
+
+        if (!cancelled) {
+          localStorage.removeItem(PENDING_RESCUE_KEY);
+          qc.invalidateQueries({ queryKey: ["daily_logs"] });
+        }
+      } catch {
+        // Keep PENDING_RESCUE_KEY for next retry
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, qc]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COUNTS_KEY, JSON.stringify(counts));
+      localStorage.setItem(COUNTS_DATE_KEY, todayIso);
+    } catch {
+      // Ignore storage errors
+    }
   }, [counts, todayIso]);
 
   useEffect(() => {
-    localStorage.setItem(SELECTED_KEY, JSON.stringify(selectedKeys));
+    try {
+      localStorage.setItem(SELECTED_KEY, JSON.stringify(selectedKeys));
+    } catch {
+      // Ignore storage errors
+    }
   }, [selectedKeys]);
 
   const activeCategories = useMemo(() => {
@@ -226,23 +348,35 @@ export default function CounterPage() {
 
   const getCount = (key: string) => counts[key] ?? 0;
 
+  const markDirty = useCallback(() => {
+    try {
+      localStorage.setItem(COUNTS_DIRTY_KEY, "true");
+    } catch {
+      // Ignore storage errors
+    }
+    cDispatch({ type: "set_saved", v: false });
+  }, []);
+
   const increment = useCallback((key: string) => {
     const nextVal = (counts[key] ?? 0) + 1;
+    markDirty();
     cDispatch({ type: "set_count", key, val: nextVal });
     queueBroadcast(key, 1);
     playTapFeedback();
     const cat = categories.find((c) => c.key === key);
     setAnnouncement(`${cat?.label ?? key}: ${nextVal}`);
-  }, [counts, queueBroadcast, categories]);
+  }, [counts, markDirty, queueBroadcast, categories]);
   
   const decrement = useCallback((key: string) => {
     const nextVal = Math.max(0, (counts[key] ?? 0) - 1);
+    forceKeysRef.current.add(key);
+    markDirty();
     cDispatch({ type: "set_count", key, val: nextVal });
     queueBroadcast(key, -1);
     playTapFeedback();
     const cat = categories.find((c) => c.key === key);
     setAnnouncement(`${cat?.label ?? key}: ${nextVal}`);
-  }, [counts, queueBroadcast, categories]);
+  }, [counts, markDirty, queueBroadcast, categories]);
 
   const total = activeCategories.reduce((s, c) => s + getCount(c.key), 0);
   const maxCount = activeCategories.reduce((m, c) => Math.max(m, getCount(c.key)), 0);
@@ -251,40 +385,57 @@ export default function CounterPage() {
   const addCategory = (cat: Category) => cDispatch({ type: "add_key", key: cat.key });
   const removeCategory = (key: string) => cDispatch({ type: "remove_key", key });
 
-  // Hydrate from the server once, when today's row genuinely arrives from the database.
-  // We MUST wait for !catsLoading && !logsLoading && logsFetched so we never overwrite DB data with 0.
+  // Hydrate from the server once initial data arrives, and re-reconcile when the fresh
+  // network fetch completes (in case persistQueryClient initially supplied stale cache).
   useEffect(() => {
-    if (hydratedRef.current) return;
-    if (catsLoading || logsLoading || !logsFetched) return;
-    if (categories.length === 0) return;
+    if (catsLoading || logsLoading) return;
+    if (!logsFetched && !logsError) return;
+    if (categories.length === 0 && !logsError) return;
+
+    const isFreshPass = logsFetchedAfterMount && !freshNetworkHydratedRef.current;
+    if (hydratedRef.current && !isFreshPass) return;
 
     const serverCounts = todayLog?.counts ?? {};
     const serverTotal = totalForLog(todayLog ?? { counts: {} });
     const localTotal = Object.values(counts).reduce((s, v) => s + (v || 0), 0);
 
     if (serverTotal > 0) {
-      // Database already has counts for today (e.g. Move to Indexing: 20)
       // Automatically select and activate all categories that have counts in the DB
       const serverKeysWithCounts = Object.keys(serverCounts).filter(
-        (k) => (serverCounts[k] ?? 0) > 0 && categories.some((c) => c.key === k)
+        (k) => (serverCounts[k] ?? 0) > 0 && (categories.length === 0 || categories.some((c) => c.key === k))
       );
       const nextKeys = Array.from(new Set([...selectedKeys, ...serverKeysWithCounts]));
 
-      // Safe merge: Never lose server counts or local taps
-      const merged = { ...serverCounts };
-      if (localTotal > 0) {
-        for (const k of Object.keys(counts)) {
+      // Safe merge: Never lose server counts or local taps, while respecting intentional decrements
+      const merged: Record<string, number> = { ...serverCounts };
+      for (const k of Object.keys(counts)) {
+        if (forceKeysRef.current.has(k)) {
+          merged[k] = counts[k] ?? 0;
+        } else {
           merged[k] = Math.max(counts[k] ?? 0, serverCounts[k] ?? 0);
         }
       }
 
-      skipUnsavedMarkRef.current = true;
-      cDispatch({ type: "hydrate", counts: merged, keys: nextKeys });
+      const changedFromLocal =
+        nextKeys.length !== selectedKeys.length ||
+        Object.keys(merged).some((k) => (merged[k] ?? 0) !== (counts[k] ?? 0));
+
+      if (!hydratedRef.current || changedFromLocal) {
+        skipUnsavedMarkRef.current = true;
+        cDispatch({ type: "hydrate", counts: merged, keys: nextKeys });
+      }
 
       const matchesServer = Object.keys(merged).every((k) => (merged[k] ?? 0) === (serverCounts[k] ?? 0));
       cDispatch({ type: "set_saved", v: matchesServer });
+      if (matchesServer) {
+        try {
+          localStorage.removeItem(COUNTS_DIRTY_KEY);
+        } catch {
+          // Ignore storage errors
+        }
+      }
 
-      if (localTotal === 0) {
+      if (!hydratedRef.current && localTotal === 0) {
         toast.success(`Loaded today's counts from database (${serverTotal} docs).`, {
           id: "server-counts-loaded",
         });
@@ -296,7 +447,20 @@ export default function CounterPage() {
     }
 
     hydratedRef.current = true;
-  }, [todayLog, categories, catsLoading, logsLoading, logsFetched, counts, selectedKeys]);
+    if (logsFetchedAfterMount) {
+      freshNetworkHydratedRef.current = true;
+    }
+  }, [
+    todayLog,
+    categories,
+    catsLoading,
+    logsLoading,
+    logsFetched,
+    logsFetchedAfterMount,
+    logsError,
+    counts,
+    selectedKeys,
+  ]);
 
   // Mark progress as unsaved whenever counts change after initial hydration.
   useEffect(() => {
@@ -341,11 +505,18 @@ export default function CounterPage() {
   }, [activeCategories, increment, decrement]);
 
   const handleReset = () => {
+    forceKeysRef.current.clear();
+    try {
+      localStorage.removeItem(COUNTS_DIRTY_KEY);
+    } catch {
+      // Ignore storage errors
+    }
     cDispatch({ type: "reset" });
     setResetOpen(false);
   };
 
   // Check if candidate counts would reduce existing database counts for today
+  // (excluding categories the user explicitly decremented in this session)
   const getReductionWarning = useCallback(
     (candidateCounts: Record<string, number>) => {
       const existingLog = logs.find((l) => l.log_date === todayIso);
@@ -354,6 +525,7 @@ export default function CounterPage() {
 
       const reducedCategories: { label: string; from: number; to: number }[] = [];
       for (const cat of categories) {
+        if (forceKeysRef.current.has(cat.key)) continue;
         const serverVal = existingCounts[cat.key] ?? 0;
         const localVal = candidateCounts[cat.key] ?? 0;
         if (serverVal > 0 && localVal < serverVal) {
@@ -365,48 +537,207 @@ export default function CounterPage() {
     [logs, todayIso, categories]
   );
 
+  // Latest state ref so in-flight saves and unmount/visibility flushes always see fresh values
+  const autoSaveRef = useRef({
+    counts,
+    selectedKeys,
+    activeCategories,
+    isPending: upsert.isPending,
+    saved,
+    todayIso,
+  });
+  autoSaveRef.current = {
+    counts,
+    selectedKeys,
+    activeCategories,
+    isPending: upsert.isPending,
+    saved,
+    todayIso,
+  };
+
   const commitSave = useCallback(
-    async (current: Record<string, number>, keys: string[]) => {
-      if (keys.length === 0) return;
-      const existingLog = logs.find((l) => l.log_date === todayIso);
+    async (
+      current: Record<string, number>,
+      keys: string[],
+      opts: { allowUnforcedDecrease?: boolean; targetDate?: string } = {}
+    ) => {
+      const { allowUnforcedDecrease = false, targetDate = todayIso } = opts;
+      const allCandidateKeys = Array.from(new Set([...keys, ...Object.keys(current)]));
+      if (allCandidateKeys.length === 0) return;
+
+      if (isSavingRef.current) {
+        queuedSaveRef.current = true;
+        return;
+      }
+
+      const existingLog = logs.find((l) => l.log_date === targetDate);
+      const existingCounts = existingLog?.counts ?? {};
+      const forcedKeys = allowUnforcedDecrease
+        ? allCandidateKeys
+        : Array.from(forceKeysRef.current);
+
+      const mergedCounts: Record<string, number> = { ...existingCounts };
+      for (const k of allCandidateKeys) {
+        const localVal = Math.max(0, current[k] ?? 0);
+        const serverVal = existingCounts[k] ?? 0;
+        if (allowUnforcedDecrease || forceKeysRef.current.has(k)) {
+          mergedCounts[k] = localVal;
+        } else {
+          mergedCounts[k] = Math.max(localVal, serverVal);
+        }
+      }
+
       let same = true;
-      for (const k of keys) {
-        if ((current[k] ?? 0) !== (existingLog?.counts?.[k] ?? 0)) {
+      for (const k of Object.keys(mergedCounts)) {
+        if ((mergedCounts[k] ?? 0) !== (existingCounts[k] ?? 0)) {
           same = false;
           break;
         }
       }
+
       if (same) {
-        cDispatch({ type: "set_saved", v: true });
+        const stillMatches = allCandidateKeys.every(
+          (k) => (autoSaveRef.current.counts[k] ?? 0) === (current[k] ?? 0)
+        );
+        if (stillMatches) {
+          try {
+            localStorage.removeItem(COUNTS_DIRTY_KEY);
+          } catch {
+            // Ignore storage errors
+          }
+          cDispatch({ type: "set_saved", v: true });
+        }
         return;
       }
+
       if (!checkSilentLimit()) throw new Error("Too many saves");
-      const mergedCounts: Record<string, number> = { ...(existingLog?.counts ?? {}) };
-      for (const k of keys) mergedCounts[k] = current[k] ?? 0;
-      const user_id = await getUserId();
-      const { error } = await supabase
-        .from("daily_logs")
-        .upsert(
-          {
-            log_date: todayIso,
-            is_off_day: isWeekend(todayIso),
-            notes: existingLog?.notes ?? null,
-            counts: mergedCounts,
-            user_id,
-          },
-          { onConflict: "user_id,log_date" }
+
+      isSavingRef.current = true;
+      setIsSyncing(true);
+
+      try {
+        const userId = user?.id || (await getUserId());
+        let savedRow: DailyLog | null = null;
+
+        // 1. Primary path: Atomic row-locked PostgreSQL JSONB merge RPC
+        const { data: rpcData, error: rpcError } = await supabase.rpc("sync_daily_log_counts", {
+          p_user_id: userId,
+          p_log_date: targetDate,
+          p_counts: mergedCounts,
+          p_force_keys: forcedKeys,
+          p_is_off_day: existingLog?.is_off_day ?? isWeekend(targetDate),
+          p_notes: existingLog?.notes ?? null,
+        });
+
+        if (!rpcError && rpcData) {
+          savedRow = rpcData as unknown as DailyLog;
+        } else {
+          // 2. Fallback path: Direct Supabase upsert (works even before SQL RPC is pasted)
+          const { data: upsertData, error: upsertError } = await supabase
+            .from("daily_logs")
+            .upsert(
+              {
+                log_date: targetDate,
+                is_off_day: existingLog?.is_off_day ?? isWeekend(targetDate),
+                notes: existingLog?.notes ?? null,
+                counts: mergedCounts,
+                user_id: userId,
+              },
+              { onConflict: "user_id,log_date" }
+            )
+            .select()
+            .single();
+          if (upsertError) throw upsertError;
+          savedRow = upsertData as DailyLog;
+        }
+
+        // Optimistically update React Query cache immediately so subsequent saves see the new baseline
+        if (savedRow && userId) {
+          qc.setQueryData<DailyLog[]>(["daily_logs", userId], (prev) => {
+            const list = prev ?? [];
+            const idx = list.findIndex((l) => l.log_date === targetDate);
+            const normalized: DailyLog = {
+              ...savedRow!,
+              counts: (savedRow!.counts ?? mergedCounts) as Record<string, number>,
+            };
+            if (idx >= 0) {
+              const copy = [...list];
+              copy[idx] = normalized;
+              return copy;
+            }
+            return [normalized, ...list];
+          });
+        }
+
+        void logAuditEvent("log_updated", { log_date: targetDate });
+        void qc.invalidateQueries({ queryKey: ["daily_logs"] });
+
+        // Only mark saved=true if the user hasn't tapped again while this request was in flight
+        const latestCounts = autoSaveRef.current.counts;
+        const noNewTapsDuringFlight = allCandidateKeys.every(
+          (k) => (latestCounts[k] ?? 0) === (current[k] ?? 0)
         );
-      if (error) throw error;
-      await logAuditEvent("log_updated", { log_date: todayIso });
-      qc.invalidateQueries({ queryKey: ["daily_logs"] });
-      cDispatch({ type: "set_saved", v: true });
+
+        if (noNewTapsDuringFlight) {
+          for (const k of forcedKeys) {
+            forceKeysRef.current.delete(k);
+          }
+          try {
+            localStorage.removeItem(COUNTS_DIRTY_KEY);
+          } catch {
+            // Ignore storage errors
+          }
+          cDispatch({ type: "set_saved", v: true });
+        } else {
+          queuedSaveRef.current = true;
+        }
+      } finally {
+        isSavingRef.current = false;
+        setIsSyncing(false);
+        if (queuedSaveRef.current) {
+          queuedSaveRef.current = false;
+          const { counts: latestC, activeCategories: latestCats, selectedKeys: latestKeys } =
+            autoSaveRef.current;
+          const nextKeys =
+            latestCats.length > 0 ? latestCats.map((c) => c.key) : latestKeys;
+          void commitSave(latestC, nextKeys);
+        }
+      }
     },
-    [logs, todayIso, qc, checkSilentLimit]
+    [logs, todayIso, qc, checkSilentLimit, user?.id]
   );
+
+  // Handle live midnight date rollover while CounterPage remains mounted
+  useEffect(() => {
+    if (activeDateRef.current === todayIso) return;
+    const prevDate = activeDateRef.current;
+    activeDateRef.current = todayIso;
+
+    const prevCounts = autoSaveRef.current.counts;
+    const prevTotal = Object.values(prevCounts).reduce((s, v) => s + (v || 0), 0);
+    if (prevTotal > 0 && !autoSaveRef.current.saved) {
+      const prevKeys =
+        autoSaveRef.current.activeCategories.length > 0
+          ? autoSaveRef.current.activeCategories.map((c) => c.key)
+          : autoSaveRef.current.selectedKeys;
+      void commitSave(prevCounts, prevKeys, { targetDate: prevDate });
+    }
+
+    forceKeysRef.current.clear();
+    hydratedRef.current = false;
+    freshNetworkHydratedRef.current = false;
+    skipUnsavedMarkRef.current = true;
+    cDispatch({
+      type: "hydrate",
+      counts: {},
+      keys: autoSaveRef.current.selectedKeys,
+    });
+  }, [todayIso, commitSave]);
 
   const handleSave = async () => {
     if (saved) return;
-    const keys = activeCategories.map((c) => c.key);
+    const keys =
+      activeCategories.length > 0 ? activeCategories.map((c) => c.key) : selectedKeys;
     const reduction = getReductionWarning(counts);
     if (reduction) {
       setReducedList(reduction);
@@ -423,51 +754,80 @@ export default function CounterPage() {
     }
   };
 
-  // Auto-save: debounced silent flush, plus periodic backup — only if not saved.
-  const autoSaveRef = useRef({ counts, activeCategories, isPending: upsert.isPending, saved });
-  autoSaveRef.current = { counts, activeCategories, isPending: upsert.isPending, saved };
+  // Auto-save: debounced silent flush (1s), plus periodic backup and unmount/visibility flush
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const flushPendingAutoSave = useCallback(() => {
+    const {
+      counts: c,
+      activeCategories: cats,
+      selectedKeys: selKeys,
+      isPending,
+      saved: isSaved,
+    } = autoSaveRef.current;
+    const keys = cats.length > 0 ? cats.map((cat) => cat.key) : selKeys;
+    if (isPending || keys.length === 0 || isSaved) return;
+    void commitSave(c, keys).catch(() => {
+      /* silent retry on next interval or tap */
+    });
+  }, [commitSave]);
 
   const scheduleAutoSave = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      const { counts: c, activeCategories: cats, isPending, saved: isSaved } = autoSaveRef.current;
-      if (!hydratedRef.current || !logsFetched || isPending || cats.length === 0 || isSaved) return;
+    debounceRef.current = setTimeout(() => {
+      flushPendingAutoSave();
+    }, 1000);
+  }, [flushPendingAutoSave]);
 
-      // Safeguard: Never auto-save if it would reduce existing server counts
-      if (getReductionWarning(c)) return;
-
-      try {
-        await commitSave(c, cats.map((cat) => cat.key));
-      } catch {
-        /* silent retry */
-      }
-    }, 2000);
-  }, [commitSave, getReductionWarning, logsFetched]);
-
+  // Note: `saved` is intentionally omitted from dependencies so `saved` flipping to `true`
+  // from an earlier in-flight request never clears `debounceRef` for newer taps.
   useEffect(() => {
-    if (hydratedRef.current && activeCategories.length > 0 && !saved) {
+    const hasKeys = activeCategories.length > 0 || selectedKeys.length > 0;
+    if (hasKeys && !autoSaveRef.current.saved) {
       scheduleAutoSave();
     }
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [counts, activeCategories, saved, scheduleAutoSave]);
+  }, [counts, activeCategories, selectedKeys, scheduleAutoSave]);
 
-  // Periodic backup every 30s — only if unsaved and safe to save
+  // Flush immediately when switching tabs, minimizing window, or unmounting / navigating away
   useEffect(() => {
-    const id = setInterval(async () => {
-      const { counts: c, activeCategories: cats, isPending, saved: isSaved } = autoSaveRef.current;
-      if (!hydratedRef.current || !logsFetched || isPending || cats.length === 0 || isSaved) return;
-      if (getReductionWarning(c)) return;
-      try {
-        await commitSave(c, cats.map((cat) => cat.key));
-      } catch {
-        /* best-effort backup */
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && !autoSaveRef.current.saved) {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        flushPendingAutoSave();
       }
-    }, 30 * 1000);
+    };
+    const onPageHide = () => {
+      if (!autoSaveRef.current.saved) {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        flushPendingAutoSave();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onPageHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onPageHide);
+      if (!autoSaveRef.current.saved) {
+        flushPendingAutoSave();
+      }
+    };
+  }, [flushPendingAutoSave]);
+
+  // Periodic backup every 15s — ensures counts sync even after a brief network drop
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!autoSaveRef.current.saved) {
+        flushPendingAutoSave();
+      }
+    }, 15 * 1000);
     return () => clearInterval(id);
-  }, [commitSave, getReductionWarning, logsFetched]);
+  }, [flushPendingAutoSave]);
 
   return (
     <>
@@ -514,12 +874,10 @@ export default function CounterPage() {
                 {/* Sync status badge */}
                 <div
                   className={`flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-2xs transition-colors duration-200 ${
-                    logsLoading
+                    logsLoading || isSyncing || upsert.isPending
                       ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25"
                       : saved
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
-                      : upsert.isPending
-                      ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25"
                       : total > 0
                       ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
                       : "bg-muted text-muted-foreground border-border/40"
@@ -527,7 +885,7 @@ export default function CounterPage() {
                 >
                   <span
                     className={`size-1.5 rounded-full ${
-                      logsLoading || upsert.isPending
+                      logsLoading || isSyncing || upsert.isPending
                         ? "bg-sky-500 animate-ping"
                         : saved
                         ? "bg-emerald-500"
@@ -537,7 +895,13 @@ export default function CounterPage() {
                     }`}
                   />
                   <span>
-                    {logsLoading ? "Syncing…" : saved ? "Synced" : upsert.isPending ? "Syncing…" : total > 0 ? "Unsaved" : "Ready"}
+                    {logsLoading || isSyncing || upsert.isPending
+                      ? "Syncing…"
+                      : saved
+                      ? "Synced"
+                      : total > 0
+                      ? "Unsaved"
+                      : "Ready"}
                   </span>
                 </div>
 
@@ -547,11 +911,11 @@ export default function CounterPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleSave}
-                    disabled={upsert.isPending}
+                    disabled={upsert.isPending || isSyncing}
                     aria-label="Force sync now"
                     className="h-7 px-2.5 rounded-xl border-border/60 hover:bg-muted/80 text-xs font-medium"
                   >
-                    <RefreshCw className={`size-3 mr-1 ${upsert.isPending ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`size-3 mr-1 ${upsert.isPending || isSyncing ? "animate-spin" : ""}`} />
                     <span>Sync</span>
                   </Button>
                 )}
@@ -791,6 +1155,7 @@ export default function CounterPage() {
               onClick={() => {
                 const serverCounts = todayLog?.counts ?? {};
                 const serverKeys = Object.keys(serverCounts).filter((k) => (serverCounts[k] ?? 0) > 0);
+                forceKeysRef.current.clear();
                 skipUnsavedMarkRef.current = true;
                 cDispatch({
                   type: "hydrate",
@@ -808,9 +1173,10 @@ export default function CounterPage() {
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm"
               onClick={async () => {
                 setOverwriteOpen(false);
-                const keys = activeCategories.map((c) => c.key);
+                const keys =
+                  activeCategories.length > 0 ? activeCategories.map((c) => c.key) : selectedKeys;
                 try {
-                  await commitSave(counts, keys);
+                  await commitSave(counts, keys, { allowUnforcedDecrease: true });
                   toast.warning("Database record overwritten.");
                 } catch {
                   toast.error("Failed to overwrite database record.");

@@ -37,6 +37,20 @@ describe("clearSessionLocalStorage", () => {
     expect(localStorage.getItem("basata-theme-variant")).toBe("modern");
   });
 
+  it("stages dirty counter counts into counter_pending_rescue before clearing", () => {
+    localStorage.setItem("counter_counts", JSON.stringify({ moved_to_indexing: 120 }));
+    localStorage.setItem("counter_counts_date", "2026-10-29");
+    localStorage.setItem("counter_dirty", "true");
+
+    clearSessionLocalStorage();
+
+    expect(localStorage.getItem("counter_counts")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("counter_pending_rescue") || "null")).toEqual({
+      date: "2026-10-29",
+      counts: { moved_to_indexing: 120 },
+    });
+  });
+
   it("safely handles empty local storage", () => {
     expect(() => clearSessionLocalStorage()).not.toThrow();
     expect(localStorage.getItem("counter_counts")).toBeNull();

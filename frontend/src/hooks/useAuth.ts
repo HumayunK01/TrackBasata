@@ -61,12 +61,27 @@ function markSessionStart() {
 function clearSessionLocalStorage() {
   capWarningShown = false;
   try {
-    // ponytail: preserve visual theme preferences so logout doesn't flash white in dark mode
+    // ponytail: preserve visual theme preferences and any unsynced counter rescue
+    // payload so a forced 10-hour session logout never destroys unsaved work.
     const theme = localStorage.getItem("basata-theme");
     const variant = localStorage.getItem("basata-theme-variant");
+    const existingRescue = localStorage.getItem("counter_pending_rescue");
+    const isDirty = localStorage.getItem("counter_dirty") === "true";
+    const dirtyCounts = localStorage.getItem("counter_counts");
+    const dirtyDate = localStorage.getItem("counter_counts_date");
+
     localStorage.clear();
+
     if (theme) localStorage.setItem("basata-theme", theme);
     if (variant) localStorage.setItem("basata-theme-variant", variant);
+    if (isDirty && dirtyCounts && dirtyDate) {
+      localStorage.setItem(
+        "counter_pending_rescue",
+        JSON.stringify({ date: dirtyDate, counts: JSON.parse(dirtyCounts) })
+      );
+    } else if (existingRescue) {
+      localStorage.setItem("counter_pending_rescue", existingRescue);
+    }
   } catch {
     // Ignore localStorage failures
   }
@@ -79,12 +94,76 @@ function clearSessionLocalStorage() {
 
 export { clearSessionLocalStorage };
 
+async function flushDirtyCountsBeforeSignOut(): Promise<void> {
+  try {
+    if (localStorage.getItem("counter_dirty") !== "true") return;
+    const rawCounts = localStorage.getItem("counter_counts");
+    const logDate = localStorage.getItem("counter_counts_date");
+    if (!rawCounts || !logDate) return;
+
+    const counts = JSON.parse(rawCounts) as Record<string, number>;
+    const total = Object.values(counts).reduce((s, v) => s + (v || 0), 0);
+    if (total <= 0) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    const { error: rpcError } = await supabase.rpc("sync_daily_log_counts", {
+      p_user_id: userId,
+      p_log_date: logDate,
+      p_counts: counts,
+      p_force_keys: [],
+    });
+
+    if (!rpcError) {
+      localStorage.removeItem("counter_dirty");
+      localStorage.removeItem("counter_pending_rescue");
+      return;
+    }
+
+    const { data: existing } = await supabase
+      .from("daily_logs")
+      .select("counts, is_off_day, notes")
+      .eq("user_id", userId)
+      .eq("log_date", logDate)
+      .maybeSingle();
+
+    const merged: Record<string, number> = { ...((existing?.counts as Record<string, number>) ?? {}) };
+    for (const [k, v] of Object.entries(counts)) {
+      merged[k] = Math.max(v || 0, merged[k] || 0);
+    }
+
+    const { error: upsertError } = await supabase
+      .from("daily_logs")
+      .upsert(
+        {
+          user_id: userId,
+          log_date: logDate,
+          counts: merged,
+          is_off_day: existing?.is_off_day ?? false,
+          notes: existing?.notes ?? null,
+        },
+        { onConflict: "user_id,log_date" }
+      );
+
+    if (!upsertError) {
+      localStorage.removeItem("counter_dirty");
+      localStorage.removeItem("counter_pending_rescue");
+    }
+  } catch {
+    // Best-effort flush; counter_pending_rescue remains in localStorage as fallback
+  }
+}
+
 function forceLogout() {
   if (forcedLogoutInFlight) return;
   forcedLogoutInFlight = true;
-  clearSessionLocalStorage();
-  supabase.auth.signOut().finally(() => {
-    forcedLogoutInFlight = false;
+  void flushDirtyCountsBeforeSignOut().finally(() => {
+    clearSessionLocalStorage();
+    supabase.auth.signOut().finally(() => {
+      forcedLogoutInFlight = false;
+    });
   });
   toast.info("Your session has ended after 10 hours. Please sign in again.");
 }
@@ -153,7 +232,8 @@ export function useAuth() {
     };
   }, []);
 
-  const signOut = () => {
+  const signOut = async () => {
+    await flushDirtyCountsBeforeSignOut();
     clearSessionLocalStorage();
     return supabase.auth.signOut();
   };
@@ -166,6 +246,7 @@ export function useAuth() {
     }
     const { data, error } = await supabase.auth.refreshSession();
     if (error || !data.session) {
+      await flushDirtyCountsBeforeSignOut();
       clearSessionLocalStorage();
       await supabase.auth.signOut();
       dispatch({ type: "clear" });

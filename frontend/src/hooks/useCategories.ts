@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const CategorySchema = z.object({
   id: z.string().uuid().optional(),
@@ -35,9 +36,21 @@ export function useCategories() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Category[]> => {
-      const data = await api.get<Category[]>("/categories");
-      if (!data || data.length === 0) return [];
-      return z.array(CategorySchema).parse(data);
+      try {
+        const data = await api.get<Category[]>("/categories");
+        if (!data || data.length === 0) return [];
+        return z.array(CategorySchema).parse(data);
+      } catch {
+        // Direct Supabase fallback if Render API is cold-starting or unreachable
+        const { data, error } = await supabase
+          .from("categories")
+          .select("id, key, label, short, position, is_active, created_at, updated_at")
+          .eq("is_active", true)
+          .order("position", { ascending: true });
+        if (error) throw error;
+        if (!data || data.length === 0) return [];
+        return z.array(CategorySchema).parse(data);
+      }
     },
   });
 }

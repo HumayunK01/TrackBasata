@@ -4,6 +4,7 @@ import type { DailyLog, DailyLogInsert } from "@/types/log";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/lib/api";
+import { supabase, getUserId } from "@/integrations/supabase/client";
 
 const countField = z.number().int("Must be a whole number").nonnegative("Must be 0 or more").max(9999, "Value too large");
 
@@ -30,11 +31,25 @@ export function useDailyLogs() {
     refetchOnWindowFocus: true,
     refetchInterval: 60_000,
     queryFn: async (): Promise<DailyLog[]> => {
-      const data = await api.get<DailyLog[]>("/logs");
-      return (data ?? []).map((row) => ({
-        ...row,
-        counts: (row.counts ?? {}) as Record<string, number>,
-      })) as DailyLog[];
+      try {
+        const data = await api.get<DailyLog[]>("/logs");
+        return (data ?? []).map((row) => ({
+          ...row,
+          counts: (row.counts ?? {}) as Record<string, number>,
+        })) as DailyLog[];
+      } catch {
+        // Direct Supabase fallback if Render API is cold-starting or unreachable
+        const { data, error } = await supabase
+          .from("daily_logs")
+          .select("id, user_id, log_date, counts, is_off_day, notes, created_at, updated_at")
+          .eq("user_id", user!.id)
+          .order("log_date", { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map((row) => ({
+          ...row,
+          counts: (row.counts ?? {}) as Record<string, number>,
+        })) as DailyLog[];
+      }
     },
   });
 }
@@ -44,9 +59,38 @@ export function useUpsertLog() {
   return useMutation({
     mutationFn: async (log: DailyLogInsert) => {
       const validated = DailyLogInsertSchema.parse(log);
-      return await api.post<DailyLog>("/logs", { ...validated, notes: validated.notes ?? "" });
+      try {
+        return await api.post<DailyLog>("/logs", { ...validated, notes: validated.notes ?? "" });
+      } catch {
+        const user_id = await getUserId();
+        const { data, error } = await supabase
+          .from("daily_logs")
+          .upsert(
+            {
+              user_id,
+              log_date: validated.log_date,
+              counts: validated.counts,
+              is_off_day: validated.is_off_day,
+              notes: validated.notes ?? null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,log_date" }
+          )
+          .select()
+          .single();
+        if (error) throw error;
+        return data as DailyLog;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      try {
+        if (localStorage.getItem("counter_counts_date") === variables.log_date) {
+          localStorage.setItem("counter_counts", JSON.stringify(variables.counts));
+          localStorage.removeItem("counter_dirty");
+        }
+      } catch {
+        // Ignore storage errors
+      }
       qc.invalidateQueries({ queryKey: ["daily_logs"] });
     },
     onError: (e: unknown) => {
@@ -59,7 +103,18 @@ export function useDeleteLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (date: string) => {
-      return await api.delete(`/logs?date=${encodeURIComponent(date)}`);
+      try {
+        return await api.delete(`/logs?date=${encodeURIComponent(date)}`);
+      } catch {
+        const user_id = await getUserId();
+        const { error } = await supabase
+          .from("daily_logs")
+          .delete()
+          .eq("user_id", user_id)
+          .eq("log_date", date);
+        if (error) throw error;
+        return { deleted: true };
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["daily_logs"] });
