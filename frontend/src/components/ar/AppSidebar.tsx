@@ -77,30 +77,30 @@ const externalLinks = [
 
 const activeSpringTransition = {
   type: "spring" as const,
-  stiffness: 380,
-  damping: 30,
+  stiffness: 400,
+  damping: 32,
   mass: 0.8,
 };
 
 export function AppSidebar() {
-  const { isMobile, setOpenMobile, state } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
   const reduce = useReducedMotion();
   const isAdmin = useIsAdmin();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar select-none">
-      {/* Sidebar Header with Brand Logo */}
-      <SidebarHeader className="h-14 flex flex-row items-center justify-center px-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:h-14 relative">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border/50 bg-sidebar select-none">
+      {/* Sidebar Header with Brand Identity */}
+      <SidebarHeader className="h-14 flex flex-row items-center justify-center px-4 group-data-[collapsible=icon]:px-0 border-b border-sidebar-border/40 shrink-0 relative">
         <Link
           to="/console"
-          className="flex items-center justify-center group-data-[collapsible=icon]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+          className="flex items-center justify-center group-data-[collapsible=icon]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-opacity hover:opacity-90"
         >
-          <AppLogo className="h-10 w-auto max-w-[160px] object-contain" />
+          <AppLogo className="h-8.5 w-auto max-w-[145px] object-contain" />
         </Link>
         <Link
           to="/console"
-          className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1.5 hover:bg-muted/50 transition-colors size-9"
+          className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1.5 hover:bg-white/[0.06] transition-all size-9"
           title="Basata.ai Tracker"
         >
           <AppFavicon
@@ -122,19 +122,19 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* Main Navigation Content */}
-      <SidebarContent className="py-2.5 px-2 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-2">
+      <SidebarContent className="py-2 px-2.5 space-y-1.5 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-1.5 group-data-[collapsible=icon]:space-y-1">
         {buildGroups(isAdmin).map((group, groupIdx) => (
           <div key={group.label} className="group-data-[collapsible=icon]:mb-0">
             {groupIdx > 0 && (
-              <div className="hidden group-data-[collapsible=icon]:block my-2 mx-auto w-5 h-px bg-border/60" />
+              <div className="hidden group-data-[collapsible=icon]:block my-1.5 mx-auto w-5 h-px bg-border/40" />
             )}
-            <div className="flex items-center justify-between px-2.5 pb-1.5 group-data-[collapsible=icon]:hidden">
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
+            <div className={cn("px-2.5 pb-1 group-data-[collapsible=icon]:hidden", groupIdx === 0 ? "pt-0.5" : "pt-1.5")}>
+              <span className="text-[10px] font-bold tracking-[0.08em] text-muted-foreground/60 uppercase select-none font-mono">
                 {group.label}
               </span>
             </div>
 
-            <SidebarMenu className="gap-1 group-data-[collapsible=icon]:gap-1">
+            <SidebarMenu className="gap-0.5 group-data-[collapsible=icon]:gap-1">
               {group.items.map((item) => {
                 const active = location.pathname === item.path;
                 return (
@@ -145,19 +145,22 @@ export function AppSidebar() {
                     {active && (
                       <motion.div
                         layoutId="sidebar-active-pill"
-                        className="absolute inset-0 rounded-lg bg-accent/80 dark:bg-white/[0.08] shadow-xs dark:border dark:border-white/10 pointer-events-none z-0 overflow-hidden"
+                        className={cn(
+                          "absolute inset-0 rounded-xl pointer-events-none z-0",
+                          "bg-white/[0.08] dark:bg-white/[0.07]",
+                          "border border-black/[0.04] dark:border-white/[0.08]",
+                          "shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                        )}
                         transition={reduce ? { duration: 0 } : activeSpringTransition}
-                      >
-                        <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary group-data-[collapsible=icon]:hidden" />
-                      </motion.div>
+                      />
                     )}
                     <SidebarMenuButton
                       asChild
                       isActive={active}
                       tooltip={item.title}
                       className={cn(
-                        "relative z-10 h-9 w-full rounded-lg px-2.5 font-medium text-[13px] transition-colors duration-150",
-                        "text-foreground/85 hover:text-foreground hover:bg-muted/50 dark:hover:bg-white/[0.04]",
+                        "group/btn relative z-10 h-9 w-full rounded-xl px-2.5 font-medium text-[13px] transition-all duration-150 active:scale-[0.985]",
+                        "text-muted-foreground/85 hover:text-foreground hover:bg-muted/40 dark:hover:bg-white/[0.04]",
                         active && [
                           "text-foreground font-semibold !bg-transparent data-[active=true]:!bg-transparent shadow-none border-transparent",
                         ],
@@ -173,13 +176,13 @@ export function AppSidebar() {
                       >
                         <item.icon
                           className={cn(
-                            "size-[18px] shrink-0 transition-colors duration-200",
+                            "size-[18px] shrink-0 transition-all duration-200",
                             active
-                              ? "text-primary dark:text-emerald-400"
-                              : "text-foreground/80 dark:text-zinc-300 group-hover:text-foreground",
+                              ? "text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
+                              : "text-zinc-400 dark:text-zinc-400 group-hover/btn:text-foreground group-hover/btn:scale-105",
                           )}
                         />
-                        <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
+                        <span className="truncate tracking-tight group-data-[collapsible=icon]:hidden">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -191,14 +194,14 @@ export function AppSidebar() {
 
         {/* Resources Section */}
         <div className="group-data-[collapsible=icon]:mb-0">
-          <div className="hidden group-data-[collapsible=icon]:block my-2 mx-auto w-5 h-px bg-border/60" />
-          <div className="flex items-center justify-between px-2.5 pb-1.5 group-data-[collapsible=icon]:hidden">
-            <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
+          <div className="hidden group-data-[collapsible=icon]:block my-1.5 mx-auto w-5 h-px bg-border/40" />
+          <div className="px-2.5 pt-1.5 pb-1 group-data-[collapsible=icon]:hidden">
+            <span className="text-[10px] font-bold tracking-[0.08em] text-muted-foreground/60 uppercase select-none font-mono">
               Resources
             </span>
           </div>
 
-          <SidebarMenu className="gap-1 group-data-[collapsible=icon]:gap-1">
+          <SidebarMenu className="gap-0.5 group-data-[collapsible=icon]:gap-1">
             {externalLinks.map((link) => {
               const active = location.pathname === link.path;
               return (
@@ -209,19 +212,22 @@ export function AppSidebar() {
                   {active && (
                     <motion.div
                       layoutId="sidebar-active-pill"
-                      className="absolute inset-0 rounded-lg bg-accent/80 dark:bg-white/[0.08] shadow-xs dark:border dark:border-white/10 pointer-events-none z-0 overflow-hidden"
+                      className={cn(
+                        "absolute inset-0 rounded-xl pointer-events-none z-0",
+                        "bg-white/[0.08] dark:bg-white/[0.07]",
+                        "border border-black/[0.04] dark:border-white/[0.08]",
+                        "shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                      )}
                       transition={reduce ? { duration: 0 } : activeSpringTransition}
-                    >
-                      <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary group-data-[collapsible=icon]:hidden" />
-                    </motion.div>
+                    />
                   )}
                   <SidebarMenuButton
                     asChild
                     isActive={active}
                     tooltip={link.title}
                     className={cn(
-                      "relative z-10 h-9 w-full rounded-lg px-2.5 font-medium text-[13px] transition-colors duration-150",
-                      "text-foreground/85 hover:text-foreground hover:bg-muted/50 dark:hover:bg-white/[0.04]",
+                      "group/btn relative z-10 h-9 w-full rounded-xl px-2.5 font-medium text-[13px] transition-all duration-150 active:scale-[0.985]",
+                      "text-muted-foreground/85 hover:text-foreground hover:bg-muted/40 dark:hover:bg-white/[0.04]",
                       active && [
                         "text-foreground font-semibold !bg-transparent data-[active=true]:!bg-transparent shadow-none border-transparent",
                       ],
@@ -237,13 +243,13 @@ export function AppSidebar() {
                     >
                       <link.icon
                         className={cn(
-                          "size-[18px] shrink-0 transition-colors duration-200",
+                          "size-[18px] shrink-0 transition-all duration-200",
                           active
-                            ? "text-primary dark:text-emerald-400"
-                            : "text-foreground/80 dark:text-zinc-300 group-hover:text-foreground",
+                            ? "text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
+                            : "text-zinc-400 dark:text-zinc-400 group-hover/btn:text-foreground group-hover/btn:scale-105",
                         )}
                       />
-                      <span className="truncate flex-1 group-data-[collapsible=icon]:hidden" title={link.title}>
+                      <span className="truncate flex-1 tracking-tight group-data-[collapsible=icon]:hidden" title={link.title}>
                         {link.title}
                       </span>
                     </Link>
@@ -256,35 +262,40 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Modern Status & Version Footer */}
-      <SidebarFooter className="p-2 group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:py-2 border-t border-sidebar-border/60 flex items-center justify-center">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className={cn(
-                "rounded-lg border border-border/50 bg-card/60 dark:bg-muted/20 p-2.5 transition-colors cursor-default w-full",
-                "group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center",
-              )}
-            >
-              <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center w-full">
-                <div className="flex items-center gap-2 group-data-[collapsible=icon]:gap-0">
-                  <span className="relative flex h-2 w-2 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <span className="text-[11px] font-medium text-foreground/80 tracking-tight group-data-[collapsible=icon]:hidden">
-                    Operational
+      <SidebarFooter className="p-2 group-data-[collapsible=icon]:p-1.5 border-t border-sidebar-border/40 shrink-0">
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-white/[0.02] dark:bg-white/[0.02] border border-border/40 w-full group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
+          {/* Expanded view */}
+          <div className="flex items-center gap-2 min-w-0 group-data-[collapsible=icon]:hidden">
+            <span className="relative flex size-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex rounded-full size-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+            </span>
+            <span className="text-[11px] font-medium text-muted-foreground/80 tracking-tight truncate select-none">
+              Operational
+            </span>
+          </div>
+
+          <span className="font-mono text-[10px] font-medium text-muted-foreground/60 bg-muted/40 dark:bg-white/[0.04] px-1.5 py-0.5 rounded-md border border-border/40 select-none group-data-[collapsible=icon]:hidden">
+            {APP_VERSION}
+          </span>
+
+          {/* Collapsed view icon */}
+          <div className="hidden group-data-[collapsible=icon]:flex">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="size-9 rounded-xl flex items-center justify-center hover:bg-white/[0.06] transition-colors cursor-default">
+                  <span className="relative flex size-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                   </span>
                 </div>
-                <span className="font-mono text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted/80 border border-border/50 group-data-[collapsible=icon]:hidden select-none">
-                  {APP_VERSION}
-                </span>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" align="center" hidden={state !== "collapsed"}>
-            Operational • {APP_VERSION}
-          </TooltipContent>
-        </Tooltip>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center">
+                Operational • {APP_VERSION}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
       </SidebarFooter>
 
       <SidebarRail />
