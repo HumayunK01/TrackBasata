@@ -28,6 +28,7 @@ export interface ProgressMetricCardProps {
   period?: string;
   periodOptions?: PeriodOption[];
   onPeriodChange?: (option: PeriodOption) => void;
+  hidePeriodSelect?: boolean;
   defaultView?: ChartView;
   accent?: MetricAccent;
   data?: SeriesPoint[];
@@ -48,16 +49,16 @@ const DEFAULT_PERIODS: PeriodOption[] = [
   { label: "Past 30 days", points: 30 },
 ];
 
-const REGION_W = 60; // %
+const REGION_W = 62; // %
 const NEUTRAL_PCT = 0.5;
 
 const SIZES: Record<
   CardSize,
   { minH: string; pad: string; footer: string; title: string; headline: string }
 > = {
-  sm: { minH: "min-h-[220px]", pad: "px-5 pt-4", footer: "px-5 py-2.5", title: "text-sm", headline: "text-3xl" },
-  md: { minH: "min-h-[280px]", pad: "px-6 pt-5", footer: "px-6 py-3.5", title: "text-base", headline: "text-4xl" },
-  lg: { minH: "min-h-[360px]", pad: "px-8 pt-7", footer: "px-8 py-4", title: "text-lg", headline: "text-5xl" },
+  sm: { minH: "min-h-[210px]", pad: "px-5 pt-4", footer: "px-5 py-2.5", title: "text-sm", headline: "text-2xl sm:text-3xl" },
+  md: { minH: "min-h-[250px]", pad: "px-5 pt-4", footer: "px-5 py-3", title: "text-sm", headline: "text-3xl sm:text-4xl" },
+  lg: { minH: "min-h-[340px]", pad: "px-7 pt-6", footer: "px-7 py-3.5", title: "text-base", headline: "text-4xl sm:text-5xl" },
 };
 
 const sliceWindow = (points: SeriesPoint[], n?: number) =>
@@ -74,6 +75,7 @@ export function ProgressMetricCard({
   period = "Past 30 days",
   periodOptions,
   onPeriodChange,
+  hidePeriodSelect = false,
   defaultView = "curve",
   accent,
   data,
@@ -89,7 +91,7 @@ export function ProgressMetricCard({
 }: ProgressMetricCardProps) {
   const gridId = `grid-${useId().replace(/:/g, "")}`;
   const sz = SIZES[size];
-  const shell = `relative flex ${sz.minH} w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm ${className}`;
+  const shell = `relative flex ${sz.minH} w-full flex-col overflow-hidden rounded-2xl border border-border/65 bg-card/80 shadow-2xs ${className}`;
 
   const periods = periodOptions ?? DEFAULT_PERIODS;
   const [selectedLabel, setSelectedLabel] = useState(period);
@@ -104,8 +106,11 @@ export function ProgressMetricCard({
     periods.find((p) => p.label === selectedLabel) ?? periods[periods.length - 1];
 
   const visibleSeries = useMemo(
-    () => baseSeries.map((s) => ({ ...s, data: sliceWindow(s.data, selectedOption?.points) })),
-    [baseSeries, selectedOption]
+    () =>
+      hidePeriodSelect
+        ? baseSeries
+        : baseSeries.map((s) => ({ ...s, data: sliceWindow(s.data, selectedOption?.points) })),
+    [baseSeries, selectedOption, hidePeriodSelect]
   );
 
   const primary = visibleSeries[0];
@@ -118,7 +123,6 @@ export function ProgressMetricCard({
     }
 
     const pointCount = visibleSeries[0]?.data.length ?? 0;
-    // Aggregate values per time point across all series
     const aggregatedVals: number[] = [];
     for (let i = 0; i < pointCount; i++) {
       let ptSum = 0;
@@ -231,7 +235,7 @@ export function ProgressMetricCard({
           <div className="mt-6 h-12 w-48 animate-pulse rounded-lg bg-muted" />
           <div className="mt-auto h-20 w-full animate-pulse rounded-lg bg-muted/50" />
         </div>
-        <div className={`border-t border-border ${sz.footer}`}>
+        <div className={`border-t border-border/50 ${sz.footer}`}>
           <div className="h-4 w-40 animate-pulse rounded bg-muted" />
         </div>
       </div>
@@ -256,19 +260,19 @@ export function ProgressMetricCard({
 
   return (
     <div className={shell}>
-      {/* Background Chart Area */}
-      <div className="absolute inset-y-0 right-0 z-0" style={{ width: `${REGION_W}%` }}>
+      {/* Background Chart Area — bounded below header and above footer so curve peaks never overlap header controls */}
+      <div className="absolute top-12 bottom-10 right-0 z-0" style={{ width: `${REGION_W}%` }}>
         <div
           className="absolute inset-0"
           style={{
-            background: `linear-gradient(to left, ${(dominantSeries?.color || color.stroke)}18, transparent 80%)`,
+            background: `linear-gradient(to left, ${(dominantSeries?.color || color.stroke)}12, transparent 85%)`,
           }}
         />
         <div
-          className="absolute inset-0 text-foreground/[0.06]"
+          className="absolute inset-0 text-foreground/[0.04]"
           style={{
-            WebkitMaskImage: "linear-gradient(to right, transparent, black 60%)",
-            maskImage: "linear-gradient(to right, transparent, black 60%)",
+            WebkitMaskImage: "linear-gradient(to right, transparent, black 65%)",
+            maskImage: "linear-gradient(to right, transparent, black 65%)",
           }}
         >
           <svg className="h-full w-full" aria-hidden>
@@ -293,34 +297,42 @@ export function ProgressMetricCard({
 
       {/* Main Content */}
       <div className={`pointer-events-none relative z-10 flex flex-1 flex-col ${sz.pad}`}>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="pointer-events-auto flex items-center gap-2.5">
             <h3 className={`${sz.title} font-semibold tracking-tight text-foreground`}>{title}</h3>
             <ViewToggle value={view} onChange={setView} />
           </div>
-          <div className="pointer-events-auto flex items-center gap-3 text-xs sm:text-sm">
-            <span className="flex items-center gap-1 font-semibold" style={{ color: color.text }}>
-              <TrendIcon size={14} strokeWidth={2.5} />
+          <div className="pointer-events-auto flex items-center gap-2.5 text-xs">
+            <span
+              className="inline-flex items-center gap-1 font-mono font-semibold px-2 py-0.5 rounded-md border bg-background/70 backdrop-blur-xs"
+              style={{
+                color: color.text,
+                borderColor: `${color.stroke}35`,
+              }}
+            >
+              <TrendIcon size={12} strokeWidth={2.5} />
               {displayPercent}
             </span>
-            <PeriodSelect
-              value={selectedLabel}
-              options={periods}
-              onChange={handlePeriodChange}
-              accentText={color.text}
-            />
+            {!hidePeriodSelect && (
+              <PeriodSelect
+                value={selectedLabel}
+                options={periods}
+                onChange={handlePeriodChange}
+                accentText={color.text}
+              />
+            )}
           </div>
         </div>
 
         {/* Legend for multi-series */}
         {isMulti && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1 max-w-[55%]">
             {chartSeries.map((s) => (
               <span
                 key={s.name}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground"
               >
-                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
                 {s.name}
               </span>
             ))}
@@ -328,11 +340,11 @@ export function ProgressMetricCard({
         )}
 
         <div
-          className={`mt-4 ${sz.headline} flex items-baseline gap-2 font-bold leading-none tracking-tight text-foreground font-mono`}
+          className={`mt-3.5 ${sz.headline} flex items-baseline gap-2 font-bold leading-none tracking-tight text-foreground font-mono tabular-nums`}
         >
           <span>{displayTotal}</span>
           {unit && (
-            <span className="text-xs sm:text-sm font-medium text-muted-foreground font-sans uppercase tracking-wider">
+            <span className="text-[11px] font-medium text-muted-foreground font-mono uppercase tracking-wider">
               {unit}
             </span>
           )}
@@ -341,16 +353,16 @@ export function ProgressMetricCard({
 
       {/* Footer */}
       <div
-        className={`relative z-10 flex items-center justify-between gap-4 border-t border-border bg-card/90 backdrop-blur-xs ${sz.footer} text-xs sm:text-sm`}
+        className={`relative z-10 flex items-center justify-between gap-4 border-t border-border/50 bg-card/95 backdrop-blur-xs ${sz.footer} text-xs`}
       >
-        <div>
+        <div className="font-mono">
           <span className="font-semibold" style={{ color: color.text }}>
             {displayDelta}
           </span>{" "}
-          <span className="text-muted-foreground">{resolvedDeltaLabel}</span>
+          <span className="text-muted-foreground text-[11px] font-sans">{resolvedDeltaLabel}</span>
         </div>
         {showStats && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2.5 text-[11px] font-mono text-muted-foreground">
             <span>
               <span className="font-semibold text-foreground">{fmtCompact(stats.peak)}</span> peak
             </span>

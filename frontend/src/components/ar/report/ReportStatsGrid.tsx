@@ -14,33 +14,6 @@ interface StatsGridProps {
   sparkline?: number[];
 }
 
-function StatCardAmbientGlow({ color, patternId }: { color: string; patternId: string }) {
-  return (
-    <>
-      <div
-        className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-xl transition-opacity duration-300 opacity-20 group-hover:opacity-35"
-        style={{ background: color }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 text-foreground/[0.04]"
-        style={{
-          WebkitMaskImage: "linear-gradient(to right, transparent, black 70%)",
-          maskImage: "linear-gradient(to right, transparent, black 70%)",
-        }}
-      >
-        <svg className="h-full w-full" aria-hidden>
-          <defs>
-            <pattern id={patternId} width="10" height="10" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.8" fill="currentColor" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#${patternId})`} />
-        </svg>
-      </div>
-    </>
-  );
-}
-
 export function ReportStatsGrid({
   totalDocs,
   filteredCount,
@@ -57,132 +30,141 @@ export function ReportStatsGrid({
   const animAvg = useAnimatedNumber(avgPerDay);
   const animBest = useAnimatedNumber(bestDayVal);
 
+  const shiftRate = filteredCount > 0 ? Math.round((workingCount / filteredCount) * 100) : 0;
+  const peakVsAvg =
+    avgPerDay > 0 && bestDayVal > 0 ? Math.round(((bestDayVal - avgPerDay) / avgPerDay) * 100) : 0;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-      {/* Total Docs */}
-      <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-4.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5">
-        <StatCardAmbientGlow color="hsl(var(--primary))" patternId="rpt-total-docs" />
-        <div className="relative z-10 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-foreground/90 tracking-tight">Total Documents</p>
+      {/* 1. Total Documents */}
+      <div className="group relative flex flex-col justify-between rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs transition-colors duration-150 hover:border-border">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Total Documents</span>
           <ActivityRing
             value={totalDocs}
             target={docsTarget}
-            size={28}
-            strokeWidth={3}
+            size={26}
+            strokeWidth={2.5}
             color="hsl(var(--primary))"
             className="shrink-0"
           >
-            <FileCheck className="size-3 text-primary opacity-90" />
+            <FileCheck className="size-3 text-primary" />
           </ActivityRing>
         </div>
-        <div className="relative z-10 mt-3 flex items-end justify-between">
-          <div className="flex flex-col">
-            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white leading-none">
-              {animTotal}
-            </span>
-            <span className="mt-1.5 text-[11px] font-mono text-muted-foreground leading-none">
-              {filteredCount} days tracked
-            </span>
-          </div>
-          <span className="font-mono text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md">
-            Volume
+
+        <div className="mt-2.5 flex items-baseline gap-2">
+          <span className="text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
+            {animTotal.toLocaleString()}
           </span>
+          <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
+            docs
+          </span>
+        </div>
+
+        <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+          <span>{filteredCount} days in range</span>
+          <span className="text-emerald-500 dark:text-emerald-400 font-semibold">Volume</span>
         </div>
       </div>
 
-      {/* Working Days */}
-      <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-4.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5">
-        <StatCardAmbientGlow color="rgb(56, 189, 248)" patternId="rpt-working-days" />
-        <div className="relative z-10 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-foreground/90 tracking-tight">Working Days</p>
+      {/* 2. Working Shifts */}
+      <div className="group relative flex flex-col justify-between rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs transition-colors duration-150 hover:border-border">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Working Shifts</span>
           <ActivityRing
             value={workingCount}
             target={filteredCount || 1}
-            size={28}
-            strokeWidth={3}
+            size={26}
+            strokeWidth={2.5}
             color="rgb(56, 189, 248)"
             className="shrink-0"
           >
-            <CalendarDays className="size-3 text-sky-400 opacity-90" />
+            <CalendarDays className="size-3 text-sky-400" />
           </ActivityRing>
         </div>
-        <div className="relative z-10 mt-3 flex items-end justify-between">
-          <div className="flex flex-col">
-            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white leading-none">
-              {animWorking}
-            </span>
-            <span className="mt-1.5 text-[11px] font-mono text-muted-foreground leading-none">
-              {weekendDays} weekends · {offDays} off
-            </span>
-          </div>
-          <span className="font-mono text-[10px] font-semibold text-sky-400 bg-sky-400/10 border border-sky-400/20 px-1.5 py-0.5 rounded-md">
-            Shifts
+
+        <div className="mt-2.5 flex items-baseline gap-2">
+          <span className="text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
+            {animWorking}
           </span>
+          <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
+            {workingCount === 1 ? "shift" : "shifts"}
+          </span>
+        </div>
+
+        <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+          <span>
+            {weekendDays} wknd · {offDays} off
+          </span>
+          <span className="text-sky-400 font-semibold">{shiftRate}% active</span>
         </div>
       </div>
 
-      {/* Avg / Day */}
-      <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-4.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5">
-        <StatCardAmbientGlow color="rgb(168, 85, 247)" patternId="rpt-avg-docs" />
-        <div className="relative z-10 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-foreground/90 tracking-tight">Average Velocity</p>
+      {/* 3. Average Velocity */}
+      <div className="group relative flex flex-col justify-between rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs transition-colors duration-150 hover:border-border">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Average Velocity</span>
           <ActivityRing
             value={avgPerDay}
             target={50}
-            size={28}
-            strokeWidth={3}
+            size={26}
+            strokeWidth={2.5}
             color="rgb(168, 85, 247)"
             className="shrink-0"
           >
-            <TrendingUp className="size-3 text-purple-400 opacity-90" />
+            <TrendingUp className="size-3 text-purple-400" />
           </ActivityRing>
         </div>
-        <div className="relative z-10 mt-3 flex items-end justify-between">
-          <div className="flex flex-col">
-            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white leading-none">
-              {animAvg}
-            </span>
-            <span className="mt-1.5 text-[11px] font-mono text-muted-foreground leading-none">
-              docs per working shift
-            </span>
-          </div>
-          <span className="font-mono text-[10px] font-semibold text-purple-400 bg-purple-400/10 border border-purple-400/20 px-1.5 py-0.5 rounded-md">
-            Speed
+
+        <div className="mt-2.5 flex items-baseline gap-2">
+          <span className="text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
+            {animAvg}
           </span>
+          <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
+            docs / shift
+          </span>
+        </div>
+
+        <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+          <span>Per active workday</span>
+          <span className="text-purple-400 font-semibold">Pace</span>
         </div>
       </div>
 
-      {/* Best Day */}
-      <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-4.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5">
-        <StatCardAmbientGlow color="rgb(245, 158, 11)" patternId="rpt-best-day" />
-        <div className="relative z-10 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-foreground/90 tracking-tight">Peak Shift</p>
+      {/* 4. Peak Shift */}
+      <div className="group relative flex flex-col justify-between rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs transition-colors duration-150 hover:border-border">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Peak Shift</span>
           <ActivityRing
             value={bestDayVal}
-            target={60}
-            size={28}
-            strokeWidth={3}
+            target={Math.max(60, avgPerDay || 60)}
+            size={26}
+            strokeWidth={2.5}
             color="rgb(245, 158, 11)"
             className="shrink-0"
           >
-            <Award className="size-3 text-amber-400 opacity-90" />
+            <Award className="size-3 text-amber-400" />
           </ActivityRing>
         </div>
-        <div className="relative z-10 mt-3 flex items-end justify-between">
-          <div className="flex flex-col">
-            <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white leading-none">
-              {bestDay ? animBest : "—"}
+
+        <div className="mt-2.5 flex items-baseline gap-2">
+          <span className="text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
+            {bestDay ? animBest : "—"}
+          </span>
+          {bestDay && (
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
+              docs
             </span>
-            <span className="mt-1.5 text-[11px] font-mono text-muted-foreground leading-none">
-              {bestDay ? formatTableDate(bestDay.log_date) : "No logs"}
-            </span>
-          </div>
-          <span className="font-mono text-[10px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-md">
-            Record
+          )}
+        </div>
+
+        <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+          <span>{bestDay ? formatTableDate(bestDay.log_date) : "No shifts"}</span>
+          <span className="text-amber-400 font-semibold">
+            {peakVsAvg > 0 ? `+${peakVsAvg}% vs avg` : "Record"}
           </span>
         </div>
       </div>
     </div>
   );
 }
-

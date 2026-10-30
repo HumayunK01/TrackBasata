@@ -28,103 +28,146 @@ interface ReportDayTableProps {
   onPageChange: (p: number) => void;
 }
 
+function getWeekdayShort(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString("en-US", { weekday: "short" });
+}
+
 export function ReportDayTable({
   filtered,
   categories,
   workingLogs,
-  totalDocs,
-  avgPerDay,
   tablePage,
   totalTablePages,
   tablePageNumbers,
   paginatedRows,
   onPageChange,
 }: ReportDayTableProps) {
+  const maxDayTotal = Math.max(
+    1,
+    ...workingLogs.map((l) => totalForLog(l)),
+  );
+
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-      <div className="px-5 py-3.5 border-b border-border/50 flex items-center justify-between bg-muted/20">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold font-heading text-foreground">Day-by-Day Ledger</h2>
-          <span className="text-[11px] font-mono font-medium text-muted-foreground bg-muted/60 border border-border/40 px-2 py-0.5 rounded-md">
-            {filtered.length} days
-          </span>
-        </div>
-      </div>
+    <div className="rounded-2xl border border-border/65 bg-card/80 overflow-hidden shadow-2xs">
       <div className="overflow-x-auto no-scrollbar">
-        <Table className="[&_td]:py-3 [&_th]:py-2.5 relative">
-          <TableHeader className="sticky top-0 z-10 bg-card/90 backdrop-blur-md shadow-2xs">
-            <TableRow className="hover:bg-transparent border-b border-border/60 bg-muted/30">
-              <TableHead className="font-mono font-semibold text-[11px] uppercase tracking-wider text-muted-foreground text-center">
+        <Table className="[&_td]:py-2.5 [&_th]:py-2.5 relative">
+          <TableHeader className="bg-muted/35">
+            <TableRow className="hover:bg-transparent border-b border-border/55">
+              <TableHead className="pl-5 font-mono font-semibold text-[10px] uppercase tracking-wider text-muted-foreground text-left w-[200px]">
                 Date
               </TableHead>
-              {categories.map((c) => (
-                <TableHead
-                  key={c.key}
-                  className="font-mono font-semibold text-[11px] uppercase tracking-wider text-center text-muted-foreground"
-                >
-                  {c.short}
-                </TableHead>
-              ))}
-              <TableHead className="font-mono font-semibold text-[11px] uppercase tracking-wider text-center text-foreground">
-                Total
+              {categories.map((c) => {
+                const dotColor = c.key.startsWith("#") ? c.key : colorForKey(c.key);
+                return (
+                  <TableHead
+                    key={c.key}
+                    className="font-mono font-semibold text-[10px] uppercase tracking-wider text-right text-muted-foreground px-4"
+                  >
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      <span
+                        className="size-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: dotColor }}
+                      />
+                      <span>{c.short}</span>
+                    </span>
+                  </TableHead>
+                );
+              })}
+              <TableHead className="pr-5 font-mono font-semibold text-[10px] uppercase tracking-wider text-right text-foreground w-[180px]">
+                Total Output
               </TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {paginatedRows.map((l) => {
               const rowTotal = totalForLog(l);
               const isWeekendRow = isWeekend(l.log_date);
+              const weekday = getWeekdayShort(l.log_date);
+              const barPct = Math.min(100, Math.round((rowTotal / maxDayTotal) * 100));
 
               return l.is_off_day ? (
-                <TableRow key={l.id} className="border-b border-border/40 last:border-0 bg-muted/10">
-                  <TableCell className="tabular-nums font-mono text-xs font-medium text-muted-foreground text-center">
-                    {formatTableDate(l.log_date)}
-                  </TableCell>
-                  <TableCell colSpan={categories.length + 1}>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border",
-                          isWeekendRow
-                            ? "bg-muted/40 text-muted-foreground border-border/50"
-                            : "bg-amber-500/10 text-amber-500 border-amber-500/20",
-                        )}
-                      >
-                        <BedDouble className="size-3" />
-                        <span>{isWeekendRow ? "Weekend" : "Off Day"}</span>
+                <TableRow
+                  key={l.id}
+                  className="border-b border-border/35 last:border-0 bg-muted/10 hover:bg-muted/15"
+                >
+                  <TableCell className="pl-5 tabular-nums font-mono text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-9 text-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/75 border border-border/40 shrink-0">
+                        {weekday}
                       </span>
-                      {l.notes && (
-                        <span className="text-xs text-muted-foreground italic truncate max-w-[200px] sm:max-w-xs">
-                          &ldquo;{l.notes}&rdquo;
+                      <span>{formatTableDate(l.log_date)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell colSpan={categories.length + 1} className="pr-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border",
+                            isWeekendRow
+                              ? "bg-muted/40 text-muted-foreground border-border/50"
+                              : "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                          )}
+                        >
+                          <BedDouble className="size-3" />
+                          <span>{isWeekendRow ? "Weekend" : "Off Day"}</span>
                         </span>
-                      )}
+                        {l.notes && (
+                          <span className="text-xs text-muted-foreground italic truncate max-w-[220px] sm:max-w-xs">
+                            &ldquo;{l.notes}&rdquo;
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono text-xs text-muted-foreground/40">—</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 <TableRow
                   key={l.id}
-                  className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                  className="border-b border-border/35 last:border-0 hover:bg-muted/25 transition-colors"
                 >
-                  <TableCell className="tabular-nums font-mono text-xs font-medium text-foreground text-center">
-                    {formatTableDate(l.log_date)}
+                  <TableCell className="pl-5 tabular-nums font-mono text-xs font-medium text-foreground">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-9 text-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/45 shrink-0">
+                        {weekday}
+                      </span>
+                      <span>{formatTableDate(l.log_date)}</span>
+                    </div>
                   </TableCell>
                   {categories.map((c) => {
                     const v = (l.counts ?? {})[c.key] ?? 0;
                     return (
-                      <TableCell key={c.key} className="text-center tabular-nums font-mono text-xs">
+                      <TableCell
+                        key={c.key}
+                        className="text-right tabular-nums font-mono text-xs px-4"
+                      >
                         {v > 0 ? (
-                          <span className="font-semibold text-foreground">{v}</span>
+                          <span className="font-medium text-foreground/90">{v.toLocaleString()}</span>
                         ) : (
-                          <span className="text-muted-foreground/40" aria-hidden="true">
-                            {"—"}
+                          <span className="text-muted-foreground/35" aria-hidden="true">
+                            —
                           </span>
                         )}
                       </TableCell>
                     );
                   })}
-                  <TableCell className="text-center tabular-nums">
-                    <span className="font-mono font-bold text-xs text-primary">{rowTotal}</span>
+                  <TableCell className="pr-5 text-right tabular-nums">
+                    <div className="flex items-center justify-end gap-2.5">
+                      <div className="hidden sm:flex w-16 h-1.5 rounded-full bg-muted/50 overflow-hidden justify-end">
+                        <div
+                          className="h-full rounded-full bg-emerald-500/75"
+                          style={{ width: `${barPct}%` }}
+                        />
+                      </div>
+                      <span className="font-mono font-bold text-xs text-emerald-500 dark:text-emerald-400 min-w-[2.25rem] text-right">
+                        {rowTotal.toLocaleString()}
+                      </span>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -134,26 +177,26 @@ export function ReportDayTable({
       </div>
 
       {totalTablePages > 1 && (
-        <div className="border-t border-border/40 px-4 sm:px-5 py-3 flex flex-wrap items-center justify-center sm:justify-between gap-2 bg-muted/[0.04]">
-          <span className="text-xs text-muted-foreground font-mono font-medium">
-            Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, filtered.length)} of{" "}
-            {filtered.length} records
+        <div className="border-t border-border/45 px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-center sm:justify-between gap-2 bg-muted/15">
+          <span className="text-xs text-muted-foreground font-mono">
+            Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–
+            {Math.min(tablePage * TABLE_PAGE_SIZE, filtered.length)} of {filtered.length} days
           </span>
           <div className="flex items-center gap-1.5">
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 hover:bg-muted text-foreground border border-border/40 rounded-lg active:scale-95 transition-all"
+              className="size-7 hover:bg-muted text-foreground border border-border/40 rounded-lg active:scale-95 transition-all cursor-pointer"
               onClick={() => onPageChange(Math.max(1, tablePage - 1))}
               disabled={tablePage === 1}
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-3.5" />
             </Button>
             {tablePageNumbers.map((p, i) =>
               p === "…" ? (
                 <span
                   key={`ellipsis-${tablePageNumbers[i + 1] ?? i}`}
-                  className="w-8 text-center text-xs text-muted-foreground select-none"
+                  className="w-7 text-center text-xs text-muted-foreground select-none"
                 >
                   …
                 </span>
@@ -163,7 +206,7 @@ export function ReportDayTable({
                   variant={tablePage === p ? "default" : "ghost"}
                   size="icon"
                   className={cn(
-                    "size-8 text-xs font-mono font-semibold rounded-lg active:scale-95 transition-all border",
+                    "size-7 text-xs font-mono font-semibold rounded-lg active:scale-95 transition-all border cursor-pointer",
                     tablePage === p
                       ? "bg-primary text-primary-foreground border-primary shadow-xs"
                       : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -177,41 +220,13 @@ export function ReportDayTable({
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 hover:bg-muted text-foreground border border-border/40 rounded-lg active:scale-95 transition-all"
+              className="size-7 hover:bg-muted text-foreground border border-border/40 rounded-lg active:scale-95 transition-all cursor-pointer"
               onClick={() => onPageChange(Math.min(totalTablePages, tablePage + 1))}
               disabled={tablePage === totalTablePages}
             >
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-3.5" />
             </Button>
           </div>
-        </div>
-      )}
-
-      {workingLogs.length > 0 && (
-        <div className="border-t border-border/40 px-5 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-mono text-muted-foreground bg-muted/20">
-          <span>
-            Total: <span className="font-bold text-foreground">{totalDocs}</span> docs
-          </span>
-          <span className="hidden sm:inline text-border">|</span>
-          <span>
-            Shifts: <span className="font-bold text-foreground">{workingLogs.length}</span>
-          </span>
-          <span className="hidden sm:inline text-border">|</span>
-          <span>
-            Speed: <span className="font-bold text-foreground">{avgPerDay}</span> docs/day
-          </span>
-          <span className="hidden sm:inline text-border">|</span>
-          {categories.map((c) => {
-            const val = workingLogs.reduce((s, l) => s + ((l.counts ?? {})[c.key] ?? 0), 0);
-            return val > 0 ? (
-              <span key={c.key} className="inline-flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: colorForKey(c.key) }} />
-                <span>
-                  {c.short}: <span className="font-bold text-foreground">{val}</span>
-                </span>
-              </span>
-            ) : null;
-          })}
         </div>
       )}
     </div>

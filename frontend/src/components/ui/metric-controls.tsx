@@ -34,12 +34,12 @@ export function PeriodSelect({
         if (found) onChange(found);
       }}
     >
-      <SelectTrigger className="h-7 w-[120px] rounded-lg border-border bg-background/50 text-xs text-muted-foreground backdrop-blur-sm">
+      <SelectTrigger className="h-7 w-auto min-w-[118px] gap-1.5 px-2.5 rounded-lg border-border/70 bg-background/70 text-xs text-muted-foreground backdrop-blur-sm">
         <SelectValue placeholder="Period" />
       </SelectTrigger>
-      <SelectContent align="end">
+      <SelectContent align="end" className="rounded-xl border-border/60">
         {options.map((opt) => (
-          <SelectItem key={opt.label} value={opt.label} className="text-xs">
+          <SelectItem key={opt.label} value={opt.label} className="text-xs rounded-lg">
             {opt.label}
           </SelectItem>
         ))}
@@ -55,7 +55,7 @@ export interface ViewToggleProps {
 
 export function ViewToggle({ value, onChange }: ViewToggleProps) {
   return (
-    <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
+    <div className="flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5">
       <Button
         variant="ghost"
         size="icon"

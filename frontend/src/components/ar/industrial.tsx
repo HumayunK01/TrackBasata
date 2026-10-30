@@ -135,30 +135,20 @@ export function CategoryStatCard({
   todayCount?: number;
 }) {
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-4 sm:p-4.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5">
-      {/* Ambient corner glow matching category color (pure CSS radial gradient, 0 blur GPU cost) */}
-      <div
-        className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full transition-opacity duration-300 group-hover:opacity-40"
-        style={{
-          background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
-          opacity: 0.2,
-        }}
-      />
-
-      {/* Subtle dot matrix */}
-      <div
-        className="pointer-events-none absolute inset-0 text-foreground/[0.03] opacity-60"
-        style={{
-          backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
-          backgroundSize: "10px 10px",
-        }}
-      />
-
-      {/* Header: Label and share badge */}
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs transition-colors duration-150 hover:border-border">
+      {/* Header: Color dot, Label, and Share badge */}
       <div className="relative z-10 flex items-center justify-between gap-2 min-w-0">
-        <p className="text-xs font-semibold text-foreground/90 truncate tracking-tight">{label}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="size-2 rounded-full shrink-0"
+            style={{ backgroundColor: color }}
+          />
+          <p className="text-xs font-medium text-foreground/90 truncate tracking-tight" title={label}>
+            {label}
+          </p>
+        </div>
         {share !== undefined && (
-          <span className="font-mono text-[10px] font-semibold text-muted-foreground/80 bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md shrink-0">
+          <span className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md shrink-0">
             {share.toFixed(1)}%
           </span>
         )}
@@ -167,14 +157,14 @@ export function CategoryStatCard({
       {/* Main stats + sparkline */}
       <div className="relative z-10 mt-3 flex items-end justify-between gap-2">
         <div className="flex flex-col">
-          <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white leading-none">
+          <span className="text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
             {value.toLocaleString()}
           </span>
           <span className="mt-1.5 text-[11px] font-mono leading-none">
             {todayCount !== undefined && todayCount > 0 ? (
               <span className="text-emerald-400 font-semibold">+{todayCount} today</span>
             ) : (
-              <span className="text-muted-foreground/60 text-[10px] uppercase tracking-wider font-sans">
+              <span className="text-muted-foreground/65 text-[10px] uppercase tracking-wider font-mono">
                 docs
               </span>
             )}
@@ -183,7 +173,7 @@ export function CategoryStatCard({
 
         {sparkline && sparkline.length >= 2 && (
           <div className="pb-0.5">
-            <MiniSparkline data={sparkline} color={color} width={64} height={28} />
+            <MiniSparkline data={sparkline} color={color} width={68} height={28} />
           </div>
         )}
       </div>
