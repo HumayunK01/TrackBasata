@@ -49,7 +49,7 @@ export function FaxCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md p-4 shadow-2xs transition-all duration-200 hover:shadow-md",
+        "rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs transition-all duration-150 hover:border-border hover:shadow-xs",
         isNew && "animate-row-in",
       )}
     >
@@ -60,7 +60,7 @@ export function FaxCard({
             type="button"
             onClick={() => copyName(row.patient_name)}
             title="Tap to copy name"
-            className="font-semibold text-sm sm:text-base text-foreground rounded-lg px-1 -mx-1 text-left hover:bg-foreground/5 active:scale-98 transition-all cursor-pointer truncate"
+            className="font-semibold text-sm sm:text-base text-foreground rounded-lg px-1 -mx-1 text-left hover:bg-foreground/5 hover:text-emerald-500 active:scale-[0.98] transition-all cursor-pointer truncate"
           >
             {row.patient_name}
           </button>
@@ -69,7 +69,7 @@ export function FaxCard({
         {mine && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" className="size-8 rounded-xl shrink-0 text-muted-foreground hover:text-foreground active:scale-95 transition-all">
                 <MoreVertical className="size-4" />
               </Button>
             </DropdownMenuTrigger>
