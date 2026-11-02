@@ -13,8 +13,9 @@ import {
 import { useCategories, type Category } from "@/hooks/useCategories";
 import { useUpsertLog, useDailyLogs } from "@/hooks/useDailyLogs";
 import { isoDate, totalForLog, isWeekend, type DailyLog } from "@/types/log";
-import { EmptyState } from "@/components/ar/industrial";
-import { RotateCcw, Hash, Plus, Tag, ChevronRight, RefreshCw, AlertTriangle } from "@/components/ui/icons";
+import { FigHeader, EmptyState } from "@/components/ar/industrial";
+import { RotateCcw, Hash, Plus, Tag, RefreshCw, AlertTriangle, FileCheck } from "@/components/ui/icons";
+import { ActivityRing } from "@/components/ar/ActivityRing";
 import { supabase, getUserId } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAnimatedNumber } from "@/hooks/useAnimatedNumber";
@@ -24,6 +25,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMutationRateLimit } from "@/hooks/useMutationRateLimit";
 import { logAuditEvent } from "@/hooks/useAuditLog";
 import { playTapFeedback } from "@/lib/audio-feedback";
+import { colorForKey } from "@/lib/cat-colors";
+import { cn } from "@/lib/utils";
 
 // Import modular components
 import { CounterCard } from "@/components/ar/counter/CounterCard";
@@ -106,7 +109,6 @@ export default function CounterPage() {
 
   const todayIso = isoDate();
   const todayLog = logs.find((l) => l.log_date === todayIso);
-  const todayTotal = todayLog ? totalForLog(todayLog) : 0;
 
   const [{ counts, selectedKeys, saved }, cDispatch] = useReducer(counterReducer, undefined, () => {
     const savedDate = localStorage.getItem(COUNTS_DATE_KEY);
@@ -294,13 +296,41 @@ export default function CounterPage() {
     }
   }, [selectedKeys]);
 
+  // Cumulative historical work volume per category across all daily logs + current session
+  const categoryWorkVolume = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const log of logs) {
+      if (log.counts && typeof log.counts === "object") {
+        for (const [k, v] of Object.entries(log.counts)) {
+          if (typeof v === "number" && v > 0) {
+            map.set(k, (map.get(k) ?? 0) + v);
+          }
+        }
+      }
+    }
+    // Include current session counts if any category was counted today
+    for (const [k, v] of Object.entries(counts)) {
+      if (typeof v === "number" && v > 0 && !todayLog?.counts?.[k]) {
+        map.set(k, (map.get(k) ?? 0) + v);
+      }
+    }
+    return map;
+  }, [logs, counts, todayLog]);
+
   const activeCategories = useMemo(() => {
     return categories.filter((c) => selectedKeys.includes(c.key));
   }, [categories, selectedKeys]);
 
+  // Ranked hierarchy: most worked category first down to never worked category
   const availableToAdd = useMemo(() => {
-    return categories.filter((c) => !selectedKeys.includes(c.key));
-  }, [categories, selectedKeys]);
+    const unselected = categories.filter((c) => !selectedKeys.includes(c.key));
+    return unselected.sort((a, b) => {
+      const volA = categoryWorkVolume.get(a.key) ?? 0;
+      const volB = categoryWorkVolume.get(b.key) ?? 0;
+      if (volB !== volA) return volB - volA; // Highest volume first
+      return a.position - b.position; // Tiebreaker: catalog position
+    });
+  }, [categories, selectedKeys, categoryWorkVolume]);
 
   // Throttled / debounced broadcast queue to avoid saturating realtime channel on rapid clicks
   const pendingBroadcastRef = useRef<Record<string, number>>({});
@@ -381,6 +411,15 @@ export default function CounterPage() {
   const total = activeCategories.reduce((s, c) => s + getCount(c.key), 0);
   const maxCount = activeCategories.reduce((m, c) => Math.max(m, getCount(c.key)), 0);
   const animatedTotal = useAnimatedNumber(total);
+
+  const counterGridClass = useMemo(() => {
+    const len = activeCategories.length;
+    if (len === 1) return "grid grid-cols-1 max-w-lg mx-auto gap-4";
+    if (len === 2) return "grid grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto gap-4";
+    if (len === 3) return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
+    if (len === 4) return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4";
+    return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4.5";
+  }, [activeCategories.length]);
 
   const addCategory = (cat: Category) => cDispatch({ type: "add_key", key: cat.key });
   const removeCategory = (key: string) => cDispatch({ type: "remove_key", key });
@@ -853,46 +892,41 @@ export default function CounterPage() {
         {announcement}
       </div>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="w-full px-4 sm:px-6 py-5 sm:py-6 flex flex-col gap-5 max-w-7xl mx-auto">
-          {/* Hero — Session Total Command Center */}
-          <section className="relative rounded-2xl border border-border/70 bg-gradient-to-b from-card to-card/60 backdrop-blur-md overflow-hidden shadow-xs animate-fade-in">
-            {/* Ambient accent top highlight */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-            <div className="absolute -top-20 left-1/3 -translate-x-1/2 w-96 h-32 bg-primary/5 blur-3xl pointer-events-none rounded-full" />
-
-            {/* Header bar */}
-            <header className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-5 py-3 border-b border-border/50 bg-muted/20">
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-primary shadow-2xs" />
-                <span className="font-mono text-xs font-semibold tracking-wider text-foreground uppercase">
-                  Session Total
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1] [overscroll-behavior-y:contain]">
+        <div className="w-full max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-fade-in">
+          {/* ── Section 1: Today's Total (Matching Report & Console KPI Style) ── */}
+          <section className="space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <FigHeader
+                title="Today's Total"
+                sub={`${activeCategories.length} active · ${total} documents today`}
+                className="mb-0 flex-1 min-w-[240px]"
+              />
+              <div className="flex items-center gap-2 shrink-0">
                 {/* Sync status badge */}
                 <div
-                  className={`flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-2xs transition-colors duration-200 ${
+                  className={cn(
+                    "flex items-center gap-1.5 text-2xs font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-2xs transition-colors duration-150",
                     logsLoading || isSyncing || upsert.isPending
-                      ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25"
+                      ? "bg-sky-500/10 text-sky-400 border-sky-500/25"
                       : saved
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
                       : total > 0
-                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
                       : "bg-muted text-muted-foreground border-border/40"
-                  }`}
+                  )}
                 >
                   <span
-                    className={`size-1.5 rounded-full ${
+                    className={cn(
+                      "size-1.5 rounded-full",
                       logsLoading || isSyncing || upsert.isPending
-                        ? "bg-sky-500 animate-ping"
+                        ? "bg-sky-400 animate-ping"
                         : saved
                         ? "bg-emerald-500"
                         : total > 0
                         ? "bg-amber-500"
                         : "bg-muted-foreground"
-                    }`}
+                    )}
                   />
                   <span>
                     {logsLoading || isSyncing || upsert.isPending
@@ -913,9 +947,9 @@ export default function CounterPage() {
                     onClick={handleSave}
                     disabled={upsert.isPending || isSyncing}
                     aria-label="Force sync now"
-                    className="h-7 px-2.5 rounded-xl border-border/60 hover:bg-muted/80 text-xs font-medium"
+                    className="h-7 px-2.5 rounded-lg border-border/60 hover:bg-muted/80 text-xs font-medium cursor-pointer"
                   >
-                    <RefreshCw className={`size-3 mr-1 ${upsert.isPending || isSyncing ? "animate-spin" : ""}`} />
+                    <RefreshCw className={cn("size-3 mr-1", (upsert.isPending || isSyncing) && "animate-spin")} />
                     <span>Sync</span>
                   </Button>
                 )}
@@ -925,7 +959,7 @@ export default function CounterPage() {
                   variant="ghost"
                   size="sm"
                   aria-label="Reset counter"
-                  className="h-7 px-2.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  className="h-7 px-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                   onClick={() => setResetOpen(true)}
                   disabled={total === 0 && activeCategories.length === 0}
                 >
@@ -933,91 +967,75 @@ export default function CounterPage() {
                   <span className="hidden xs:inline ml-1 font-semibold text-xs">Reset</span>
                 </Button>
               </div>
-            </header>
+            </div>
 
-            {/* Main hero display */}
-            <div className="p-5 sm:p-7 flex flex-wrap items-end justify-between gap-6 relative z-10">
+            {/* Today's Total Hero Card */}
+            <div className="group relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border/65 bg-card/80 p-5 shadow-2xs transition-colors duration-150 hover:border-border">
               <div>
-                <p className="font-mono text-2xs uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
-                  Current Count
-                </p>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-7xl sm:text-8xl xl:text-9xl font-black font-mono tabular-nums text-foreground leading-none tracking-tight">
-                    {animatedTotal}
-                  </span>
-                  <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-widest pb-2">
-                    docs
-                  </span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Today's Total</span>
+                  <span className="text-[11px] font-mono text-muted-foreground/60">· {todayIso}</span>
+                </div>
+                <div className="flex items-center gap-3.5">
+                  <ActivityRing
+                    value={total}
+                    target={Math.max(50, total)}
+                    size={52}
+                    strokeWidth={3}
+                    color="hsl(var(--primary))"
+                    className="shrink-0"
+                  >
+                    <FileCheck className="size-6 text-emerald-500 dark:text-emerald-400" />
+                  </ActivityRing>
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="text-4xl sm:text-5xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
+                      {animatedTotal}
+                    </span>
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground/70 pb-0.5">
+                      docs
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Quick stats cards */}
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                <div className="px-3.5 py-2.5 rounded-xl border border-border/60 bg-background/50 backdrop-blur-xs min-w-[100px] shadow-2xs">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block">
-                    Active
-                  </span>
-                  <span className="text-xl font-bold font-mono tabular-nums text-foreground">
-                    {activeCategories.length}
-                  </span>
+              <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/45 text-xs font-mono text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                  <span className="text-foreground/90 font-medium">{activeCategories.length} active</span>
                 </div>
-
-                <div className="px-3.5 py-2.5 rounded-xl border border-border/60 bg-background/50 backdrop-blur-xs min-w-[110px] shadow-2xs">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block">
-                    Logged Today
-                  </span>
-                  <span className="text-xl font-bold font-mono tabular-nums text-foreground">
-                    {todayTotal}
-                  </span>
-                </div>
-
-                {total > 0 && (
-                  <div className="px-3.5 py-2.5 rounded-xl border border-border/60 bg-background/50 backdrop-blur-xs min-w-[100px] shadow-2xs">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block">
-                      Delta
-                    </span>
-                    <span
-                      className={`text-xl font-bold font-mono tabular-nums ${
-                        saved
-                          ? "text-emerald-500"
-                          : total > todayTotal
-                          ? "text-amber-500"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {saved ? "±0" : `${total >= todayTotal ? "+" : ""}${total - todayTotal}`}
-                    </span>
-                  </div>
-                )}
+                <span className="text-border">·</span>
+                <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
+                  {total > 0 ? "Shift active" : "Shift idle"}
+                </span>
               </div>
             </div>
           </section>
 
-          {/* Active counter cards */}
+          {/* ── Section 2: Active Counters Grid ── */}
           {activeCategories.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-0.5">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold tracking-tight text-foreground">
-                    Active Counters
-                  </h3>
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    {activeCategories.length}
-                  </span>
-                </div>
-                <span className="hidden sm:inline-flex items-center gap-1.5 text-2xs text-muted-foreground font-mono">
-                  Keys <kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 font-bold">1</kbd>
-                  – <kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 font-bold">{Math.min(9, activeCategories.length)}</kbd> to quick count
+            <section className="space-y-3.5">
+              <div className="flex items-center justify-between">
+                <FigHeader
+                  title="Active Counters"
+                  sub={`${activeCategories.length} categories`}
+                  className="mb-0 flex-1"
+                />
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-2xs text-muted-foreground font-mono shrink-0 pl-3">
+                  Keys <kbd className="px-1.5 py-0.5 rounded border border-border/70 bg-muted/50 font-bold">1</kbd>
+                  – <kbd className="px-1.5 py-0.5 rounded border border-border/70 bg-muted/50 font-bold">{Math.min(9, activeCategories.length)}</kbd> to quick count
+                  <span className="text-border">·</span>
+                  <span className="text-muted-foreground/75">Shift+[1–9] to decrease</span>
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4.5 stagger-children">
+              <div className={counterGridClass}>
                 {activeCategories.map((cat, idx) => (
                   <CounterCard
                     key={cat.key}
                     cat={cat}
                     count={getCount(cat.key)}
                     maxCount={maxCount}
+                    total={total}
                     onIncrement={() => increment(cat.key)}
                     onDecrement={() => decrement(cat.key)}
                     onRemove={() => removeCategory(cat.key)}
@@ -1025,63 +1043,114 @@ export default function CounterPage() {
                   />
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Category action tray */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => setPickerOpen(true)}
-              disabled={catsLoading || availableToAdd.length === 0}
-              className="flex-1 flex items-center gap-3.5 rounded-2xl border border-border/70 bg-card/70 backdrop-blur-sm px-4 py-3.5 text-left hover:bg-muted/40 hover:border-foreground/20 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation cursor-pointer shadow-2xs"
-            >
-              <span className="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <Plus className="size-4 text-primary" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">
-                  {catsLoading
-                    ? "Loading categories…"
-                    : availableToAdd.length === 0 && activeCategories.length === 0
-                    ? "No categories yet"
-                    : availableToAdd.length === 0
-                    ? "All categories in counter"
-                    : "Add Category from Tray"}
-                </p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {availableToAdd.length > 0
-                    ? `${availableToAdd.length} available to track`
-                    : "All available categories are already added"}
-                </p>
-              </div>
-              {availableToAdd.length > 0 && !catsLoading && (
-                <ChevronRight className="size-4 text-muted-foreground shrink-0" />
-              )}
-            </button>
+          {/* ── Section 3: Category Tray & Actions ── */}
+          <section className="space-y-3.5">
+            <FigHeader
+              title="Category Tray"
+              sub={`${availableToAdd.length} available to track`}
+            />
 
-            <button
-              type="button"
-              onClick={() => setNewCatOpen(true)}
-              disabled={catsLoading}
-              className="sm:w-60 flex items-center gap-3.5 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 text-left hover:bg-primary/10 hover:border-primary/50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation cursor-pointer shadow-2xs"
-            >
-              <span className="size-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
-                <Tag className="size-4 text-primary" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-primary truncate">Create Category</p>
-                <p className="text-[11px] text-primary/70 truncate">New document type</p>
+            <div className="rounded-2xl border border-border/65 bg-card/80 p-4 space-y-3.5 shadow-2xs">
+              {/* Quick Add Available Categories Rail */}
+              {availableToAdd.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      Quick Add to Counter
+                    </span>
+                    <span className="font-mono text-[11px] text-muted-foreground/80">
+                      {availableToAdd.length} in tray
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {availableToAdd.slice(0, 8).map((cat) => {
+                      const clr = colorForKey(cat.key);
+                      const vol = categoryWorkVolume.get(cat.key) ?? 0;
+                      return (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          onClick={() => addCategory(cat)}
+                          title={
+                            vol > 0
+                              ? `${cat.label} · ${vol.toLocaleString()} documents worked`
+                              : `${cat.label} · Never worked yet`
+                          }
+                          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl border border-border/60 bg-muted/30 hover:bg-muted text-xs font-medium text-foreground transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs group"
+                        >
+                          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: clr }} />
+                          <span>{cat.label}</span>
+                          {vol > 0 && (
+                            <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
+                              {vol >= 1000 ? `${(vol / 1000).toFixed(1)}k` : vol}
+                            </span>
+                          )}
+                          <Plus className="size-3 text-muted-foreground group-hover:text-foreground shrink-0 ml-0.5" />
+                        </button>
+                      );
+                    })}
+                    {availableToAdd.length > 8 && (
+                      <button
+                        type="button"
+                        onClick={() => setPickerOpen(true)}
+                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl border border-dashed border-border/80 text-xs font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
+                      >
+                        +{availableToAdd.length - 8} more…
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : activeCategories.length > 0 ? (
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground py-0.5">
+                  <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>All {categories.length} categories are active in your counter</span>
+                </div>
+              ) : null}
+
+              {/* Main Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1 border-t border-border/40">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPickerOpen(true)}
+                  disabled={catsLoading || availableToAdd.length === 0}
+                  className="w-full sm:flex-1 h-9 rounded-xl border-border/70 bg-background/80 hover:bg-muted/60 text-xs font-medium justify-between px-3.5 cursor-pointer shadow-2xs"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Plus className="size-3.5 text-emerald-500 shrink-0" />
+                    <span className="truncate">
+                      {availableToAdd.length === 0
+                        ? "All categories in counter"
+                        : "Browse All Tray Categories"}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] font-medium text-muted-foreground px-2 py-0.5 rounded-md bg-muted/60 border border-border/50 shrink-0">
+                    {availableToAdd.length} left
+                  </span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() => setNewCatOpen(true)}
+                  disabled={catsLoading}
+                  className="w-full sm:w-auto h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-xs shadow-emerald-600/20 cursor-pointer shrink-0"
+                >
+                  <Tag className="size-3.5 mr-1.5" />
+                  <span>New Category</span>
+                </Button>
               </div>
-            </button>
-          </div>
+            </div>
+          </section>
 
           {/* Empty state when no counters selected */}
           {activeCategories.length === 0 && !catsLoading && categories.length > 0 && (
             <EmptyState
               icon={Hash}
               title="No Active Counters"
-              hint="Add categories from the tray above or press 'Add Category' to begin tracking document counts for today."
+              hint="Add categories from the tray above or press 'Browse All' to begin tracking document counts for today."
             />
           )}
         </div>

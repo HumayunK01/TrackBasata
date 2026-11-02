@@ -34,10 +34,8 @@ function CategoryPickerList({
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    // Always sort categories alphabetically by label
-    const sorted = [...categories].sort((a, b) => a.label.localeCompare(b.label));
-    if (!s) return sorted;
-    return sorted.filter(
+    if (!s) return categories;
+    return categories.filter(
       (c) => c.label.toLowerCase().includes(s) || c.short.toLowerCase().includes(s),
     );
   }, [q, categories]);

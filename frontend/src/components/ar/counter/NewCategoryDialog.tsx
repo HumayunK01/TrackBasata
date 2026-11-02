@@ -151,13 +151,6 @@ export function NewCategoryDialog({ open, onOpenChange, onCreated }: NewCategory
                 </span>
               </div>
               <div className="relative py-4 flex items-center justify-center overflow-hidden mx-2 rounded-xl">
-                <span
-                  aria-hidden
-                  className="absolute inset-0 flex items-center justify-center font-mono font-extrabold text-[4.5rem] leading-none select-none pointer-events-none"
-                  style={{ color: withAlpha(clr, 0.06) }}
-                >
-                  {trimmedShort || "??"}
-                </span>
                 <span className="relative text-4xl font-bold font-mono tabular-nums leading-none select-none text-foreground">
                   0
                 </span>
