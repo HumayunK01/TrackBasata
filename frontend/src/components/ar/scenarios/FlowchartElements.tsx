@@ -8,7 +8,7 @@ export function VerticalArrow({ height = 22, className }: { height?: number; cla
         width="16"
         height={height}
         viewBox={`0 0 16 ${height}`}
-        className="text-slate-400 block overflow-visible"
+        className="text-border/90 dark:text-white/20 block overflow-visible"
       >
         <line
           x1="8"
@@ -50,7 +50,7 @@ export function BranchSplitter2({
       {/* SVG Fork Bar (visible on multi-column screens) */}
       <div className={cn("w-full", is6733 ? "hidden sm:block" : "hidden md:block")}>
         <svg
-          className="w-full h-5 text-slate-400 block overflow-visible"
+          className="w-full h-5 text-border/90 dark:text-white/20 block overflow-visible"
           viewBox="0 0 100 20"
           preserveAspectRatio="none"
         >
@@ -114,10 +114,10 @@ export function BranchSplitter2({
         <div className={cn("flex flex-col items-center", is3367 && "md:col-span-4", is6733 && "sm:col-span-8")}>
           <span
             className={cn(
-              "px-3 py-1 rounded-full text-2xs font-mono font-bold uppercase shadow-2xs border bg-white leading-tight",
-              leftColor === "emerald" && "bg-emerald-50 text-emerald-700 border-emerald-300",
-              leftColor === "purple" && "bg-purple-50 text-purple-700 border-purple-300",
-              leftColor === "red" && "bg-red-50 text-red-700 border-red-300",
+              "px-3 py-1 rounded-full text-2xs font-mono font-bold uppercase shadow-2xs border leading-tight backdrop-blur-sm",
+              leftColor === "emerald" && "bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+              leftColor === "purple" && "bg-purple-500/10 dark:bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
+              leftColor === "red" && "bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
             )}
           >
             {leftLabel}
@@ -128,10 +128,10 @@ export function BranchSplitter2({
         <div className={cn("flex flex-col items-center", is3367 && "md:col-span-8", is6733 && "sm:col-span-4")}>
           <span
             className={cn(
-              "px-3 py-1 rounded-full text-2xs font-mono font-bold uppercase shadow-2xs border bg-white leading-tight",
-              rightColor === "amber" && "bg-amber-50 text-amber-800 border-amber-300",
-              rightColor === "red" && "bg-red-50 text-red-700 border-red-300",
-              rightColor === "emerald" && "bg-emerald-50 text-emerald-700 border-emerald-300",
+              "px-3 py-1 rounded-full text-2xs font-mono font-bold uppercase shadow-2xs border leading-tight backdrop-blur-sm",
+              rightColor === "amber" && "bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+              rightColor === "red" && "bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+              rightColor === "emerald" && "bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
             )}
           >
             {rightLabel}

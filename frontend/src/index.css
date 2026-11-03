@@ -368,40 +368,15 @@
     color: hsl(var(--foreground));
   }
 
-  /* ── Always-Light Flowchart Canvas Container ── */
-  .flowchart-light-canvas,
-  .dark .flowchart-light-canvas,
-  html[data-theme-variant="classic"] .flowchart-light-canvas,
-  html[data-theme-variant="classic"].dark .flowchart-light-canvas {
-    color-scheme: light !important;
-    --background: 0 0% 100% !important;          /* #FFFFFF */
-    --foreground: 222 47% 11% !important;        /* #0F172A */
-    --card: 0 0% 100% !important;                /* #FFFFFF */
-    --card-foreground: 222 47% 11% !important;   /* #0F172A */
-    --popover: 0 0% 100% !important;             /* #FFFFFF */
-    --popover-foreground: 222 47% 11% !important;
-    --primary: 160 84% 39% !important;
-    --primary-foreground: 0 0% 100% !important;
-    --secondary: 210 40% 96% !important;         /* #F1F5F9 */
-    --secondary-foreground: 222 47% 11% !important;
-    --muted: 210 40% 96% !important;             /* #F1F5F9 */
-    --muted-foreground: 215 16% 47% !important;   /* #64748B */
-    --accent: 210 40% 96% !important;
-    --accent-foreground: 222 47% 11% !important;
-    --destructive: 0 84% 60% !important;
-    --destructive-foreground: 0 0% 100% !important;
-    --warning: 38 92% 50% !important;
-    --warning-foreground: 0 0% 10% !important;
-    --success: 142 71% 45% !important;
-    --success-foreground: 0 0% 100% !important;
-    --info: 217 91% 60% !important;
-    --info-foreground: 0 0% 100% !important;
-    --border: 214 32% 88% !important;            /* #E2E8F0 */
-    --input: 214 32% 91% !important;
-    background-color: #f8fafc !important;
-    color: #0f172a !important;
-    border-color: #e2e8f0 !important;
+  /* ── Flowchart Blueprint Canvas Container ── */
+  .flowchart-canvas {
     font-family: var(--font-heading, 'Hubot Sans Variable', 'Hubot Sans', sans-serif);
+    --dot-color: rgba(148, 163, 184, 0.16);
+  }
+
+  .dark .flowchart-canvas,
+  html[data-theme-variant="classic"].dark .flowchart-canvas {
+    --dot-color: rgba(255, 255, 255, 0.08);
   }
 
   button, a, [role="button"] {
