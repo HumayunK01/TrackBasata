@@ -25,6 +25,35 @@ export interface WhatsNewEntry {
 // ── Entries (newest first) ────────────────────────────────────────────────
 export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
   {
+    id: "version-3-0-2-mini",
+    date: "2026-11-03",
+    title: "Default Start Page & Settings Polish",
+    description:
+      "Choose your default landing page when opening TrackBasata, enjoy a full-width settings workspace, and admin category controls.",
+    body: [
+      (
+        <>
+          <strong className="text-foreground font-semibold">Custom Start Page:</strong> Choose which screen opens automatically when you load the website or log in — pick from Console, Counter, Daily Log, Tracker, or Facilities under Settings &gt; Preferences.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Brand Logo Quick Return:</strong> Clicking the TrackBasata logo in the sidebar or top bar now instantly routes to your preferred start page.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Full-Width Settings Workspace:</strong> Redesigned Settings layout to match the full canvas of Console and Facilities, featuring unified font sizes and clean segmented tabs.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Admin Category Safeguards:</strong> Category management actions are now locked to workspace administrators to protect your team&apos;s logging taxonomy.
+        </>
+      ),
+    ],
+  },
+  {
     id: "version-3-0-1-mini",
     date: "2026-10-30",
     title: "Facilities Directory Upgrade",

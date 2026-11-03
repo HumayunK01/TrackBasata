@@ -13,7 +13,6 @@ import {
 import { useDailyLogs } from "@/hooks/useDailyLogs";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
-import { APP_VERSION } from "@/lib/version";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -21,7 +20,6 @@ import {
   SlidersHorizontal,
   Tag,
   AlertTriangle,
-  Command,
 } from "lucide-react";
 
 import {
@@ -117,16 +115,15 @@ type SettingsTab = "profile" | "preferences" | "categories" | "danger";
 interface TabItem {
   id: SettingsTab;
   label: string;
-  sublabel: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   destructive?: boolean;
 }
 
 const SETTINGS_TABS: TabItem[] = [
-  { id: "profile", label: "Profile & Security", sublabel: "Identity & access keys", icon: User },
-  { id: "preferences", label: "Preferences & Region", sublabel: "Theme, haptics & timezone", icon: SlidersHorizontal },
-  { id: "categories", label: "Document Categories", sublabel: "Keys & custom order", icon: Tag },
-  { id: "danger", label: "Danger Zone", sublabel: "Account & data purge", icon: AlertTriangle, destructive: true },
+  { id: "profile", label: "Profile", icon: User },
+  { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
+  { id: "categories", label: "Categories", icon: Tag },
+  { id: "danger", label: "Delete Account", icon: AlertTriangle, destructive: true },
 ];
 
 export default function SettingsPage() {
@@ -269,62 +266,30 @@ export default function SettingsPage() {
     toast.success("Time zone preference updated.");
   };
 
-  const userInitials = (() => {
-    const f = profile?.first_name?.[0] ?? "";
-    const l = profile?.last_name?.[0] ?? "";
-    return ((f + l) || user?.email?.[0] || "U").toUpperCase();
-  })();
-
-  const userDisplayName = profile?.first_name || profile?.last_name
-    ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
-    : "Authorized User";
-
   return (
-    <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-border/50 gap-3">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-heading">
-                Settings &amp; Workspace
+    <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1] [overscroll-behavior-y:contain] flex flex-col">
+      <div className="w-full flex-1 flex flex-col justify-between space-y-6 animate-fade-in min-h-full">
+        {/* ── Top Section (Header, Tabs & Content) ── */}
+        <div className="w-full space-y-5">
+          {/* ── Page Header ── */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-border/50 gap-2">
+            <div>
+              <h1 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
+                Settings
               </h1>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
-              </span>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Manage your profile, preferences, and categories
+              </p>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Configure personal profile, visual environment, document categories, and system region
-            </p>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-muted-foreground bg-muted/40 border border-border/50 rounded-xl px-3 py-1.5">
-            <Command className="size-3.5 text-muted-foreground" />
-            <span>Cmd+K for Command Palette</span>
-          </div>
-        </div>
-
-        {/* ── Two-Column macOS / Apple Settings Layout ── */}
-        <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
-          {/* ── Left Navigation Rail ── */}
-          <aside className="w-full md:w-64 lg:w-72 shrink-0 space-y-4">
-            {/* Quick Profile Summary Card */}
-            <div className="p-3.5 rounded-2xl bg-card/90 backdrop-blur-md border border-border/70 shadow-sm flex items-center gap-3">
-              <div className="relative size-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-bold text-sm shadow-inner shrink-0 font-heading">
-                {userInitials}
-                <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 border-2 border-card" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-foreground truncate font-heading">{userDisplayName}</p>
-                <p className="text-[11px] text-muted-foreground truncate font-mono mt-0.5">{user?.email || "Signed In"}</p>
-                <span className="inline-block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded mt-1">
-                  {profile?.role === "admin" ? "Admin" : "AR Specialist"}
-                </span>
-              </div>
-            </div>
-
-            {/* Navigation Tabs (Vertical on Desktop, Horizontal on Mobile) */}
-            <nav className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0 p-1.5 rounded-2xl bg-card/90 backdrop-blur-md border border-border/70 shadow-sm">
+          {/* ── Segmented Tab Control ── */}
+          <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+            <div
+              role="tablist"
+              aria-label="Settings tabs"
+              className="inline-flex h-9 items-center gap-0.5 rounded-xl border border-border/70 bg-background/90 dark:bg-black/35 p-1 shadow-2xs text-xs"
+            >
               {SETTINGS_TABS.map((t) => {
                 const active = activeTab === t.id;
                 const Icon = t.icon;
@@ -332,39 +297,41 @@ export default function SettingsPage() {
                   <button
                     key={t.id}
                     type="button"
+                    role="tab"
+                    aria-selected={active}
                     onClick={() => setActiveTab(t.id)}
                     className={cn(
-                      "relative shrink-0 md:w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer select-none text-left",
+                      "relative z-0 h-full shrink-0 rounded-lg px-3 text-xs font-medium transition-colors duration-150 select-none cursor-pointer inline-flex items-center gap-1.5 active:scale-[0.98]",
                       active
-                        ? "text-white font-semibold"
+                        ? t.destructive
+                          ? "text-rose-500 font-semibold"
+                          : "text-foreground font-semibold"
                         : t.destructive
-                        ? "text-destructive/80 hover:text-destructive hover:bg-destructive/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          ? "text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                          : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {active && (
-                      <motion.div
+                      <motion.span
                         layoutId="settings-active-pill"
+                        transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
                         className={cn(
-                          "absolute inset-0 rounded-xl shadow-xs",
+                          "absolute inset-0 rounded-lg shadow-xs -z-10",
                           t.destructive
-                            ? "bg-destructive text-destructive-foreground"
-                            : "bg-emerald-600 shadow-emerald-600/25"
+                            ? "bg-rose-500/15 border border-rose-500/30"
+                            : "bg-card dark:bg-white/[0.09] border border-border/80 dark:border-white/12 shadow-xs"
                         )}
-                        transition={{ type: "spring", bounce: 0.15, duration: 0.3 }}
                       />
                     )}
-                    <span className="relative z-10 flex items-center gap-2.5 min-w-0">
-                      <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-                      <span className="truncate">{t.label}</span>
-                    </span>
-
-                    {/* Count badge for categories */}
+                    <Icon className={cn("size-3.5 shrink-0", active && !t.destructive && "text-emerald-500")} strokeWidth={1.75} />
+                    <span>{t.label}</span>
                     {t.id === "categories" && categories.length > 0 && (
                       <span
                         className={cn(
-                          "relative z-10 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ml-2",
-                          active ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
+                          "text-[10px] font-mono tabular-nums font-semibold px-1.5 py-0.2 rounded-md transition-colors",
+                          active
+                            ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground"
                         )}
                       >
                         {categories.length}
@@ -373,54 +340,20 @@ export default function SettingsPage() {
                   </button>
                 );
               })}
-            </nav>
-
-            {/* Workspace & System Info Card (Desktop) */}
-            <div className="hidden md:block p-4 rounded-2xl bg-card/70 border border-border/60 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">System Status</span>
-                <span className="flex items-center gap-1.5 font-semibold text-emerald-500 font-mono text-2xs">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Operational
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">Build Engine</span>
-                <span className="font-mono font-bold text-foreground text-2xs">{APP_VERSION}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground font-medium">Auth Provider</span>
-                <span className="font-mono text-muted-foreground text-2xs">Supabase JWT</span>
-              </div>
-              <div className="pt-2 border-t border-border/40 text-[11px] text-muted-foreground leading-relaxed">
-                TrackBasata Personal AR Workstation. Real-time document indexing &amp; personal productivity logs.
-              </div>
-              <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground select-none">
-                <Link to="/terms" className="hover:text-foreground hover:underline transition-colors">
-                  Terms
-                </Link>
-                <span>•</span>
-                <Link to="/privacy" className="hover:text-foreground hover:underline transition-colors">
-                  Privacy
-                </Link>
-                <span>•</span>
-                <Link to="/cookies" className="hover:text-foreground hover:underline transition-colors">
-                  Cookies
-                </Link>
-              </div>
             </div>
-          </aside>
+          </div>
 
-          {/* ── Right Content Canvas ── */}
-          <section className="flex-1 min-w-0 w-full space-y-6">
+          {/* ── Active Tab Canvas ── */}
+          <section className="w-full min-w-0">
             <AnimatePresence mode="wait">
               {activeTab === "profile" && (
                 <motion.div
                   key="profile"
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="space-y-6"
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="space-y-5"
                 >
                   <ProfilePasswordCard
                     profile={profile}
@@ -441,11 +374,11 @@ export default function SettingsPage() {
               {activeTab === "preferences" && (
                 <motion.div
                   key="preferences"
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="space-y-6"
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="space-y-5"
                 >
                   <PreferencesCard
                     tzPreference={tzPreference}
@@ -457,11 +390,11 @@ export default function SettingsPage() {
               {activeTab === "categories" && (
                 <motion.div
                   key="categories"
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="space-y-6"
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="space-y-5"
                 >
                   <CategorySection
                     categories={categories}
@@ -481,6 +414,7 @@ export default function SettingsPage() {
                     }}
                     onDrop={handleDrop}
                     onMove={handleMove}
+                    isAdmin={profile?.role === "admin"}
                   />
                 </motion.div>
               )}
@@ -488,11 +422,11 @@ export default function SettingsPage() {
               {activeTab === "danger" && (
                 <motion.div
                   key="danger"
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="space-y-6"
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="space-y-5"
                 >
                   <DangerZone delState={delState} delDispatch={delDispatch} onDeleteAccount={handleDeleteAccount} />
                 </motion.div>
@@ -501,19 +435,25 @@ export default function SettingsPage() {
           </section>
         </div>
 
-        {/* Mobile footer links */}
-        <div className="md:hidden pt-6 pb-2 flex items-center justify-center gap-4 text-xs text-muted-foreground select-none border-t border-border/40 mt-8">
-          <Link to="/terms" className="hover:text-foreground hover:underline transition-colors">
-            Terms of Service
-          </Link>
-          <span>•</span>
-          <Link to="/privacy" className="hover:text-foreground hover:underline transition-colors">
-            Privacy Policy
-          </Link>
-          <span>•</span>
-          <Link to="/cookies" className="hover:text-foreground hover:underline transition-colors">
-            Cookie Policy
-          </Link>
+        {/* ── Policy Footer (always anchored at bottom) ── */}
+        <div className="pt-6 pb-2 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground select-none mt-auto">
+          <p className="text-xs text-muted-foreground">
+            Basata Tracker
+          </p>
+
+          <div className="flex items-center gap-3">
+            <Link to="/terms" className="hover:text-foreground transition-colors">
+              Terms
+            </Link>
+            <span className="text-border">•</span>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+            <span className="text-border">•</span>
+            <Link to="/cookies" className="hover:text-foreground transition-colors">
+              Cookies
+            </Link>
+          </div>
         </div>
       </div>
     </main>

@@ -33,6 +33,7 @@ import {
   ChevronUp,
   ChevronDown,
   Search,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,6 +45,7 @@ import {
 import Skeleton from "react-loading-skeleton";
 import { EmptyState } from "@/components/ar/industrial";
 import type { Category } from "@/hooks/useCategories";
+import { useIsAdmin } from "@/hooks/useProfile";
 import { cn } from "@/lib/utils";
 
 export interface CategoryFormState {
@@ -86,6 +88,7 @@ interface CategorySectionProps {
   onDragOver: (e: DragEvent, key: string) => void;
   onDrop: (key: string) => void;
   onMove: (key: string, dir: -1 | 1) => void;
+  isAdmin?: boolean;
 }
 
 export function CategorySection({
@@ -102,7 +105,10 @@ export function CategorySection({
   onDragOver,
   onDrop,
   onMove,
+  isAdmin,
 }: CategorySectionProps) {
+  const isAdminHook = useIsAdmin();
+  const canManage = isAdmin !== undefined ? isAdmin : isAdminHook;
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -115,55 +121,56 @@ export function CategorySection({
 
   return (
     <>
-      <div className="bg-card/90 backdrop-blur-md border border-border/70 rounded-2xl shadow-sm overflow-hidden transition-all">
+      <div className="bg-card/80 border border-border/65 rounded-xl shadow-2xs overflow-hidden transition-all">
         {/* Header Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-5 border-b border-border/60 gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="size-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+            <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-500">
               <Tag className="size-4.5" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold font-heading text-foreground truncate">Document Categories</h2>
+                <h2 className="text-xs sm:text-sm font-semibold text-foreground truncate">Categories</h2>
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono shrink-0">
                   {categories.length} total
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                Drag to reorder · Controls active counter and log sequence
+                Drag to reorder across your daily log and counter
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
             {/* Quick search input */}
-            <div className="relative w-full sm:w-56">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <div className="relative w-full sm:w-60">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search categories..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-7 h-8.5 text-xs rounded-lg bg-muted/40 border-border/70 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60 font-sans"
+                className="pl-9 pr-8 h-9 text-xs w-full bg-background border-border/60 focus:border-primary/50 rounded-xl"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-1 cursor-pointer font-mono"
+                  className="size-5 rounded-full hover:bg-muted text-muted-foreground flex items-center justify-center cursor-pointer transition-colors absolute right-2.5 top-1/2 -translate-y-1/2"
                   title="Clear search"
+                  aria-label="Clear search"
                 >
-                  ✕
+                  <X className="size-3.5" />
                 </button>
               )}
             </div>
 
             <Button
-              size="sm"
-              variant="outline"
-              className="h-8.5 px-3 rounded-lg bg-muted/60 hover:bg-muted text-foreground border border-border text-xs font-medium shadow-2xs active:scale-[0.98] shrink-0 cursor-pointer"
-              onClick={onAdd}
+              onClick={canManage ? onAdd : undefined}
+              disabled={!canManage}
+              title={!canManage ? "Admin access required to add categories" : undefined}
+              className="bg-primary hover:bg-primary/95 text-primary-foreground shadow-xs shadow-primary/20 h-9 px-3.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Plus className="size-3.5 mr-1.5 text-emerald-500" />
+              <Plus className="size-3.5 mr-1.5" />
               <span>Add Category</span>
             </Button>
           </div>
@@ -253,7 +260,7 @@ export function CategorySection({
 
                   {/* Label & Short code */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm font-bold text-foreground truncate leading-snug" title={c.label}>
+                    <p className="text-xs font-semibold text-foreground truncate leading-snug" title={c.label}>
                       {c.label}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">

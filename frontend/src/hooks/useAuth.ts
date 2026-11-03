@@ -63,6 +63,7 @@ function clearSessionLocalStorage() {
     const theme = localStorage.getItem("basata-theme");
     const variant = localStorage.getItem("basata-theme-variant");
     const profileCache = localStorage.getItem("basata_profile_cache");
+    const defaultStartPage = localStorage.getItem("default_start_page");
     const existingRescue = localStorage.getItem("counter_pending_rescue");
     const isDirty = localStorage.getItem("counter_dirty") === "true";
     const dirtyCounts = localStorage.getItem("counter_counts");
@@ -73,6 +74,7 @@ function clearSessionLocalStorage() {
     if (theme) localStorage.setItem("basata-theme", theme);
     if (variant) localStorage.setItem("basata-theme-variant", variant);
     if (profileCache) localStorage.setItem("basata_profile_cache", profileCache);
+    if (defaultStartPage) localStorage.setItem("default_start_page", defaultStartPage);
     if (isDirty && dirtyCounts && dirtyDate) {
       localStorage.setItem(
         "counter_pending_rescue",

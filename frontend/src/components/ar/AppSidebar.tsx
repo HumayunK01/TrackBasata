@@ -93,13 +93,13 @@ export function AppSidebar() {
       {/* Sidebar Header with Brand Identity */}
       <SidebarHeader className="h-14 flex flex-row items-center justify-center px-4 group-data-[collapsible=icon]:px-0 border-b border-sidebar-border/40 shrink-0 relative">
         <Link
-          to="/console"
+          to="/"
           className="flex items-center justify-center group-data-[collapsible=icon]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-opacity hover:opacity-90"
         >
           <AppLogo className="h-8.5 w-auto max-w-[145px] object-contain" />
         </Link>
         <Link
-          to="/console"
+          to="/"
           className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1.5 hover:bg-white/[0.06] transition-all size-9"
           title="Basata.ai Tracker"
         >

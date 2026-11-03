@@ -84,6 +84,11 @@ const TitleSync = () => {
   return null;
 };
 
+const RootRedirect = () => {
+  const startPage = localStorage.getItem("default_start_page") || "/console";
+  return <Navigate to={startPage} replace />;
+};
+
 const App = () => (
   <ThemeProvider>
     <SkeletonTheme baseColor="hsl(var(--skeleton-base))" highlightColor="hsl(var(--skeleton-highlight))">
@@ -108,7 +113,7 @@ const App = () => (
                       <Route path="/terms" element={<TermsOfServicePage />} />
 
                       <Route element={<AppLayout><Outlet /></AppLayout>}>
-                        <Route path="/" element={<Navigate to="/console" replace />} />
+                        <Route path="/" element={<RootRedirect />} />
                         <Route path="/console" element={<ConsolePage />} />
                         <Route path="/log" element={<DailyLogPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
