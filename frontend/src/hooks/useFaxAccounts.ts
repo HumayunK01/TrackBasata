@@ -4,6 +4,7 @@ import { supabase, getUserId } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutationRateLimit } from "@/hooks/useMutationRateLimit";
+import { getCachedProfile } from "@/hooks/useProfile";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type FaxAccount = Tables<"fax_accounts">;
@@ -60,6 +61,11 @@ export function useRenameFaxAccount() {
   return useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
       if (!checkLimit()) throw new Error("Too many requests. Please wait a moment.");
+      const userId = await getUserId();
+      const profile = getCachedProfile(userId);
+      if (profile && profile.role !== "admin") {
+        throw new Error("Only administrators can rename accounts.");
+      }
       const validated = NameSchema.parse(name);
       const { error } = await supabase
         .from("fax_accounts")
@@ -84,6 +90,11 @@ export function useDeleteFaxAccount() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!checkLimit()) throw new Error("Too many requests. Please wait a moment.");
+      const userId = await getUserId();
+      const profile = getCachedProfile(userId);
+      if (profile && profile.role !== "admin") {
+        throw new Error("Only administrators can delete accounts.");
+      }
       // ON DELETE CASCADE removes the account's tracker rows too.
       const { error } = await supabase
         .from("fax_accounts")

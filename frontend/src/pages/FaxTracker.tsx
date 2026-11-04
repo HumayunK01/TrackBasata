@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useProfile";
 import { useFaxTracker, useDeleteFax, useUpdateStep as useFaxUpdateStep } from "@/hooks/useFaxTracker";
 import { useIndexableTracker, useDeleteIndexable, useUpdateStep as useIndexableUpdateStep } from "@/hooks/useIndexableTracker";
 import { useFaxAccounts, useDeleteFaxAccount, type FaxAccount } from "@/hooks/useFaxAccounts";
@@ -83,6 +84,7 @@ function parseStatuses(raw: string | null): Set<string> {
 
 const FaxTrackerPage = () => {
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const reduce = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: accounts = [], isLoading: accountsLoading } = useFaxAccounts();
@@ -670,24 +672,26 @@ const FaxTrackerPage = () => {
                         )}
                         <span className="truncate">{a.name}</span>
                       </span>
-                      <span className="flex items-center gap-0.5 shrink-0">
-                        <button
-                          type="button"
-                          title={`Rename ${a.name}`}
-                          onClick={(e) => { e.stopPropagation(); setAccountToRename(a); }}
-                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          title={`Delete ${a.name}`}
-                          onClick={(e) => { e.stopPropagation(); setAccountToDelete(a); }}
-                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </span>
+                      {isAdmin && (
+                        <span className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            title={`Rename ${a.name}`}
+                            onClick={(e) => { e.stopPropagation(); setAccountToRename(a); }}
+                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            title={`Delete ${a.name}`}
+                            onClick={(e) => { e.stopPropagation(); setAccountToDelete(a); }}
+                            className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </span>
+                      )}
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator className="my-1" />
@@ -1128,11 +1132,13 @@ const FaxTrackerPage = () => {
         onCreated={(account) => handleSelectAccount(account)}
       />
 
-      <RenameAccountDialog
-        open={!!accountToRename}
-        onOpenChange={(o) => !o && setAccountToRename(null)}
-        account={accountToRename}
-      />
+      {isAdmin && (
+        <RenameAccountDialog
+          open={!!accountToRename}
+          onOpenChange={(o) => !o && setAccountToRename(null)}
+          account={accountToRename}
+        />
+      )}
 
       {/* Delete Patient Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
@@ -1159,37 +1165,39 @@ const FaxTrackerPage = () => {
       </AlertDialog>
 
       {/* Delete Account Confirmation */}
-      <AlertDialog open={!!accountToDelete} onOpenChange={(o) => !o && setAccountToDelete(null)}>
-        <AlertDialogContent className="sm:max-w-md rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-bold">Delete account?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              This deletes the account <span className="font-semibold text-foreground">{accountToDelete?.name}</span>
-              {" "}and <span className="font-semibold text-destructive">all of its tracked patients</span>. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0 mt-2">
-            <AlertDialogCancel className="rounded-xl border-border/60">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-sm font-semibold"
-              onClick={() => {
-                const target = accountToDelete;
-                if (!target) return;
-                deleteAccount.mutate(target.id, {
-                  onSuccess: () => {
-                    if (target.id === accountId) {
-                      handleClearAccount();
-                    }
-                  },
-                });
-                setAccountToDelete(null);
-              }}
-            >
-              Delete Account
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isAdmin && (
+        <AlertDialog open={!!accountToDelete} onOpenChange={(o) => !o && setAccountToDelete(null)}>
+          <AlertDialogContent className="sm:max-w-md rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base font-bold">Delete account?</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                This deletes the account <span className="font-semibold text-foreground">{accountToDelete?.name}</span>
+                {" "}and <span className="font-semibold text-destructive">all of its tracked patients</span>. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0 mt-2">
+              <AlertDialogCancel className="rounded-xl border-border/60">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-sm font-semibold"
+                onClick={() => {
+                  const target = accountToDelete;
+                  if (!target) return;
+                  deleteAccount.mutate(target.id, {
+                    onSuccess: () => {
+                      if (target.id === accountId) {
+                        handleClearAccount();
+                      }
+                    },
+                  });
+                  setAccountToDelete(null);
+                }}
+              >
+                Delete Account
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 };
