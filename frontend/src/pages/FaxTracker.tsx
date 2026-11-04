@@ -907,9 +907,7 @@ const FaxTrackerPage = () => {
                             </td>
                           </tr>
                         ) : (
-                          paginated.map((row) => {
-                            const mine = row.created_by === user?.id;
-                            return (
+                          paginated.map((row) => (
                               <tr
                                 key={row.id}
                                 className={cn(
@@ -933,7 +931,7 @@ const FaxTrackerPage = () => {
                                     key={field}
                                     row={row}
                                     field={field}
-                                    editable={mine}
+                                    editable={true}
                                     onPick={(value) => pickStep(row, field, value)}
                                     labels={labels}
                                     mode={mode}
@@ -956,35 +954,30 @@ const FaxTrackerPage = () => {
                                   {row.notes || <span className="font-mono text-muted-foreground/40">—</span>}
                                 </td>
                                 <td className="px-3 py-2.5 text-center">
-                                  {mine ? (
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer" aria-label={`Edit ${row.patient_name}`}>
-                                          <MoreVertical className="size-3.5" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-36 rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl p-1.5">
-                                        <button
-                                          className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium hover:bg-muted rounded-xl transition-colors cursor-pointer text-foreground"
-                                          onClick={() => openEdit(row)}
-                                        >
-                                          <Pencil className="size-3.5" /> Edit
-                                        </button>
-                                        <button
-                                          className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-xl transition-colors cursor-pointer"
-                                          onClick={() => setDeleteTarget(row)}
-                                        >
-                                          <Trash2 className="size-3.5" /> Delete
-                                        </button>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  ) : (
-                                    <span className="text-muted-foreground/40 font-mono text-xs" title="Only the creator can edit this row">—</span>
-                                  )}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer" aria-label={`Edit ${row.patient_name}`}>
+                                        <MoreVertical className="size-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-36 rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl p-1.5">
+                                      <button
+                                        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium hover:bg-muted rounded-xl transition-colors cursor-pointer text-foreground"
+                                        onClick={() => openEdit(row)}
+                                      >
+                                        <Pencil className="size-3.5" /> Edit
+                                      </button>
+                                      <button
+                                        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-xl transition-colors cursor-pointer"
+                                        onClick={() => setDeleteTarget(row)}
+                                      >
+                                        <Trash2 className="size-3.5" /> Delete
+                                      </button>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </td>
                               </tr>
-                            );
-                          })
+                          ))
                         )}
                       </tbody>
                     </table>
@@ -1013,7 +1006,6 @@ const FaxTrackerPage = () => {
                   <FaxCard
                     key={row.id}
                     row={row}
-                    mine={row.created_by === user?.id}
                     isNew={newIds.has(row.id)}
                     onEdit={openEdit}
                     onDelete={setDeleteTarget}

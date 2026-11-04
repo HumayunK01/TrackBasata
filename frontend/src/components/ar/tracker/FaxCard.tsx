@@ -8,11 +8,10 @@ import {
 import { MoreVertical, Pencil, Trash2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { StepPicker, StatusIcon } from "./StepPicker";
-import { displayStatus, labelFor, stepIsActive, stepIsSkipped, copyName, type TrackerMode } from "./tracker-helpers";
+import { displayStatus, stepIsActive, stepIsSkipped, copyName, type TrackerMode } from "./tracker-helpers";
 
 export function FaxCard({
   row,
-  mine,
   isNew,
   onEdit,
   onDelete,
@@ -21,7 +20,7 @@ export function FaxCard({
   mode,
 }: {
   row: FaxRow;
-  mine: boolean;
+  mine?: boolean;
   isNew: boolean;
   onEdit: (row: FaxRow) => void;
   onDelete: (row: FaxRow) => void;
@@ -30,21 +29,6 @@ export function FaxCard({
   mode: TrackerMode;
 }) {
   const fields: StepField[] = ["step1", "step2", "step3"];
-
-  const getBadgeClasses = (s: FaxStepStatus | null) => {
-    switch (s) {
-      case "Successfully Sent":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25";
-      case "Failed":
-        return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25";
-      case "Waiting":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25";
-      case "Pending":
-        return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25";
-      default:
-        return "text-muted-foreground";
-    }
-  };
 
   return (
     <div
@@ -66,29 +50,27 @@ export function FaxCard({
           </button>
         </div>
 
-        {mine && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8 rounded-xl shrink-0 text-muted-foreground hover:text-foreground active:scale-95 transition-all">
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36 rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl p-1.5">
-              <button
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium hover:bg-muted rounded-xl transition-colors cursor-pointer text-foreground"
-                onClick={() => onEdit(row)}
-              >
-                <Pencil className="size-3.5" /> Edit
-              </button>
-              <button
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-xl transition-colors cursor-pointer"
-                onClick={() => onDelete(row)}
-              >
-                <Trash2 className="size-3.5" /> Delete
-              </button>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8 rounded-xl shrink-0 text-muted-foreground hover:text-foreground active:scale-95 transition-all" aria-label={`Options for ${row.patient_name}`}>
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36 rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl p-1.5">
+            <button
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium hover:bg-muted rounded-xl transition-colors cursor-pointer text-foreground"
+              onClick={() => onEdit(row)}
+            >
+              <Pencil className="size-3.5" /> Edit
+            </button>
+            <button
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-xl transition-colors cursor-pointer"
+              onClick={() => onDelete(row)}
+            >
+              <Trash2 className="size-3.5" /> Delete
+            </button>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="mt-2 flex items-center gap-2">
@@ -117,18 +99,8 @@ export function FaxCard({
                   <span className="font-mono text-muted-foreground">—</span>
                 ) : skipped ? (
                   <span className="text-2xs text-muted-foreground italic">—</span>
-                ) : mine ? (
-                  <StepPicker status={status} onPick={(v) => onPickStep(field, v)} label={labels[i]} />
                 ) : (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-2xs font-semibold border shadow-2xs",
-                      getBadgeClasses(status),
-                    )}
-                  >
-                    <StatusIcon status={status} />
-                    <span>{status ? labelFor(status) : "—"}</span>
-                  </span>
+                  <StepPicker status={status} onPick={(v) => onPickStep(field, v)} label={labels[i]} />
                 )}
               </dd>
             </div>

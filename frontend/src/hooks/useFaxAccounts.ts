@@ -13,7 +13,7 @@ const NameSchema = z.string().trim().min(1, "Account name is required").max(100,
 export function useFaxAccounts() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["fax_accounts", user?.id],
+    queryKey: ["fax_accounts"],
     enabled: !!user,
     staleTime: 60_000,
     queryFn: async (): Promise<FaxAccount[]> => {
@@ -41,8 +41,7 @@ export function useCreateFaxAccount() {
         .select()
         .single();
       if (error) {
-        // Unique (created_by, name) violation.
-        if (error.code === "23505") throw new Error("You already have an account with that name.");
+        if (error.code === "23505") throw new Error("An account with that name already exists.");
         throw error;
       }
       return data;
@@ -62,14 +61,12 @@ export function useRenameFaxAccount() {
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
       if (!checkLimit()) throw new Error("Too many requests. Please wait a moment.");
       const validated = NameSchema.parse(name);
-      const created_by = await getUserId();
       const { error } = await supabase
         .from("fax_accounts")
         .update({ name: validated })
-        .eq("id", id)
-        .eq("created_by", created_by);
+        .eq("id", id);
       if (error) {
-        if (error.code === "23505") throw new Error("You already have an account with that name.");
+        if (error.code === "23505") throw new Error("An account with that name already exists.");
         throw error;
       }
     },
@@ -87,18 +84,17 @@ export function useDeleteFaxAccount() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!checkLimit()) throw new Error("Too many requests. Please wait a moment.");
-      const created_by = await getUserId();
-      // ON DELETE CASCADE removes the account's fax rows too.
+      // ON DELETE CASCADE removes the account's tracker rows too.
       const { error } = await supabase
         .from("fax_accounts")
         .delete()
-        .eq("id", id)
-        .eq("created_by", created_by);
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fax_accounts"] });
       qc.invalidateQueries({ queryKey: ["fax_tracker"] });
+      qc.invalidateQueries({ queryKey: ["indexable_tracker"] });
       toast.success("Account deleted");
     },
     onError: (e: Error) => toast.error(e.message),

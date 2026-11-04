@@ -83,11 +83,11 @@ export function createUseTracker(tableName: "fax_tracker" | "indexable_tracker",
   return function useTracker(accountId?: string) {
     const { user } = useAuth();
     return useQuery({
-      queryKey: [queryKey, user?.id, accountId],
+      queryKey: [queryKey, accountId],
       enabled: !!user && !!accountId,
       staleTime: 0,
       refetchOnWindowFocus: true,
-      refetchInterval: 60_000,
+      refetchInterval: 15_000,
       queryFn: async (): Promise<TrackerRow[]> => {
         const { data, error } = await supabase
           .from(tableName)
@@ -153,8 +153,7 @@ export function createUseUpsert(tableName: "fax_tracker" | "indexable_tracker", 
           const { error } = await supabase
             .from(tableName)
             .update(validated)
-            .eq("id", id)
-            .eq("created_by", created_by);
+            .eq("id", id);
           if (error) throw error;
           await logAuditEvent(`${auditPrefix}updated` as AuditEvent, { [`${auditPrefix}id`]: id });
         } else {
@@ -182,13 +181,11 @@ export function createUseUpdateStep(tableName: "fax_tracker" | "indexable_tracke
     return useMutation({
       mutationFn: async ({ row, field, value }: { row: TrackerRow; field: StepField; value: StepStatus }) => {
         if (!checkLimit()) throw new Error("Too many updates. Please wait a moment.");
-        const created_by = await getUserId();
         const patch = normalizeFn(row, field, value);
         const { error } = await supabase
           .from(tableName)
           .update(patch)
-          .eq("id", row.id)
-          .eq("created_by", created_by);
+          .eq("id", row.id);
         if (error) throw error;
         await logAuditEvent(`${auditPrefix}updated` as AuditEvent, { [`${auditPrefix}id`]: row.id, field, value, prev: row[field] });
       },
@@ -221,13 +218,11 @@ export function createUseDelete(tableName: "fax_tracker" | "indexable_tracker", 
     return useMutation({
       mutationFn: async (id: string) => {
         if (!checkLimit()) throw new Error("Too many deletes. Please wait a moment.");
-        const created_by = await getUserId();
         await logAuditEvent(`${auditPrefix}deleted` as AuditEvent, { [`${auditPrefix}id`]: id });
         const { error } = await supabase
           .from(tableName)
           .delete()
-          .eq("id", id)
-          .eq("created_by", created_by);
+          .eq("id", id);
         if (error) throw error;
       },
       onSuccess: () => {
