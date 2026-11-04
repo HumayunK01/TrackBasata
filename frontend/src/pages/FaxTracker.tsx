@@ -129,52 +129,89 @@ const FaxTrackerPage = () => {
   const [accountToDelete, setAccountToDelete] = useState<FaxAccount | null>(null);
   const [accountToRename, setAccountToRename] = useState<FaxAccount | null>(null);
 
+  const initializedRef = useRef(false);
+  const lastUrlAccountRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (accountsLoading || accounts.length === 0) return;
+    if (accountsLoading) return;
 
-    const urlAccount = searchParams.get("account")?.trim();
-    let targetAccount: FaxAccount | undefined;
+    const currentUrlParam = searchParams.get("account")?.trim() ?? null;
 
-    if (urlAccount) {
-      targetAccount = accounts.find(
-        (a) => a.id === urlAccount || a.name.toLowerCase() === urlAccount.toLowerCase(),
-      );
-    }
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      lastUrlAccountRef.current = currentUrlParam;
 
-    if (!targetAccount && accountId) {
-      targetAccount = accounts.find((a) => a.id === accountId);
-    }
-
-    if (!targetAccount) {
-      const savedId = localStorage.getItem(ACCOUNT_KEY);
-      if (savedId) {
-        targetAccount = accounts.find((a) => a.id === savedId);
+      if (accounts.length === 0) {
+        setAccountId(null);
+        localStorage.removeItem(ACCOUNT_KEY);
+        return;
       }
-    }
 
-    if (targetAccount) {
-      if (targetAccount.id !== accountId) {
+      let targetAccount: FaxAccount | undefined;
+
+      if (currentUrlParam) {
+        targetAccount = accounts.find(
+          (a) => a.id === currentUrlParam || a.name.toLowerCase() === currentUrlParam.toLowerCase(),
+        );
+      } else {
+        const savedId = localStorage.getItem(ACCOUNT_KEY);
+        if (savedId) {
+          targetAccount = accounts.find((a) => a.id === savedId);
+        }
+      }
+
+      if (targetAccount) {
         setAccountId(targetAccount.id);
+        localStorage.setItem(ACCOUNT_KEY, targetAccount.id);
+        lastUrlAccountRef.current = targetAccount.name;
+        if (currentUrlParam !== targetAccount.name) {
+          updateUrlParams({ account: targetAccount.name });
+        }
+      } else {
+        setAccountId(null);
+        localStorage.removeItem(ACCOUNT_KEY);
+        if (currentUrlParam) {
+          updateUrlParams({ account: null });
+        }
       }
-      localStorage.setItem(ACCOUNT_KEY, targetAccount.id);
-      // Keep URL parameter synchronized using human-friendly account name
-      if (urlAccount !== targetAccount.name && urlAccount !== targetAccount.id) {
-        updateUrlParams({ account: targetAccount.name });
+      return;
+    }
+
+    // After initial mount, sync if browser back/forward or external navigation changed the URL param
+    if (currentUrlParam !== lastUrlAccountRef.current) {
+      lastUrlAccountRef.current = currentUrlParam;
+      if (currentUrlParam) {
+        const matched = accounts.find(
+          (a) => a.id === currentUrlParam || a.name.toLowerCase() === currentUrlParam.toLowerCase(),
+        );
+        if (matched) {
+          setAccountId(matched.id);
+          localStorage.setItem(ACCOUNT_KEY, matched.id);
+        } else {
+          setAccountId(null);
+          localStorage.removeItem(ACCOUNT_KEY);
+        }
+      } else {
+        setAccountId(null);
+        localStorage.removeItem(ACCOUNT_KEY);
       }
     } else if (accountId && !accounts.some((a) => a.id === accountId)) {
       setAccountId(null);
       localStorage.removeItem(ACCOUNT_KEY);
+      lastUrlAccountRef.current = null;
       updateUrlParams({ account: null });
     }
   }, [accounts, accountsLoading, searchParams, accountId, updateUrlParams]);
 
   const handleSelectAccount = (a: FaxAccount) => {
+    lastUrlAccountRef.current = a.name;
     setAccountId(a.id);
     localStorage.setItem(ACCOUNT_KEY, a.id);
     updateUrlParams({ account: a.name, page: null });
   };
 
   const handleClearAccount = () => {
+    lastUrlAccountRef.current = null;
     setAccountId(null);
     localStorage.removeItem(ACCOUNT_KEY);
     updateUrlParams({ account: null, page: null });
@@ -1141,13 +1178,7 @@ const FaxTrackerPage = () => {
                 deleteAccount.mutate(target.id, {
                   onSuccess: () => {
                     if (target.id === accountId) {
-                      const next = accounts.find((a) => a.id !== target.id);
-                      if (next) {
-                        handleSelectAccount(next);
-                      } else {
-                        setAccountId(null);
-                        updateUrlParams({ account: null, page: null });
-                      }
+                      handleClearAccount();
                     }
                   },
                 });
