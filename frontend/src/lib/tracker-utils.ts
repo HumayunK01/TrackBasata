@@ -20,6 +20,7 @@ export async function downloadTrackerPDF(
     subtitle?: string;
     userName?: string;
     accountName?: (row: TrackerRow) => string;
+    workerName?: (row: TrackerRow) => string;
   } = {},
 ) {
   const stepHead = ["Step 1 – Refax Same", "Step 2 – Refax New", config.step3Label];
@@ -89,29 +90,45 @@ export async function downloadTrackerPDF(
   y += 16;
 
   const renderTable = (tableRows: TrackerRow[]) => {
+    const hasWorker = typeof opts.workerName === "function";
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
-      head: [["Patient", ...stepHead, "Overall Status", "Notes"]],
+      head: [
+        hasWorker
+          ? ["Patient", ...stepHead, "Overall Status", "Worked by", "Notes"]
+          : ["Patient", ...stepHead, "Overall Status", "Notes"],
+      ],
       body: tableRows.map((r) => [
         r.patient_name,
         labelFor(r.step1),
         labelFor(r.step2 ?? "—"),
         labelFor(r.step3 ?? "—"),
         displayStatus(r.overall_status),
+        ...(hasWorker ? [opts.workerName!(r)] : []),
         r.notes ?? "",
       ]),
       theme: "grid",
       styles: { font: "helvetica", fontSize: 8, cellPadding: 4, textColor: 40, lineColor: [220, 220, 225], lineWidth: 0.5, overflow: "linebreak" },
       headStyles: { fillColor: [37, 42, 60], textColor: 255, fontStyle: "bold", halign: "center" },
-      columnStyles: {
-        0: { cellWidth: 110, fontStyle: "bold" },
-        1: { halign: "center" },
-        2: { halign: "center" },
-        3: { halign: "center" },
-        4: { halign: "center", cellWidth: 120 },
-        5: { cellWidth: "auto" },
-      },
+      columnStyles: hasWorker
+        ? {
+            0: { cellWidth: 100, fontStyle: "bold" },
+            1: { halign: "center" },
+            2: { halign: "center" },
+            3: { halign: "center" },
+            4: { halign: "center", cellWidth: 105 },
+            5: { cellWidth: 90 },
+            6: { cellWidth: "auto" },
+          }
+        : {
+            0: { cellWidth: 110, fontStyle: "bold" },
+            1: { halign: "center" },
+            2: { halign: "center" },
+            3: { halign: "center" },
+            4: { halign: "center", cellWidth: 120 },
+            5: { cellWidth: "auto" },
+          },
       didParseCell: (data) => {
         if (data.section !== "body") return;
         const row = tableRows[data.row.index];

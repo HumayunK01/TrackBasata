@@ -102,6 +102,30 @@ export function useUpdateDailyGoal() {
   });
 }
 
+export function useProfilesMap() {
+  const { user } = useAuth();
+  return useQuery<Record<string, string>>({
+    queryKey: ["profiles_map"],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name");
+      if (error) {
+        console.error("Failed to load profiles map:", error);
+        return {};
+      }
+      const map: Record<string, string> = {};
+      for (const p of data ?? []) {
+        const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim();
+        map[p.id] = fullName || "Unknown";
+      }
+      return map;
+    },
+  });
+}
+
 export function useIsAdmin() {
   const { data: profile } = useProfile();
   return profile?.role === "admin";

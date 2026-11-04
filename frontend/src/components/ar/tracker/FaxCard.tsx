@@ -8,12 +8,14 @@ import {
 import { MoreVertical, Pencil, Trash2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { StepPicker, StatusIcon } from "./StepPicker";
-import { displayStatus, stepIsActive, stepIsSkipped, copyName, type TrackerMode } from "./tracker-helpers";
+import { displayStatus, stepIsActive, stepIsSkipped, copyName, getWorkerInitials, type TrackerMode } from "./tracker-helpers";
 import { EditNotesPopover } from "./EditNotesPopover";
 
 export function FaxCard({
   row,
   isNew,
+  workerName,
+  isMe,
   onEdit,
   onDelete,
   onPickStep,
@@ -26,6 +28,8 @@ export function FaxCard({
   row: FaxRow;
   mine?: boolean;
   isNew: boolean;
+  workerName?: string;
+  isMe?: boolean;
   onEdit: (row: FaxRow) => void;
   onDelete: (row: FaxRow) => void;
   onPickStep: (field: StepField, value: FaxStepStatus) => void;
@@ -80,16 +84,38 @@ export function FaxCard({
         </DropdownMenu>
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
-        <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Status:</span>
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <StatusIcon status={
-            row.overall_status.startsWith("Resolved") ? "Successfully Sent"
-            : (row.overall_status === "All Steps Failed" || row.overall_status === "Failed") ? "Failed"
-            : "Waiting"
-          } />
-          {displayStatus(row.overall_status)}
-        </span>
+      <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Status:</span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <StatusIcon status={
+              row.overall_status.startsWith("Resolved") ? "Successfully Sent"
+              : (row.overall_status === "All Steps Failed" || row.overall_status === "Failed") ? "Failed"
+              : "Waiting"
+            } />
+            {displayStatus(row.overall_status)}
+          </span>
+        </div>
+
+        {workerName && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Worked by:</span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border",
+                isMe
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                  : "bg-muted/70 text-foreground/85 border-border/60"
+              )}
+              title={`Worked by ${workerName}`}
+            >
+              <span className="size-4 rounded-full font-mono text-[9px] font-bold flex items-center justify-center shrink-0">
+                {getWorkerInitials(workerName)}
+              </span>
+              <span>{workerName}</span>
+            </span>
+          </div>
+        )}
       </div>
 
       <dl className="mt-3.5 rounded-xl border border-border/50 bg-background/40 p-3 space-y-2">

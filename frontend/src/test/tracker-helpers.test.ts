@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatDobInput, stepIsSkipped, displayStatus, statusGroup, labelFor } from "@/components/ar/tracker/tracker-helpers";
+import { formatDobInput, stepIsSkipped, displayStatus, statusGroup, labelFor, getWorkerName, getWorkerInitials } from "@/components/ar/tracker/tracker-helpers";
 import type { FaxRow } from "@/hooks/useFaxTracker";
 
 const row = (step1: FaxRow["step1"], step2: FaxRow["step2"], step3: FaxRow["step3"]) =>
@@ -70,5 +70,40 @@ describe("formatDobInput (MM/DD/YYYY mask)", () => {
 
   it("caps at 8 digits", () => {
     expect(formatDobInput("0101199011")).toBe("01/01/1990");
+  });
+});
+
+describe("getWorkerName & getWorkerInitials", () => {
+  const mockProfilesMap: Record<string, string> = {
+    "user-1": "Hamza Ansari",
+    "user-2": "Jennifer Cooper",
+  };
+
+  it("resolves user from profilesMap", () => {
+    expect(getWorkerName("user-1", mockProfilesMap)).toBe("Hamza Ansari");
+    expect(getWorkerName("user-2", mockProfilesMap)).toBe("Jennifer Cooper");
+  });
+
+  it("falls back to current user name if not in map", () => {
+    expect(getWorkerName("user-me", mockProfilesMap, "user-me", "Humayun Khan")).toBe("Humayun Khan");
+  });
+
+  it("falls back to Staff if user not found", () => {
+    expect(getWorkerName("unknown-uuid", mockProfilesMap)).toBe("Staff");
+  });
+
+  it("returns dash for empty or null user id", () => {
+    expect(getWorkerName(null, mockProfilesMap)).toBe("—");
+    expect(getWorkerName(undefined, mockProfilesMap)).toBe("—");
+  });
+
+  it("extracts 2-letter initials properly", () => {
+    expect(getWorkerInitials("Hamza Ansari")).toBe("HA");
+    expect(getWorkerInitials("Jennifer Cooper")).toBe("JC");
+    expect(getWorkerInitials("Humayun Khan")).toBe("HK");
+    expect(getWorkerInitials("Phoenix")).toBe("PH");
+    expect(getWorkerInitials("Staff")).toBe("ST");
+    expect(getWorkerInitials("—")).toBe("?");
+    expect(getWorkerInitials("")).toBe("?");
   });
 });

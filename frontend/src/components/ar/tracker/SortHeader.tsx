@@ -1,7 +1,7 @@
 import { ArrowUp, ArrowDown, ArrowUpDown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
-export type SortKey = "patient_name" | "overall_status" | "updated_at" | "file_name" | "patient_dob";
+export type SortKey = "patient_name" | "overall_status" | "updated_at" | "file_name" | "patient_dob" | "worked_by";
 
 export function SortHeader({
   label,

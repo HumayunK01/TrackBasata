@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsAdmin } from "@/hooks/useProfile";
+import { useProfile, useIsAdmin, useProfilesMap } from "@/hooks/useProfile";
 import { useFaxTracker, useDeleteFax, useUpdateStep as useFaxUpdateStep, useUpdateNotes as useFaxUpdateNotes } from "@/hooks/useFaxTracker";
 import { useIndexableTracker, useDeleteIndexable, useUpdateStep as useIndexableUpdateStep, useUpdateNotes as useIndexableUpdateNotes } from "@/hooks/useIndexableTracker";
 import { useFaxAccounts, useDeleteFaxAccount, type FaxAccount } from "@/hooks/useFaxAccounts";
@@ -20,7 +20,7 @@ import type { SortKey } from "@/components/ar/tracker/SortHeader";
 import { StatCard } from "@/components/ar/tracker/StatCard";
 import { Pagination } from "@/components/Pagination";
 import { copyName, displayStatus, statusGroup,
-  stepLabels, pageNumbersArr, STATUS_GROUPS, type TrackerMode,
+  stepLabels, pageNumbersArr, STATUS_GROUPS, getWorkerName, getWorkerInitials, type TrackerMode,
 } from "@/components/ar/tracker/tracker-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,11 @@ function parseStatuses(raw: string | null): Set<string> {
 const FaxTrackerPage = () => {
   const { user } = useAuth();
   const isAdmin = useIsAdmin();
+  const { data: profile } = useProfile();
+  const { data: profilesMap = {} } = useProfilesMap();
+  const currentUserName = useMemo(() => {
+    return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || user?.email?.split("@")[0] || "";
+  }, [profile, user]);
   const reduce = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: accounts = [], isLoading: accountsLoading } = useFaxAccounts();
@@ -403,10 +408,16 @@ const FaxTrackerPage = () => {
         const group = statusGroup(r.overall_status);
         if (!group || !statusFilter.has(group)) return false;
       }
-      if (q && !r.patient_name.toLowerCase().includes(q) && !(r.notes ?? "").toLowerCase().includes(q)) return false;
+      if (q) {
+        const patientMatch = r.patient_name.toLowerCase().includes(q);
+        const notesMatch = (r.notes ?? "").toLowerCase().includes(q);
+        const workerName = getWorkerName(r.created_by, profilesMap, user?.id, currentUserName).toLowerCase();
+        const workerMatch = workerName.includes(q);
+        if (!patientMatch && !notesMatch && !workerMatch) return false;
+      }
       return true;
     };
-  }, [search, statusFilter]);
+  }, [search, statusFilter, profilesMap, user?.id, currentUserName]);
 
   const filtered = useMemo(() => {
     const rowsFiltered = rows.filter(matchesFilters);
@@ -424,11 +435,16 @@ const FaxTrackerPage = () => {
         const bt = b.updated_at ? new Date(b.updated_at).getTime() : 0;
         return (at - bt) * dir;
       }
+      if (sort.key === "worked_by") {
+        const av = getWorkerName(a.created_by, profilesMap, user?.id, currentUserName);
+        const bv = getWorkerName(b.created_by, profilesMap, user?.id, currentUserName);
+        return av.localeCompare(bv, undefined, { sensitivity: "base" }) * dir;
+      }
       const av = sort.key === "patient_name" ? a.patient_name : displayStatus(a.overall_status);
       const bv = sort.key === "patient_name" ? b.patient_name : displayStatus(b.overall_status);
       return av.localeCompare(bv, undefined, { sensitivity: "base" }) * dir;
     });
-  }, [rows, matchesFilters, sort]);
+  }, [rows, matchesFilters, sort, profilesMap, user?.id, currentUserName]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   useEffect(() => {
@@ -548,6 +564,7 @@ const FaxTrackerPage = () => {
         {
           subtitle,
           userName: user?.email,
+          workerName: (r) => getWorkerName(r.created_by, profilesMap, user?.id, currentUserName),
         }
       );
       toast.success(`Exported ${filtered.length} ${filtered.length === 1 ? "patient" : "patients"} to ${filename}`);
@@ -742,7 +759,7 @@ const FaxTrackerPage = () => {
               <div className="group relative flex-1 min-w-48">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-emerald-500 transition-colors duration-200 pointer-events-none" />
                 <Input
-                  placeholder="Search patient or notes…"
+                  placeholder="Search patient, worker, or notes…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10 pr-9 h-10 rounded-xl bg-card/80 border-border/65 focus-visible:bg-background/90 focus-visible:border-emerald-500/60 focus-visible:ring-2 focus-visible:ring-emerald-500/20 text-xs sm:text-sm font-medium shadow-2xs transition-[border-color,box-shadow,background-color] duration-150"
@@ -982,31 +999,34 @@ const FaxTrackerPage = () => {
                     <table className="w-full text-xs border-collapse table-fixed">
                       <thead>
                         <tr className="bg-muted/40 text-[11px] font-mono font-semibold tracking-wider text-muted-foreground border-b border-border/60 uppercase">
-                          <th className="px-4 py-3 text-left w-[22%]">
+                          <th className="px-4 py-3 text-left w-[20%]">
                             <SortHeader label="Patient" sortKey="patient_name" sort={sort} onSort={toggleSort} align="left" />
                           </th>
-                          <th className="px-3 py-3 text-center w-[12%]">{labels[0]}</th>
-                          <th className="px-3 py-3 text-center w-[12%]">{labels[1]}</th>
-                          <th className="px-3 py-3 text-center w-[12%]">{labels[2]}</th>
-                          <th className="px-3 py-3 text-center w-[15%]">
+                          <th className="px-3 py-3 text-center w-[11%]">{labels[0]}</th>
+                          <th className="px-3 py-3 text-center w-[11%]">{labels[1]}</th>
+                          <th className="px-3 py-3 text-center w-[11%]">{labels[2]}</th>
+                          <th className="px-3 py-3 text-center w-[13%]">
                             <SortHeader label="Overall Status" sortKey="overall_status" sort={sort} onSort={toggleSort} align="center" />
                           </th>
-                          <th className="px-4 py-3 text-left w-[21%]">Notes</th>
-                          <th className="px-3 py-3 text-center w-[6%]" aria-label="Actions" />
+                          <th className="px-3 py-3 text-left w-[14%]">
+                            <SortHeader label="Worked by" sortKey="worked_by" sort={sort} onSort={toggleSort} align="left" />
+                          </th>
+                          <th className="px-4 py-3 text-left w-[15%]">Notes</th>
+                          <th className="px-3 py-3 text-center w-[5%]" aria-label="Actions" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
                         {isLoading ? (
                           Array.from({ length: 6 }).map((_, i) => (
                             <tr key={i}>
-                              <td colSpan={7} className="px-4 py-3">
+                              <td colSpan={8} className="px-4 py-3">
                                 <Skeleton height={28} borderRadius={8} />
                               </td>
                             </tr>
                           ))
                         ) : filtered.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-4 animate-fade-in">
+                            <td colSpan={8} className="px-4 animate-fade-in">
                               <EmptyState
                                 className="py-14"
                                 icon={FileWarning}
@@ -1042,7 +1062,7 @@ const FaxTrackerPage = () => {
                                     <span className="truncate min-w-0">{row.patient_name}</span>
                                   </button>
                                 </td>
-                                {(["step1", "step2", "step3"] as StepField[]).map((field) => (
+                                {([ "step1", "step2", "step3" ] as StepField[]).map((field) => (
                                   <StepCell
                                     key={field}
                                     row={row}
@@ -1064,6 +1084,30 @@ const FaxTrackerPage = () => {
                                     </span>
                                     <span className="truncate">{displayStatus(row.overall_status)}</span>
                                   </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-left text-xs font-medium text-foreground/90 truncate">
+                                  {(() => {
+                                    const workerName = getWorkerName(row.created_by, profilesMap, user?.id, currentUserName);
+                                    const initials = getWorkerInitials(workerName);
+                                    const isMe = user?.id && row.created_by === user.id;
+                                    return (
+                                      <div className="inline-flex items-center gap-1.5 min-w-0 max-w-full" title={`Worked by ${workerName}`}>
+                                        <span
+                                          className={cn(
+                                            "size-5 rounded-full font-mono text-[9px] font-bold flex items-center justify-center shrink-0 border select-none",
+                                            isMe
+                                              ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                                              : "bg-muted border-border/80 text-muted-foreground"
+                                          )}
+                                        >
+                                          {initials}
+                                        </span>
+                                        <span className="truncate text-xs font-medium text-foreground/90">
+                                          {workerName}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="px-4 py-2.5 text-muted-foreground max-w-[16rem] truncate text-xs font-medium">
                                   <EditNotesPopover
@@ -1147,6 +1191,8 @@ const FaxTrackerPage = () => {
                     key={row.id}
                     row={row}
                     isNew={newIds.has(row.id)}
+                    workerName={getWorkerName(row.created_by, profilesMap, user?.id, currentUserName)}
+                    isMe={user?.id ? row.created_by === user.id : false}
                     onEdit={openEdit}
                     onDelete={setDeleteTarget}
                     onPickStep={(field, value) => pickStep(row, field, value)}

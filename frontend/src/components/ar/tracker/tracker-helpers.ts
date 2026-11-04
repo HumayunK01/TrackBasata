@@ -148,3 +148,25 @@ export function pageNumbersArr(totalPages: number, page: number): (number | "…
   nums.push(totalPages);
   return nums;
 }
+
+export function getWorkerName(
+  userId: string | null | undefined,
+  profilesMap: Record<string, string>,
+  currentUserId?: string,
+  currentUserName?: string,
+): string {
+  if (!userId) return "—";
+  if (profilesMap[userId]) return profilesMap[userId];
+  if (currentUserId && userId === currentUserId && currentUserName) {
+    return currentUserName;
+  }
+  return "Staff";
+}
+
+export function getWorkerInitials(name: string): string {
+  if (!name || name === "—") return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
