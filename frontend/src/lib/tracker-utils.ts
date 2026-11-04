@@ -118,16 +118,16 @@ export async function downloadTrackerPDF(
         if (!row) return;
         if (row.overall_status.startsWith("Resolved")) {
           data.cell.styles.fillColor = [232, 248, 239];
-        } else if (row.overall_status === "All Steps Failed") {
+        } else if (row.overall_status === "All Steps Failed" || row.overall_status === "Failed") {
           data.cell.styles.fillColor = [252, 235, 235];
-        } else if (row.overall_status.startsWith("Waiting")) {
-          data.cell.styles.fillColor = [253, 248, 228];
+        } else {
+          data.cell.styles.fillColor = [238, 246, 255];
         }
         const text = String(data.cell.raw ?? "");
         if (data.column.index >= 1 && data.column.index <= 4) {
           if (text === "Sent" || text.startsWith("Resolved")) data.cell.styles.textColor = [21, 128, 61];
           else if (text === "Failed" || text === "All Steps Failed") data.cell.styles.textColor = [185, 28, 28];
-          else if (text === "Sending" || text.startsWith("Sending") || text === "Waiting" || text.startsWith("Waiting")) data.cell.styles.textColor = [161, 98, 7];
+          else data.cell.styles.textColor = [2, 132, 199];
         }
       },
       didDrawPage: () => {

@@ -250,3 +250,51 @@ export function createUseDelete(tableName: "fax_tracker" | "indexable_tracker", 
     });
   };
 }
+
+export function createUseUpdateNotes(
+  tableName: "fax_tracker" | "indexable_tracker",
+  queryKey: string,
+  auditPrefix: string,
+) {
+  return function useUpdateNotes() {
+    const qc = useQueryClient();
+    const { checkLimit } = useMutationRateLimit({ maxRequests: 40, windowMs: 60_000 });
+    return useMutation({
+      mutationFn: async ({ id, notes }: { id: string; notes: string | null }) => {
+        if (!checkLimit()) throw new Error("Too many updates. Please wait a moment.");
+        const trimmed = notes?.trim() || null;
+        const { error } = await supabase
+          .from(tableName)
+          .update({ notes: trimmed })
+          .eq("id", id);
+        if (error) throw error;
+        await logAuditEvent(`${auditPrefix}updated` as AuditEvent, { [`${auditPrefix}id`]: id, field: "notes" });
+      },
+      onMutate: async ({ id, notes }) => {
+        await qc.cancelQueries({ queryKey: [queryKey] });
+        const key = [queryKey];
+        const snapshots = qc.getQueriesData<TrackerRow[]>({ queryKey: key });
+        const trimmed = notes?.trim() || null;
+        for (const [qKey, data] of snapshots) {
+          if (!data) continue;
+          qc.setQueryData<TrackerRow[]>(qKey, data.map((r) => (r.id === id ? { ...r, notes: trimmed } : r)));
+        }
+        return { snapshots };
+      },
+      onError: (e: Error, _vars, ctx) => {
+        if (ctx?.snapshots) {
+          for (const [qKey, data] of ctx.snapshots) {
+            qc.setQueryData(qKey, data);
+          }
+        }
+        toast.error(e.message);
+      },
+      onSettled: () => {
+        qc.invalidateQueries({ queryKey: [queryKey] });
+      },
+      onSuccess: () => {
+        toast.success("Notes updated");
+      },
+    });
+  };
+}

@@ -20,8 +20,8 @@ export function stepClasses(status: FaxStepStatus | null): string {
   switch (status) {
     case "Successfully Sent": return "text-emerald-700 dark:text-white";
     case "Failed":            return "text-rose-700 dark:text-white";
-    case "Waiting":           return "text-amber-600 dark:text-white";
-    case "Pending":           return "text-amber-600 dark:text-white";
+    case "Waiting":
+    case "Pending":           return "text-sky-600 dark:text-white";
     default:                  return "text-foreground";
   }
 }
@@ -30,8 +30,8 @@ export function stepMenuClasses(status: FaxStepStatus | null): string {
   // ponytail: only differs from stepClasses on dark variants; avoids a second switch
   const dark: Record<string, string> = {
     "Failed": "dark:text-rose-300",
-    "Waiting": "dark:text-amber-300",
-    "Pending": "dark:text-amber-300",
+    "Waiting": "dark:text-sky-300",
+    "Pending": "dark:text-sky-300",
   };
   return stepClasses(status).replace("dark:text-white", dark[status ?? ""] ?? "").trim();
 }
@@ -40,7 +40,7 @@ export function overallClasses(status: string): string {
   if (status.startsWith("Resolved"))    return "text-emerald-700 dark:text-white";
   if (status === "All Steps Failed" || status === "Failed") return "text-rose-700 dark:text-white";
   if (status.startsWith("Waiting") || status.startsWith("Sending") || status.startsWith("Move to") || status === "Pending") {
-    return "text-amber-700 dark:text-white";
+    return "text-sky-700 dark:text-white";
   }
   return "text-foreground dark:text-white";
 }
@@ -91,7 +91,7 @@ export function rowClasses(status: string): string {
   switch (statusGroup(status)) {
     case "Resolved": return "bg-emerald-500/[0.16] hover:bg-emerald-500/25 dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.08]";
     case "Failed":   return "bg-rose-500/[0.16] hover:bg-rose-500/25 dark:bg-rose-500/[0.04] dark:hover:bg-rose-500/[0.08]";
-    case "Sending":  return "bg-amber-400/[0.16] hover:bg-amber-400/25 dark:bg-amber-400/[0.045] dark:hover:bg-amber-400/[0.09]";
+    case "Sending":  return "bg-sky-400/[0.16] hover:bg-sky-400/25 dark:bg-sky-400/[0.045] dark:hover:bg-sky-400/[0.09]";
     default:         return "hover:bg-muted/30";
   }
 }

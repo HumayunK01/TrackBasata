@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { CounterCard } from "@/components/ar/counter/CounterCard";
 import { CategoryPicker } from "@/components/ar/counter/CategoryPicker";
 import { NewCategoryDialog } from "@/components/ar/counter/NewCategoryDialog";
+import { TodayBreakdownChart } from "@/components/ar/counter/TodayBreakdownChart";
 
 const COUNTS_KEY = "counter_counts";
 const SELECTED_KEY = "counter_selected_keys";
@@ -970,8 +971,9 @@ export default function CounterPage() {
             </div>
 
             {/* Today's Total Hero Card */}
-            <div className="group relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border/65 bg-card/80 p-5 shadow-2xs transition-colors duration-150 hover:border-border">
-              <div>
+            <div className="group relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 rounded-2xl border border-border/65 bg-card/80 p-5 sm:p-6 shadow-2xs transition-colors duration-150 hover:border-border">
+              {/* Left: Total docs & date */}
+              <div className="shrink-0">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Today's Total</span>
                   <span className="text-[11px] font-mono text-muted-foreground/60">· {todayIso}</span>
@@ -998,15 +1000,13 @@ export default function CounterPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/45 text-xs font-mono text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  <span className="text-foreground/90 font-medium">{activeCategories.length} active</span>
-                </div>
-                <span className="text-border">·</span>
-                <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
-                  {total > 0 ? "Shift active" : "Shift idle"}
-                </span>
+              {/* Circle chart showing 100% and what are being counted */}
+              <div className="flex-1 min-w-0 pt-4 xl:pt-0 border-t xl:border-t-0 xl:border-l border-border/45 xl:pl-6">
+                <TodayBreakdownChart
+                  activeCategories={activeCategories}
+                  counts={counts}
+                  total={total}
+                />
               </div>
             </div>
           </section>

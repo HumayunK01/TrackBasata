@@ -109,7 +109,7 @@ export function CounterCard({
         aria-hidden
       />
 
-      {/* Header: Dot, Category Label, Code Badge, Hotkey, and Remove */}
+      {/* Header: Dot, Category Label, Hotkey, and Remove */}
       <div className="relative z-10 flex items-center justify-between gap-2 pb-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span
@@ -123,20 +123,9 @@ export function CounterCard({
           >
             {cat.label}
           </h4>
-          <span className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md shrink-0">
-            {cat.short}
-          </span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {hotkeyIndex !== undefined && (
-            <kbd
-              className="font-mono text-[10px] font-semibold tabular-nums text-muted-foreground bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md min-w-5 text-center shrink-0"
-              title={`Press ${hotkeyIndex} key to count (+1), Shift+${hotkeyIndex} to (-1)`}
-            >
-              {hotkeyIndex}
-            </kbd>
-          )}
           <button
             type="button"
             onClick={onRemove}

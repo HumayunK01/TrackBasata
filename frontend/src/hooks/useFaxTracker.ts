@@ -4,6 +4,7 @@ import {
   createUseResolvedByDay,
   createUseUpsert,
   createUseUpdateStep,
+  createUseUpdateNotes,
   createUseDelete,
   normalizeStepsSequential,
 } from "./useTracker";
@@ -20,4 +21,5 @@ export const fetchAllFaxRows = createFetchAllRows("fax_tracker");
 export const useFaxResolvedByDay = createUseResolvedByDay("fax_resolved_by_day", "fax_tracker");
 export const useUpsertFax = createUseUpsert("fax_tracker", "fax_tracker", "fax_");
 export const useUpdateStep = createUseUpdateStep("fax_tracker", "fax_tracker", "fax_", normalizeStepsSequential);
+export const useUpdateNotes = createUseUpdateNotes("fax_tracker", "fax_tracker", "fax_");
 export const useDeleteFax = createUseDelete("fax_tracker", "fax_tracker", "fax_");

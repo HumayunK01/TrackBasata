@@ -9,6 +9,7 @@ import { MoreVertical, Pencil, Trash2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { StepPicker, StatusIcon } from "./StepPicker";
 import { displayStatus, stepIsActive, stepIsSkipped, copyName, type TrackerMode } from "./tracker-helpers";
+import { EditNotesPopover } from "./EditNotesPopover";
 
 export function FaxCard({
   row,
@@ -16,6 +17,9 @@ export function FaxCard({
   onEdit,
   onDelete,
   onPickStep,
+  onEditNotes,
+  onSaveNotes,
+  isPendingNotes,
   labels,
   mode,
 }: {
@@ -25,6 +29,9 @@ export function FaxCard({
   onEdit: (row: FaxRow) => void;
   onDelete: (row: FaxRow) => void;
   onPickStep: (field: StepField, value: FaxStepStatus) => void;
+  onEditNotes?: (row: FaxRow) => void;
+  onSaveNotes?: (id: string, notes: string | null) => void;
+  isPendingNotes?: boolean;
   labels: [string, string, string];
   mode: TrackerMode;
 }) {
@@ -107,11 +114,44 @@ export function FaxCard({
         })}
       </dl>
 
-      {row.notes && (
-        <p className="mt-3 pt-2.5 border-t border-border/50 text-xs text-muted-foreground leading-relaxed">
-          {row.notes}
-        </p>
-      )}
+      <div className="mt-3 pt-2.5 border-t border-border/50 text-xs text-muted-foreground">
+        {onSaveNotes ? (
+          <EditNotesPopover
+            row={row}
+            onSave={onSaveNotes}
+            isPending={isPendingNotes}
+          >
+            <div
+              className="flex items-start justify-between gap-2 cursor-pointer hover:text-foreground transition-colors group/note"
+              title="Click to edit notes"
+            >
+              <p className="leading-relaxed flex-1">
+                <span className="font-semibold text-foreground/80 mr-1.5 font-mono text-2xs uppercase">Note:</span>
+                {row.notes ? (
+                  <span className="group-hover/note:underline underline-offset-2 decoration-muted-foreground/50 group-hover/note:decoration-foreground transition-colors">{row.notes}</span>
+                ) : (
+                  <span className="font-mono text-muted-foreground/40 italic group-hover/note:underline underline-offset-2">Add note...</span>
+                )}
+              </p>
+            </div>
+          </EditNotesPopover>
+        ) : (
+          <div
+            className="flex items-start justify-between gap-2 cursor-pointer hover:text-foreground transition-colors group/note"
+            onClick={() => onEditNotes?.(row)}
+            title="Click to edit notes"
+          >
+            <p className="leading-relaxed flex-1">
+              <span className="font-semibold text-foreground/80 mr-1.5 font-mono text-2xs uppercase">Note:</span>
+              {row.notes ? (
+                <span className="group-hover/note:underline underline-offset-2 decoration-muted-foreground/50 group-hover/note:decoration-foreground transition-colors">{row.notes}</span>
+              ) : (
+                <span className="font-mono text-muted-foreground/40 italic group-hover/note:underline underline-offset-2">Add note...</span>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

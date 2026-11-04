@@ -4,6 +4,7 @@ import {
   createUseResolvedByDay,
   createUseUpsert,
   createUseUpdateStep,
+  createUseUpdateNotes,
   createUseDelete,
   normalizeStepsIndependent,
 } from "./useTracker";
@@ -20,4 +21,5 @@ export const fetchAllIndexableRows = createFetchAllRows("indexable_tracker");
 export const useIndexableResolvedByDay = createUseResolvedByDay("indexable_resolved_by_day", "indexable_tracker");
 export const useUpsertIndexable = createUseUpsert("indexable_tracker", "indexable_tracker", "indexable_");
 export const useUpdateStep = createUseUpdateStep("indexable_tracker", "indexable_tracker", "indexable_", normalizeStepsIndependent);
+export const useUpdateNotes = createUseUpdateNotes("indexable_tracker", "indexable_tracker", "indexable_");
 export const useDeleteIndexable = createUseDelete("indexable_tracker", "indexable_tracker", "indexable_");

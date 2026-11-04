@@ -16,7 +16,7 @@ export function StatusIcon({ status, tickColor }: { status: FaxStepStatus | null
     case "Successfully Sent": return <CheckCheck className={cn("size-3.5", tickColor ?? "text-emerald-500")} />;
     case "Failed":            return <X className={cn("size-3.5", tickColor ?? "text-rose-500")} />;
     case "Waiting":
-    case "Pending":           return <Loader2 className="size-3.5 text-amber-500 animate-spin" />;
+    case "Pending":           return <Loader2 className="size-3.5 text-sky-500 animate-spin" />;
     default:                  return null;
   }
 }
@@ -40,7 +40,7 @@ export function StepPicker({
         return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25";
       case "Waiting":
       case "Pending":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25";
+        return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25";
       default:
         return "bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted";
     }

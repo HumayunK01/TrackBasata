@@ -3,14 +3,15 @@ import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useProfile";
-import { useFaxTracker, useDeleteFax, useUpdateStep as useFaxUpdateStep } from "@/hooks/useFaxTracker";
-import { useIndexableTracker, useDeleteIndexable, useUpdateStep as useIndexableUpdateStep } from "@/hooks/useIndexableTracker";
+import { useFaxTracker, useDeleteFax, useUpdateStep as useFaxUpdateStep, useUpdateNotes as useFaxUpdateNotes } from "@/hooks/useFaxTracker";
+import { useIndexableTracker, useDeleteIndexable, useUpdateStep as useIndexableUpdateStep, useUpdateNotes as useIndexableUpdateNotes } from "@/hooks/useIndexableTracker";
 import { useFaxAccounts, useDeleteFaxAccount, type FaxAccount } from "@/hooks/useFaxAccounts";
 import { FigHeader, EmptyState } from "@/components/ar/industrial";
 import { FaxEntryDialog } from "@/components/ar/fax/FaxEntryDialog";
 import { IndexableEntryDialog } from "@/components/ar/indexable/IndexableEntryDialog";
 import { NewAccountDialog } from "@/components/ar/fax/NewAccountDialog";
 import { RenameAccountDialog } from "@/components/ar/fax/RenameAccountDialog";
+import { EditNotesPopover } from "@/components/ar/tracker/EditNotesPopover";
 import { StepCell } from "@/components/ar/tracker/StepCell";
 import { StatusIcon } from "@/components/ar/tracker/StepPicker";
 import { FaxCard } from "@/components/ar/tracker/FaxCard";
@@ -236,7 +237,10 @@ const FaxTrackerPage = () => {
   const deleteIndexable = useDeleteIndexable();
   const updateFaxStep = useFaxUpdateStep();
   const updateIndexableStep = useIndexableUpdateStep();
+  const updateFaxNotes = useFaxUpdateNotes();
+  const updateIndexableNotes = useIndexableUpdateNotes();
   const deleteRow = isFax ? deleteFax : deleteIndexable;
+  const updateNotes = isFax ? updateFaxNotes : updateIndexableNotes;
 
   const pickStep = (row: FaxRow, field: StepField, value: FaxStepStatus) => {
     if (isFax) updateFaxStep.mutate({ row, field, value });
@@ -1021,8 +1025,27 @@ const FaxTrackerPage = () => {
                                     <span className="truncate">{displayStatus(row.overall_status)}</span>
                                   </span>
                                 </td>
-                                <td className="px-4 py-2.5 text-muted-foreground max-w-[16rem] truncate text-xs font-medium" title={row.notes ?? ""}>
-                                  {row.notes || <span className="font-mono text-muted-foreground/40">—</span>}
+                                <td className="px-4 py-2.5 text-muted-foreground max-w-[16rem] truncate text-xs font-medium">
+                                  <EditNotesPopover
+                                    row={row}
+                                    onSave={(id, notes) => updateNotes.mutate({ id, notes })}
+                                    isPending={updateNotes.isPending}
+                                  >
+                                    <div
+                                      className="truncate cursor-pointer group/note"
+                                      title={row.notes ? `${row.notes} (Click to edit notes)` : "Click to add notes"}
+                                    >
+                                      {row.notes ? (
+                                        <span className="truncate block group-hover/note:text-foreground group-hover/note:underline underline-offset-2 decoration-muted-foreground/50 group-hover/note:decoration-foreground transition-colors">
+                                          {row.notes}
+                                        </span>
+                                      ) : (
+                                        <span className="font-mono text-muted-foreground/40 italic group-hover/note:text-muted-foreground transition-colors">
+                                          —
+                                        </span>
+                                      )}
+                                    </div>
+                                  </EditNotesPopover>
                                 </td>
                                 <td className="px-3 py-2.5 text-center">
                                   <DropdownMenu>
@@ -1087,6 +1110,8 @@ const FaxTrackerPage = () => {
                     onEdit={openEdit}
                     onDelete={setDeleteTarget}
                     onPickStep={(field, value) => pickStep(row, field, value)}
+                    onSaveNotes={(id, notes) => updateNotes.mutate({ id, notes })}
+                    isPendingNotes={updateNotes.isPending}
                     labels={labels}
                     mode={mode}
                   />
