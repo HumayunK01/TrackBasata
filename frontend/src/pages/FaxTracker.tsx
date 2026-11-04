@@ -59,17 +59,17 @@ if (typeof window !== "undefined") {
     // Ignore in non-browser environments
   }
 }
-const MODE_KEY = "tracker-mode";
+// const MODE_KEY = "tracker-mode";
 const STATUS_FILTER_KEY = "tracker-status-filter";
 const PAGE_SIZE_KEY = "tracker-page-size";
 const DEFAULT_PAGE_SIZE = 10;
 const ALLOWED_PAGE_SIZES = [10, 20, 50, 100] as const;
 type PageSize = (typeof ALLOWED_PAGE_SIZES)[number];
 
-const MODES: { id: TrackerMode; label: string }[] = [
-  { id: "fax", label: "Fax" },
-  // { id: "indexable", label: "Indexable" },
-];
+// const MODES: { id: TrackerMode; label: string }[] = [
+//   { id: "fax", label: "Fax" },
+//   { id: "indexable", label: "Indexable" },
+// ];
 
 function parseStatuses(raw: string | null): Set<string> {
   if (!raw) return new Set();
@@ -118,13 +118,13 @@ const FaxTrackerPage = () => {
     return "fax";
   }, []);
 
-  const handleModeChange = (newMode: TrackerMode) => {
-    localStorage.setItem(MODE_KEY, newMode);
-    updateUrlParams({
-      mode: newMode === "fax" ? null : newMode,
-      page: null,
-    });
-  };
+  // const handleModeChange = (newMode: TrackerMode) => {
+  //   localStorage.setItem(MODE_KEY, newMode);
+  //   updateUrlParams({
+  //     mode: newMode === "fax" ? null : newMode,
+  //     page: null,
+  //   });
+  // };
 
   const deleteAccount = useDeleteFaxAccount();
   const [accountId, setAccountId] = useState<string | null>(() => localStorage.getItem(ACCOUNT_KEY));
@@ -246,6 +246,45 @@ const FaxTrackerPage = () => {
     if (isFax) updateFaxStep.mutate({ row, field, value });
     else updateIndexableStep.mutate({ row, field, value });
   };
+
+  const [justResolvedIds, setJustResolvedIds] = useState<Set<string>>(() => new Set());
+  const prevStatusesRef = useRef<Map<string, string>>(new Map());
+
+  // Detect when a row transitions to Resolved to trigger celebratory emerald wash
+  useEffect(() => {
+    if (!rows) return;
+    const currentMap = new Map<string, string>();
+    const newlyResolved: string[] = [];
+
+    for (const row of rows) {
+      const prev = prevStatusesRef.current.get(row.id);
+      const curr = statusGroup(row.overall_status ?? "");
+      if (curr) {
+        currentMap.set(row.id, curr);
+      }
+
+      if (prev && prev !== "Resolved" && curr === "Resolved") {
+        newlyResolved.push(row.id);
+      }
+    }
+
+    prevStatusesRef.current = currentMap;
+
+    if (newlyResolved.length > 0) {
+      setJustResolvedIds((prev) => {
+        const next = new Set(prev);
+        newlyResolved.forEach((id) => next.add(id));
+        return next;
+      });
+      setTimeout(() => {
+        setJustResolvedIds((prev) => {
+          const next = new Set(prev);
+          newlyResolved.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 1200);
+    }
+  }, [rows]);
 
   const labels = stepLabels(mode);
 
@@ -415,7 +454,7 @@ const FaxTrackerPage = () => {
     seenIds.current = current;
     if (added.length === 0) return;
     setNewIds(new Set(added));
-    const t = setTimeout(() => setNewIds(new Set()), 400);
+    const t = setTimeout(() => setNewIds(new Set()), 1200);
     return () => clearTimeout(t);
   }, [rows]);
 
@@ -989,6 +1028,7 @@ const FaxTrackerPage = () => {
                                 className={cn(
                                   "transition-colors hover:bg-muted/20 group",
                                   newIds.has(row.id) && "animate-row-in",
+                                  justResolvedIds.has(row.id) && "row-resolved-flash",
                                 )}
                               >
                                 <td className="px-4 py-2.5 max-w-[16rem]">

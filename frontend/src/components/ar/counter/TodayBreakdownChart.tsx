@@ -91,16 +91,19 @@ export function TodayBreakdownChart({
               strokeWidth={strokeWidth}
               strokeDasharray={`${slice.strokeDash} ${circumference}`}
               strokeDashoffset={slice.strokeOffset}
-              className="transition-[stroke-dashoffset,stroke-dasharray] duration-500 ease-out"
+              className="transition-[stroke-dashoffset,stroke-dasharray] duration-500 ease-out hover:opacity-85"
               style={{
-                filter: "drop-shadow(0 0 2px rgba(0,0,0,0.2))",
+                filter: "drop-shadow(0 0 3px rgba(0,0,0,0.3))",
               }}
             />
           ))}
         </svg>
 
-        {/* Center: 100% Label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+        {/* Center: 100% Label with pulse animation on total change */}
+        <div
+          key={total}
+          className="counter-pop absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none"
+        >
           <span className="text-xs sm:text-sm font-bold font-mono tabular-nums text-foreground leading-none tracking-tight">
             {total > 0 ? "100%" : "0%"}
           </span>

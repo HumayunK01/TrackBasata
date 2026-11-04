@@ -39,6 +39,11 @@ interface CounterCardProps {
   hotkeyIndex?: number;
 }
 
+interface FloatingBadge {
+  id: number;
+  text: string;
+}
+
 export function CounterCard({
   cat,
   count,
@@ -47,39 +52,68 @@ export function CounterCard({
   onIncrement,
   onDecrement,
   onRemove,
-  hotkeyIndex,
 }: CounterCardProps) {
   const clr = colorForKey(cat.key);
-  const [bump, setBump] = useState(0);
+  const [direction, setDirection] = useState<"up" | "down" | null>(null);
+  const [floatingBadges, setFloatingBadges] = useState<FloatingBadge[]>([]);
+  const prevCountRef = useRef(count);
   const fill = maxCount > 0 ? Math.min(100, (count / maxCount) * 100) : 0;
   const share = total > 0 ? Math.round((count / total) * 100) : 0;
   const cardRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
 
-  const inc = useHoldRepeat(() => {
+  const spawnBadge = useCallback((text: string) => {
+    const id = Date.now() + Math.random();
+    setFloatingBadges((prev) => [...prev.slice(-3), { id, text }]);
+    setTimeout(() => {
+      setFloatingBadges((prev) => prev.filter((b) => b.id !== id));
+    }, 650);
+  }, []);
+
+  const triggerIncrement = useCallback(() => {
+    setDirection("up");
+    spawnBadge("+1");
     onIncrement();
     playTapFeedback();
-  });
-  const dec = useHoldRepeat(() => {
+  }, [onIncrement, spawnBadge]);
+
+  const triggerDecrement = useCallback(() => {
+    setDirection("down");
+    spawnBadge("-1");
     onDecrement();
     playTapFeedback();
-  });
+  }, [onDecrement, spawnBadge]);
+
+  const inc = useHoldRepeat(triggerIncrement);
+  const dec = useHoldRepeat(triggerDecrement);
 
   const tap = () => {
-    onIncrement();
-    playTapFeedback();
-    setBump((n) => n + 1);
+    triggerIncrement();
   };
+
+  // Sync animation when count changes from external sources (e.g. keyboard shortcuts)
+  useEffect(() => {
+    if (prevCountRef.current !== count) {
+      if (count > prevCountRef.current) {
+        setDirection("up");
+        spawnBadge(`+${count - prevCountRef.current}`);
+      } else if (count < prevCountRef.current) {
+        setDirection("down");
+        spawnBadge(`${count - prevCountRef.current}`);
+      }
+      prevCountRef.current = count;
+    }
+  }, [count, spawnBadge]);
 
   // Pulse ring animation: compositor-driven Web Animations API
   useEffect(() => {
     if (count === 0 || !ringRef.current) return;
     ringRef.current.animate(
       [
-        { transform: "scale(1)", opacity: 0.25 },
-        { transform: "scale(2)", opacity: 0 },
+        { transform: "scale(1)", opacity: 0.35 },
+        { transform: "scale(2.2)", opacity: 0 },
       ],
-      { duration: 350, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
+      { duration: 400, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
     );
   }, [count]);
 
@@ -148,16 +182,38 @@ export function CounterCard({
             tap();
           } else if (e.key === "ArrowDown" || e.key === "-") {
             e.preventDefault();
-            onDecrement();
+            triggerDecrement();
           }
         }}
-        className="relative flex-1 flex flex-col items-center justify-center py-7 sm:py-9 mx-1 rounded-xl active:scale-[0.98] transition-transform duration-100 touch-manipulation select-none outline-none cursor-pointer"
+        className="relative flex-1 flex flex-col items-center justify-center py-7 sm:py-9 mx-1 rounded-xl active:scale-[0.97] transition-transform duration-100 touch-manipulation select-none outline-none cursor-pointer"
         title="Tap to count (+1)"
         aria-label={`${cat.label}: ${count}. Tap to add one.`}
       >
+        {/* Floating +1 / -1 particles */}
+        <div className="absolute inset-x-0 top-3 bottom-0 pointer-events-none flex items-center justify-center overflow-visible z-20">
+          {floatingBadges.map((badge) => (
+            <span
+              key={badge.id}
+              className={cn(
+                "float-badge absolute text-sm sm:text-base font-bold font-mono px-2 py-0.5 rounded-full border shadow-sm",
+                badge.text.startsWith("+")
+                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                  : "bg-rose-500/15 border-rose-500/40 text-rose-400"
+              )}
+            >
+              {badge.text}
+            </span>
+          ))}
+        </div>
+
         <span
-          key={bump}
-          className="counter-pop text-5xl sm:text-6xl font-bold font-mono tabular-nums leading-none select-none tracking-tight transition-colors"
+          key={`${count}-${direction}`}
+          className={cn(
+            "text-5xl sm:text-6xl font-bold font-mono tabular-nums leading-none select-none tracking-tight transition-colors",
+            direction === "up" && "counter-pop-up",
+            direction === "down" && "counter-pop-down",
+            direction === null && "counter-pop"
+          )}
           style={{
             color: count > 0 ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground) / 0.35)",
           }}

@@ -919,13 +919,13 @@ export default function CounterPage() {
                 >
                   <span
                     className={cn(
-                      "size-1.5 rounded-full",
+                      "size-1.5 rounded-full transition-transform duration-300",
                       logsLoading || isSyncing || upsert.isPending
-                        ? "bg-sky-400 animate-ping"
+                        ? "bg-sky-400 animate-spin"
                         : saved
-                        ? "bg-emerald-500"
+                        ? "bg-emerald-500 pulse-breathe"
                         : total > 0
-                        ? "bg-amber-500"
+                        ? "bg-amber-500 animate-pulse"
                         : "bg-muted-foreground"
                     )}
                   />

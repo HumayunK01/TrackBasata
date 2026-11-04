@@ -85,7 +85,7 @@ export function EditNotesPopover({
         sideOffset={6}
         onOpenAutoFocus={handleOpenAutoFocus}
         onClick={(e) => e.stopPropagation()}
-        className="w-[320px] sm:w-[340px] p-2.5 bg-popover border border-border/80 dark:border-white/10 shadow-2xl rounded-xl z-50 text-popover-foreground"
+        className="w-[320px] sm:w-[340px] p-2.5 bg-popover border border-border/80 dark:border-white/10 shadow-2xl rounded-xl z-50 text-popover-foreground popover-spring-in"
       >
         <div className="space-y-2">
           <textarea

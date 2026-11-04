@@ -72,6 +72,7 @@ export function StepEntryDialog({
   const [step3, setStep3] = useState<string>(NONE);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Clean sub-label for step 3 (strips any leading "Step 3:" prefix)
   const step3Sub = useMemo(() => {
@@ -80,7 +81,11 @@ export function StepEntryDialog({
 
   // Hydrate fields whenever the dialog opens (new row vs editing existing).
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setIsSuccess(false);
+      return;
+    }
+    setIsSuccess(false);
     setPatientName(row?.patient_name ?? "");
     setStep1(row?.step1 === "Failed" || row?.step1 === "Successfully Sent" ? row.step1 : "Waiting");
     setStep2(row?.step2 ?? NONE);
@@ -152,7 +157,14 @@ export function StepEntryDialog({
           notes: notes.trim() || null,
         },
       },
-      { onSuccess: () => onOpenChange(false) },
+      {
+        onSuccess: () => {
+          setIsSuccess(true);
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 600);
+        },
+      },
     );
   };
 
@@ -253,7 +265,6 @@ export function StepEntryDialog({
             {/* Stepper Cards */}
             <div className="space-y-2">
               {stepsList.map((step) => {
-                const isSelected = !step.disabled && step.value !== null;
                 return (
                   <div
                     key={step.num}
@@ -374,6 +385,7 @@ export function StepEntryDialog({
             <Button
               type="button"
               variant="outline"
+              disabled={isSuccess || upsert.isPending}
               className="border-border/70 bg-background/60 hover:bg-muted/70 text-xs font-medium h-9 px-4 rounded-xl cursor-pointer"
               onClick={() => onOpenChange(false)}
             >
@@ -381,11 +393,27 @@ export function StepEntryDialog({
             </Button>
             <Button
               type="submit"
-              disabled={upsert.isPending || !patientName.trim()}
-              className="bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold shadow-xs shadow-primary/20 h-9 px-4 rounded-xl cursor-pointer"
+              disabled={upsert.isPending || !patientName.trim() || isSuccess}
+              className={cn(
+                "text-xs font-semibold shadow-xs h-9 px-4 rounded-xl cursor-pointer transition-all duration-200",
+                isSuccess
+                  ? "bg-emerald-500 hover:bg-emerald-500 text-white shadow-emerald-500/25 scale-[1.02]"
+                  : "bg-primary hover:bg-primary/95 text-primary-foreground shadow-primary/20"
+              )}
             >
-              {upsert.isPending && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
-              {row ? "Save Changes" : "Add Patient"}
+              {isSuccess ? (
+                <span className="inline-flex items-center gap-1.5 success-badge-pop">
+                  <Check className="size-4 stroke-[2.5]" />
+                  <span>{row ? "Saved!" : "Patient Added!"}</span>
+                </span>
+              ) : upsert.isPending ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Saving...</span>
+                </span>
+              ) : (
+                <span>{row ? "Save Changes" : "Add Patient"}</span>
+              )}
             </Button>
           </DialogFooter>
         </form>

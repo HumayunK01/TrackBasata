@@ -13,11 +13,15 @@ import { labelFor } from "./tracker-helpers";
 
 export function StatusIcon({ status, tickColor }: { status: FaxStepStatus | null; tickColor?: string }) {
   switch (status) {
-    case "Successfully Sent": return <CheckCheck className={cn("size-3.5", tickColor ?? "text-emerald-500")} />;
-    case "Failed":            return <X className={cn("size-3.5", tickColor ?? "text-rose-500")} />;
+    case "Successfully Sent":
+      return <CheckCheck className={cn("size-3.5 status-icon-morph", tickColor ?? "text-emerald-500")} />;
+    case "Failed":
+      return <X className={cn("size-3.5 status-icon-morph", tickColor ?? "text-rose-500")} />;
     case "Waiting":
-    case "Pending":           return <Loader2 className="size-3.5 text-sky-500 animate-spin" />;
-    default:                  return null;
+    case "Pending":
+      return <Loader2 className="size-3.5 text-sky-500 animate-spin" />;
+    default:
+      return null;
   }
 }
 
@@ -53,14 +57,14 @@ export function StepPicker({
           type="button"
           title="Click to change status"
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer shadow-2xs",
+            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border status-badge-morph active:scale-95 cursor-pointer shadow-2xs",
             getBadgeClasses(status),
             triggerClassName,
           )}
         >
           {status ? (
             <span className="inline-flex items-center gap-1.5">
-              <StatusIcon status={status} />
+              <StatusIcon key={status} status={status} />
               <span>{labelFor(status)}</span>
             </span>
           ) : (
