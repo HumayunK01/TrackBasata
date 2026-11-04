@@ -47,7 +47,16 @@ import Skeleton from "react-loading-skeleton";
 import { cn } from "@/lib/utils";
 import type { FaxRow, FaxStepStatus, StepField } from "@/hooks/useFaxTracker";
 
-const ACCOUNT_KEY = "fax-tracker-account";
+const ACCOUNT_KEY = "fax-tracker-selected-account";
+
+// Clean up legacy key so old auto-selected account does not linger
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem("fax-tracker-account");
+  } catch {
+    // Ignore in non-browser environments
+  }
+}
 const MODE_KEY = "tracker-mode";
 const STATUS_FILTER_KEY = "tracker-status-filter";
 const PAGE_SIZE_KEY = "tracker-page-size";
@@ -138,7 +147,9 @@ const FaxTrackerPage = () => {
 
     if (!targetAccount) {
       const savedId = localStorage.getItem(ACCOUNT_KEY);
-      targetAccount = accounts.find((a) => a.id === savedId) ?? accounts[0];
+      if (savedId) {
+        targetAccount = accounts.find((a) => a.id === savedId);
+      }
     }
 
     if (targetAccount) {
@@ -150,6 +161,10 @@ const FaxTrackerPage = () => {
       if (urlAccount !== targetAccount.name && urlAccount !== targetAccount.id) {
         updateUrlParams({ account: targetAccount.name });
       }
+    } else if (accountId && !accounts.some((a) => a.id === accountId)) {
+      setAccountId(null);
+      localStorage.removeItem(ACCOUNT_KEY);
+      updateUrlParams({ account: null });
     }
   }, [accounts, accountsLoading, searchParams, accountId, updateUrlParams]);
 
@@ -157,6 +172,12 @@ const FaxTrackerPage = () => {
     setAccountId(a.id);
     localStorage.setItem(ACCOUNT_KEY, a.id);
     updateUrlParams({ account: a.name, page: null });
+  };
+
+  const handleClearAccount = () => {
+    setAccountId(null);
+    localStorage.removeItem(ACCOUNT_KEY);
+    updateUrlParams({ account: null, page: null });
   };
 
   useEffect(() => {
@@ -465,7 +486,7 @@ const FaxTrackerPage = () => {
           <section className="space-y-3.5">
             <FigHeader
               title="Status Overview"
-              sub={`${stats.total} total patients · ${stats.resolved} resolved in ${activeAccount?.name || "all accounts"}`}
+              sub={activeAccount ? `${stats.total} total patients · ${stats.resolved} resolved in ${activeAccount.name}` : "Select an account to view status and patients"}
             />
             {/* KPI Stat Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
@@ -516,7 +537,7 @@ const FaxTrackerPage = () => {
           <section className="space-y-4">
             <FigHeader
               title={isFax ? "Fax Patients" : "Indexable Patients"}
-              sub={`${filtered.length} matching patients ${activeAccount ? `· ${activeAccount.name}` : ""}`}
+              sub={activeAccount ? `${filtered.length} matching patients · ${activeAccount.name}` : "Select an account to start tracking"}
             />
 
             {/* Unified Command Toolbar */}
@@ -575,7 +596,7 @@ const FaxTrackerPage = () => {
                         transition={{ duration: 0.15, ease: "easeOut" }}
                         className="truncate font-semibold text-xs"
                       >
-                        {activeAccount?.name ?? (accountsLoading ? "Loading…" : "No account")}
+                        {activeAccount?.name ?? (accountsLoading ? "Loading…" : "Select Account")}
                       </motion.span>
                     </AnimatePresence>
                     <ChevronDown className="size-3.5 opacity-70 shrink-0 ml-0.5 transition-transform duration-200 ease-out group-data-[state=open]:rotate-180" />
@@ -585,6 +606,18 @@ const FaxTrackerPage = () => {
                   <DropdownMenuLabel className="font-mono text-2xs uppercase tracking-wider text-muted-foreground px-2 py-1">
                     Switch account
                   </DropdownMenuLabel>
+                  {activeAccount && (
+                    <>
+                      <DropdownMenuSeparator className="my-1" />
+                      <DropdownMenuItem
+                        onClick={handleClearAccount}
+                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium cursor-pointer text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3.5 shrink-0" />
+                        <span>Clear selection</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator className="my-1" />
                   {sortedAccounts.map((a) => (
                     <DropdownMenuItem
@@ -903,8 +936,14 @@ const FaxTrackerPage = () => {
                               <EmptyState
                                 className="py-14"
                                 icon={FileWarning}
-                                title="No Patients"
-                                hint={rows.length === 0 ? "Add your first patient to start tracking." : "No patients match your current filters."}
+                                title={!activeAccount ? "No Account Selected" : "No Patients"}
+                                hint={
+                                  !activeAccount
+                                    ? "Select an account from the dropdown above to view patient faxes."
+                                    : rows.length === 0
+                                    ? "Add your first patient to start tracking."
+                                    : "No patients match your current filters."
+                                }
                               />
                             </td>
                           </tr>
@@ -999,8 +1038,14 @@ const FaxTrackerPage = () => {
             ) : filtered.length === 0 ? (
               <EmptyState
                 icon={FileWarning}
-                title="No Patients"
-                hint={rows.length === 0 ? "Add your first patient to start tracking." : "No patients match your current filters."}
+                title={!activeAccount ? "No Account Selected" : "No Patients"}
+                hint={
+                  !activeAccount
+                    ? "Select an account from the dropdown above to view patient faxes."
+                    : rows.length === 0
+                    ? "Add your first patient to start tracking."
+                    : "No patients match your current filters."
+                }
               />
             ) : (
               <div className="space-y-3">
