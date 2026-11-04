@@ -6,20 +6,25 @@ import {
 } from "../types/tracker.js";
 import { logAuditEvent } from "./audit.service.js";
 
-export function getStatusGroup(overallStatus: string | null | undefined): "Resolved" | "Failed" | "Waiting" | "Incomplete" | null {
+export function getStatusGroup(overallStatus: string | null | undefined): "Resolved" | "Failed" | "Sending" | null {
   if (!overallStatus) return null;
   const s = overallStatus.trim();
   if (s.startsWith("Resolved")) return "Resolved";
   if (s === "All Steps Failed") return "Failed";
-  if (s.startsWith("Waiting")) return "Waiting";
-  if (s.startsWith("Move to") || s === "Pending") return "Incomplete";
+  if (s === "Failed") return "Failed";
+  if (s.startsWith("Waiting") || s.startsWith("Sending") || s.startsWith("Move to") || s === "Pending") return "Sending";
   return null;
 }
 
 export function displayStatus(status: string | null | undefined): string {
-  if (!status) return "Pending";
+  if (!status) return "Sending";
   if (status.startsWith("Resolved")) return "Resolved";
-  return status.replace(/\s*#\s*$/, "").trim();
+  if (status === "All Steps Failed") return "Failed";
+  let clean = status.replace(/\s*#\s*$/, "").trim();
+  clean = clean.replace(/^Waiting\b/, "Sending");
+  clean = clean.replace(/^Move to\s+/, "Sending – ");
+  if (clean === "Pending") return "Sending";
+  return clean;
 }
 
 export function formatMMDDYYYY(d: Date = new Date()): string {

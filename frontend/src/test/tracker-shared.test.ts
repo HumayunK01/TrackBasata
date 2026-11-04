@@ -31,9 +31,10 @@ describe("Shared Tracker Multi-User Logic", () => {
     expect(patch.step3).toBe("Pending");
   });
 
-  it("verifies row created by other user can transition from pending to failed and enables step 2", () => {
+  it("verifies row created by other user can transition to failed and automatically puts step 2 on sending", () => {
     const patch = normalizeStepsSequential(sampleRow, "step1", "Failed");
     expect(patch.step1).toBe("Failed");
-    expect(patch.step2).toBe("Pending");
+    expect(patch.step2).toBe("Waiting");
+    expect(patch.step3).toBeNull();
   });
 });

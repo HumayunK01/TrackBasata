@@ -1,4 +1,4 @@
-import { Check, ChevronDown, CheckCheck, Loader2, X } from "@/components/ui/icons";
+import { Check, CheckCheck, ChevronDown, Loader2, X } from "@/components/ui/icons";
 import { STEP_STATUSES, type FaxStepStatus } from "@/hooks/useFaxTracker";
 import {
   DropdownMenu,
@@ -15,8 +15,8 @@ export function StatusIcon({ status, tickColor }: { status: FaxStepStatus | null
   switch (status) {
     case "Successfully Sent": return <CheckCheck className={cn("size-3.5", tickColor ?? "text-emerald-500")} />;
     case "Failed":            return <X className={cn("size-3.5", tickColor ?? "text-rose-500")} />;
-    case "Waiting":           return <Loader2 className="size-3.5 text-amber-500 animate-spin" />;
-    case "Pending":           return <Loader2 className="size-3.5 text-sky-500 animate-spin" />;
+    case "Waiting":
+    case "Pending":           return <Loader2 className="size-3.5 text-amber-500 animate-spin" />;
     default:                  return null;
   }
 }
@@ -39,9 +39,8 @@ export function StepPicker({
       case "Failed":
         return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25";
       case "Waiting":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25";
       case "Pending":
-        return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25";
       default:
         return "bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted";
     }
@@ -92,4 +91,3 @@ export function StepPicker({
     </DropdownMenu>
   );
 }
-

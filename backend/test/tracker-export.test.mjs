@@ -5,11 +5,11 @@ async function main() {
   console.log("=== RUNNING TRACKER EXPORT UNIT & ENDPOINT TESTS ===");
 
   // 1. Test getStatusGroup logic
-  if (getStatusGroup("Waiting – Refax Same #") !== "Waiting") {
-    throw new Error("Failed: Waiting – Refax Same # should be in Waiting group");
+  if (getStatusGroup("Waiting – Refax Same #") !== "Sending") {
+    throw new Error("Failed: Waiting – Refax Same # should be in Sending group");
   }
-  if (getStatusGroup("Waiting – Refax New #") !== "Waiting") {
-    throw new Error("Failed: Waiting – Refax New # should be in Waiting group");
+  if (getStatusGroup("Waiting – Refax New #") !== "Sending") {
+    throw new Error("Failed: Waiting – Refax New # should be in Sending group");
   }
   if (getStatusGroup("Resolved – Refax Same #") !== "Resolved") {
     throw new Error("Failed: Resolved – Refax Same # should be in Resolved group");
@@ -17,11 +17,11 @@ async function main() {
   if (getStatusGroup("All Steps Failed") !== "Failed") {
     throw new Error("Failed: All Steps Failed should be in Failed group");
   }
-  if (getStatusGroup("Move to Refax New #") !== "Incomplete") {
-    throw new Error("Failed: Move to Refax New # should be in Incomplete group");
+  if (getStatusGroup("Move to Refax New #") !== "Sending") {
+    throw new Error("Failed: Move to Refax New # should be in Sending group");
   }
-  if (getStatusGroup("Pending") !== "Incomplete") {
-    throw new Error("Failed: Pending should be in Incomplete group");
+  if (getStatusGroup("Pending") !== "Sending") {
+    throw new Error("Failed: Pending should be in Sending group");
   }
   console.log("✅ getStatusGroup helper tests passed");
 
@@ -29,8 +29,11 @@ async function main() {
   if (displayStatus("Resolved – Refax Same #") !== "Resolved") {
     throw new Error("Failed: displayStatus should format resolved properly");
   }
-  if (displayStatus("Waiting – Refax Same #") !== "Waiting – Refax Same") {
-    throw new Error("Failed: displayStatus should strip trailing hash");
+  if (displayStatus("Waiting – Refax Same #") !== "Sending – Refax Same") {
+    throw new Error("Failed: displayStatus should format as Sending and strip trailing hash");
+  }
+  if (displayStatus("All Steps Failed") !== "Failed") {
+    throw new Error("Failed: displayStatus should format All Steps Failed as Failed");
   }
   console.log("✅ displayStatus helper tests passed");
 

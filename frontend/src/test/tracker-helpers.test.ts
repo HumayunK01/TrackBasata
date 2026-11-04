@@ -1,9 +1,33 @@
 import { describe, it, expect } from "vitest";
-import { formatDobInput, stepIsSkipped } from "@/components/ar/tracker/tracker-helpers";
+import { formatDobInput, stepIsSkipped, displayStatus, statusGroup, labelFor } from "@/components/ar/tracker/tracker-helpers";
 import type { FaxRow } from "@/hooks/useFaxTracker";
 
 const row = (step1: FaxRow["step1"], step2: FaxRow["step2"], step3: FaxRow["step3"]) =>
   ({ step1, step2, step3 }) as FaxRow;
+
+describe("tracker-helpers status mapping", () => {
+  it("maps labels correctly", () => {
+    expect(labelFor("Waiting")).toBe("Sending");
+    expect(labelFor("Successfully Sent")).toBe("Sent");
+    expect(labelFor("Failed")).toBe("Failed");
+  });
+
+  it("maps status groups correctly", () => {
+    expect(statusGroup("Waiting – Refax Same #")).toBe("Sending");
+    expect(statusGroup("Resolved – Refax Same #")).toBe("Resolved");
+    expect(statusGroup("All Steps Failed")).toBe("Failed");
+    expect(statusGroup("Move to Refax New #")).toBe("Sending");
+    expect(statusGroup("Pending")).toBe("Sending");
+  });
+
+  it("formats display status correctly", () => {
+    expect(displayStatus("Waiting – Refax Same #")).toBe("Sending – Refax Same");
+    expect(displayStatus("Resolved – Refax Same #")).toBe("Resolved");
+    expect(displayStatus("All Steps Failed")).toBe("Failed");
+    expect(displayStatus("Move to Refax New #")).toBe("Sending – Refax New");
+    expect(displayStatus("Pending")).toBe("Sending");
+  });
+});
 
 describe("stepIsSkipped (indexable)", () => {
   it("marks later steps skipped when step 1 is sent", () => {

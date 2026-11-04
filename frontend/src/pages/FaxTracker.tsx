@@ -416,20 +416,19 @@ const FaxTrackerPage = () => {
   }, [rows]);
 
   const groupCounts = useMemo(() => {
-    const counts: Record<string, number> = { Resolved: 0, Failed: 0, Waiting: 0, Incomplete: 0 };
+    const counts: Record<string, number> = { Resolved: 0, Sending: 0, Failed: 0 };
     for (const r of rows) {
       const g = statusGroup(r.overall_status);
-      if (g) counts[g]++;
+      if (g) counts[g] = (counts[g] ?? 0) + 1;
     }
     return counts;
   }, [rows]);
 
   const stats = useMemo(
     () => ({
-      resolved: groupCounts.Resolved,
-      allFailed: groupCounts.Failed,
-      waiting: groupCounts.Waiting,
-      incomplete: groupCounts.Incomplete,
+      resolved: groupCounts.Resolved ?? 0,
+      sending: groupCounts.Sending ?? 0,
+      failed: groupCounts.Failed ?? 0,
       total: rows.length,
     }),
     [groupCounts, rows.length],
@@ -528,7 +527,7 @@ const FaxTrackerPage = () => {
               sub={activeAccount ? `${stats.total} total patients · ${stats.resolved} resolved in ${activeAccount.name}` : "Select an account to view status and patients"}
             />
             {/* KPI Stat Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
               <StatCard
                 label="Resolved"
                 value={stats.resolved}
@@ -538,28 +537,20 @@ const FaxTrackerPage = () => {
                 onClick={() => toggleStatus("Resolved")}
               />
               <StatCard
-                label="All Steps Failed"
-                value={stats.allFailed}
+                label="Sending"
+                value={stats.sending}
+                tone="sky"
+                loading={isLoading}
+                active={statusFilter.has("Sending")}
+                onClick={() => toggleStatus("Sending")}
+              />
+              <StatCard
+                label="Failed"
+                value={stats.failed}
                 tone="rose"
                 loading={isLoading}
                 active={statusFilter.has("Failed")}
                 onClick={() => toggleStatus("Failed")}
-              />
-              <StatCard
-                label="Waiting"
-                value={stats.waiting}
-                tone="sky"
-                loading={isLoading}
-                active={statusFilter.has("Waiting")}
-                onClick={() => toggleStatus("Waiting")}
-              />
-              <StatCard
-                label="Incomplete"
-                value={stats.incomplete}
-                tone="slate"
-                loading={isLoading}
-                active={statusFilter.has("Incomplete")}
-                onClick={() => toggleStatus("Incomplete")}
               />
               <StatCard
                 label="Total Patients"
@@ -783,14 +774,13 @@ const FaxTrackerPage = () => {
                           <StatusIcon status={
                             s === "Resolved" ? "Successfully Sent"
                             : s === "Failed" ? "Failed"
-                            : s === "Waiting" ? "Waiting"
-                            : "Pending"
+                            : "Waiting"
                           } />
                           <span>{s}</span>
                         </span>
                         <span className="flex items-center gap-2">
                           {active && <Check className="size-3.5 text-emerald-500" />}
-                          <span className="font-mono text-2xs text-muted-foreground tabular-nums">{groupCounts[s]}</span>
+                          <span className="font-mono text-2xs text-muted-foreground tabular-nums">{groupCounts[s] ?? 0}</span>
                         </span>
                       </DropdownMenuItem>
                     );
@@ -1025,8 +1015,7 @@ const FaxTrackerPage = () => {
                                       <StatusIcon status={
                                         statusGroup(row.overall_status) === "Resolved" ? "Successfully Sent"
                                         : statusGroup(row.overall_status) === "Failed" ? "Failed"
-                                        : statusGroup(row.overall_status) === "Waiting" ? "Waiting"
-                                        : "Pending"
+                                        : "Waiting"
                                       } />
                                     </span>
                                     <span className="truncate">{displayStatus(row.overall_status)}</span>

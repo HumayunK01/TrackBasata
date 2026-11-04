@@ -36,7 +36,7 @@ export async function downloadTrackerPDF(
 
   const resolved = rows.filter((r) => r.overall_status.startsWith("Resolved")).length;
   const failed = rows.filter((r) => r.overall_status === "All Steps Failed").length;
-  const waiting = rows.filter((r) => r.overall_status.startsWith("Waiting")).length;
+  const waiting = rows.filter((r) => !r.overall_status.startsWith("Resolved") && r.overall_status !== "All Steps Failed" && r.overall_status !== "Failed").length;
 
   try {
     const img = new Image();
@@ -127,7 +127,7 @@ export async function downloadTrackerPDF(
         if (data.column.index >= 1 && data.column.index <= 4) {
           if (text === "Sent" || text.startsWith("Resolved")) data.cell.styles.textColor = [21, 128, 61];
           else if (text === "Failed" || text === "All Steps Failed") data.cell.styles.textColor = [185, 28, 28];
-          else if (text === "Waiting" || text.startsWith("Waiting")) data.cell.styles.textColor = [161, 98, 7];
+          else if (text === "Sending" || text.startsWith("Sending") || text === "Waiting" || text.startsWith("Waiting")) data.cell.styles.textColor = [161, 98, 7];
         }
       },
       didDrawPage: () => {
@@ -165,7 +165,7 @@ export async function downloadTrackerPDF(
     const groupRows = groups.get(name)!;
     const gResolved = groupRows.filter((r) => r.overall_status.startsWith("Resolved")).length;
     const gFailed = groupRows.filter((r) => r.overall_status === "All Steps Failed").length;
-    const gWaiting = groupRows.filter((r) => r.overall_status.startsWith("Waiting")).length;
+    const gWaiting = groupRows.filter((r) => !r.overall_status.startsWith("Resolved") && r.overall_status !== "All Steps Failed" && r.overall_status !== "Failed").length;
 
     if (i > 0) y += 18;
     if (y > pageHeight - 90) {
@@ -183,7 +183,7 @@ export async function downloadTrackerPDF(
     doc.setFontSize(9);
     doc.setTextColor(110);
     doc.text(
-      `${groupRows.length} patients  ·  ${gResolved} resolved  ·  ${gFailed} all steps failed  ·  ${gWaiting} waiting`,
+      `${groupRows.length} patients  ·  ${gResolved} resolved  ·  ${gFailed} failed  ·  ${gWaiting} sending`,
       margin,
       y,
     );

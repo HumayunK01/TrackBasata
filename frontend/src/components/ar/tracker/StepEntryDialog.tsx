@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Info, Loader2, User } from "@/components/ui/icons";
 import { STEP_STATUSES, type StepStatus, type TrackerRow, type TrackerInput } from "@/hooks/useTracker";
+import { labelFor } from "./tracker-helpers";
 
 // Radix Select can't bind a real null, so steps 2/3 use this sentinel for
 // "not attempted yet" and we translate it back to null on save.
@@ -57,7 +58,7 @@ export function StepEntryDialog({
   idPrefix,
 }: StepEntryDialogProps) {
   const [patientName, setPatientName] = useState("");
-  const [step1, setStep1] = useState<StepStatus>("Pending");
+  const [step1, setStep1] = useState<StepStatus>("Waiting");
   const [step2, setStep2] = useState<string>(NONE);
   const [step3, setStep3] = useState<string>(NONE);
   const [notes, setNotes] = useState("");
@@ -67,17 +68,36 @@ export function StepEntryDialog({
   useEffect(() => {
     if (!open) return;
     setPatientName(row?.patient_name ?? "");
-    setStep1(row?.step1 ?? "Pending");
+    setStep1(row?.step1 === "Failed" || row?.step1 === "Successfully Sent" ? row.step1 : "Waiting");
     setStep2(row?.step2 ?? NONE);
     setStep3(row?.step3 ?? NONE);
     setNotes(row?.notes ?? "");
     setError("");
   }, [open, row]);
 
-  // Once an earlier step succeeds, the case is resolved there — later steps
-  // don't apply, so disable (and clear) them.
-  const step2Disabled = step1 === "Successfully Sent";
-  const step3Disabled = step1 === "Successfully Sent" || step2 === "Successfully Sent";
+  // Sequential progression: step 2 only active when step 1 fails; step 3 only active when step 1 and 2 fail.
+  const step2Disabled = step1 !== "Failed";
+  const step3Disabled = step1 !== "Failed" || step2 !== "Failed";
+
+  const handleStep1Change = (v: string) => {
+    const val = v as StepStatus;
+    setStep1(val);
+    if (val === "Failed") {
+      setStep2((prev) => (prev === NONE || prev === "Pending" ? "Waiting" : prev));
+    } else {
+      setStep2(NONE);
+      setStep3(NONE);
+    }
+  };
+
+  const handleStep2Change = (v: string) => {
+    setStep2(v);
+    if (v === "Failed") {
+      setStep3((prev) => (prev === NONE || prev === "Pending" ? "Waiting" : prev));
+    } else {
+      setStep3(NONE);
+    }
+  };
 
   const save = () => {
     const name = patientName.trim();
@@ -127,16 +147,16 @@ export function StepEntryDialog({
             <StepSelect
               label="Step 1: Refax Same"
               value={step1}
-              onChange={(v) => setStep1(v as StepStatus)}
+              onChange={handleStep1Change}
               allowNone={false}
             />
             <StepSelect
               label="Step 2: Refax New"
               value={step2Disabled ? NONE : step2}
-              onChange={setStep2}
+              onChange={handleStep2Change}
               allowNone
               disabled={step2Disabled}
-              hint="Not needed. Step 1 was sent successfully."
+              hint="Only active if Step 1 fails."
             />
             <StepSelect
               label={step3Label}
@@ -144,7 +164,7 @@ export function StepEntryDialog({
               onChange={setStep3}
               allowNone
               disabled={step3Disabled}
-              hint="Not needed. An earlier step was sent successfully."
+              hint="Only active if Step 1 and Step 2 fail."
             />
           </div>
 
@@ -216,7 +236,7 @@ function StepSelect({
         <SelectContent className="rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl p-1.5">
           {allowNone && <SelectItem value={NONE} className="rounded-xl">Not attempted</SelectItem>}
           {STEP_STATUSES.map((s) => (
-            <SelectItem key={s} value={s} className="rounded-xl">{s}</SelectItem>
+            <SelectItem key={s} value={s} className="rounded-xl">{labelFor(s)}</SelectItem>
           ))}
         </SelectContent>
       </Select>

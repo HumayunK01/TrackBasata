@@ -24,6 +24,7 @@ import {
   GitFork,
   Volume2,
   VolumeX,
+  CheckCheck as LucideCheckCheck,
 } from "lucide-react";
 import {
   ChevronDownIcon as ChevronDown16,
@@ -236,26 +237,7 @@ export const BedDouble = React.forwardRef<SVGSVGElement, IconProps>(
 );
 BedDouble.displayName = "BedDouble";
 
-export const CheckCheck = React.forwardRef<SVGSVGElement, IconProps>(
-  ({ className, size, width, height, ...props }, ref) => (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      width={width ?? size}
-      height={height ?? size}
-      className={className}
-      aria-hidden="true"
-      {...props}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5m-14.5 4.5 4.5 4.5" />
-    </svg>
-  ),
-);
-CheckCheck.displayName = "CheckCheck";
+export const CheckCheck = wrapIcon(LucideCheckCheck);
 
 export const FolderInput = React.forwardRef<SVGSVGElement, IconProps>(
   ({ className, size, width, height, ...props }, ref) => (

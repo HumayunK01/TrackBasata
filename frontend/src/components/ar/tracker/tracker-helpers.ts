@@ -3,13 +3,13 @@ import type { TrackerMode } from "./types";
 export { type TrackerMode } from "./types";
 
 // ponytail: display label for step statuses — "Successfully Sent" is verbose for the
-// dropdown/cell, so the picker shows "Sent". The backend value stays "Successfully Sent"
-// (it's a stored enum) so no DB migration is needed.
+// dropdown/cell, so the picker shows "Sent". "Waiting" is displayed as "Sending".
+// The backend value stays stored as enum ("Successfully Sent", "Waiting") for DB stability.
 export const STATUS_LABEL: Record<string, string> = {
   "Successfully Sent": "Sent",
   "Failed": "Failed",
-  "Waiting": "Waiting",
-  "Pending": "Pending",
+  "Waiting": "Sending",
+  "Pending": "Sending",
 };
 
 export function labelFor(status: string): string {
@@ -18,10 +18,10 @@ export function labelFor(status: string): string {
 
 export function stepClasses(status: FaxStepStatus | null): string {
   switch (status) {
-     case "Successfully Sent": return "text-emerald-700 dark:text-white";
+    case "Successfully Sent": return "text-emerald-700 dark:text-white";
     case "Failed":            return "text-rose-700 dark:text-white";
     case "Waiting":           return "text-amber-600 dark:text-white";
-    case "Pending":           return "text-foreground dark:text-white";
+    case "Pending":           return "text-amber-600 dark:text-white";
     default:                  return "text-foreground";
   }
 }
@@ -31,15 +31,17 @@ export function stepMenuClasses(status: FaxStepStatus | null): string {
   const dark: Record<string, string> = {
     "Failed": "dark:text-rose-300",
     "Waiting": "dark:text-amber-300",
+    "Pending": "dark:text-amber-300",
   };
   return stepClasses(status).replace("dark:text-white", dark[status ?? ""] ?? "").trim();
 }
 
 export function overallClasses(status: string): string {
   if (status.startsWith("Resolved"))    return "text-emerald-700 dark:text-white";
-  if (status === "All Steps Failed")    return "text-rose-700 dark:text-white";
-  if (status.startsWith("Waiting"))     return "text-amber-700 dark:text-white";
-  if (status.startsWith("Move to"))     return "text-amber-600 dark:text-white";
+  if (status === "All Steps Failed" || status === "Failed") return "text-rose-700 dark:text-white";
+  if (status.startsWith("Waiting") || status.startsWith("Sending") || status.startsWith("Move to") || status === "Pending") {
+    return "text-amber-700 dark:text-white";
+  }
   return "text-foreground dark:text-white";
 }
 
@@ -47,9 +49,13 @@ export function displayStatus(status: string): string {
   // The SQL view appends "– Refax Same/New/ROI #" after "Resolved"; users only need the
   // top-level outcome, so collapse all "Resolved – …" variants to plain "Resolved".
   if (status.startsWith("Resolved")) return "Resolved";
-  return status.replace(/\s*#\s*$/, "").trim();
+  if (status === "All Steps Failed") return "Failed";
+  let clean = status.replace(/\s*#\s*$/, "").trim();
+  clean = clean.replace(/^Waiting\b/, "Sending");
+  clean = clean.replace(/^Move to\s+/, "Sending – ");
+  if (clean === "Pending") return "Sending";
+  return clean;
 }
-
 
 export function formatDateTime(value: string | null | undefined): { date: string; time: string } | null {
   if (!value) return null;
@@ -71,24 +77,22 @@ export function dateKey(value: string | null | undefined): string | null {
   return `${y}-${m}-${day}`;
 }
 
-export const STATUS_GROUPS = ["Resolved", "Failed", "Waiting", "Incomplete"] as const;
+export const STATUS_GROUPS = ["Resolved", "Sending", "Failed"] as const;
 export type StatusGroup = (typeof STATUS_GROUPS)[number];
 
 export function statusGroup(s: string): StatusGroup | null {
   if (s.startsWith("Resolved")) return "Resolved";
-  if (s === "All Steps Failed") return "Failed";
-  if (s.startsWith("Waiting")) return "Waiting";
-  if (s.startsWith("Move to") || s === "Pending") return "Incomplete";
+  if (s === "All Steps Failed" || s === "Failed") return "Failed";
+  if (s.startsWith("Waiting") || s.startsWith("Sending") || s.startsWith("Move to") || s === "Pending") return "Sending";
   return null;
 }
 
 export function rowClasses(status: string): string {
   switch (statusGroup(status)) {
-    case "Resolved":   return "bg-emerald-500/[0.16] hover:bg-emerald-500/25 dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.08]";
-    case "Failed":     return "bg-rose-500/[0.16] hover:bg-rose-500/25 dark:bg-rose-500/[0.04] dark:hover:bg-rose-500/[0.08]";
-    case "Waiting":    return "bg-amber-400/[0.16] hover:bg-amber-400/25 dark:bg-amber-400/[0.045] dark:hover:bg-amber-400/[0.09]";
-    case "Incomplete": return "bg-slate-400/[0.12] hover:bg-slate-400/20 dark:bg-slate-400/[0.04] dark:hover:bg-slate-400/[0.08]";
-    default:           return "hover:bg-muted/30";
+    case "Resolved": return "bg-emerald-500/[0.16] hover:bg-emerald-500/25 dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.08]";
+    case "Failed":   return "bg-rose-500/[0.16] hover:bg-rose-500/25 dark:bg-rose-500/[0.04] dark:hover:bg-rose-500/[0.08]";
+    case "Sending":  return "bg-amber-400/[0.16] hover:bg-amber-400/25 dark:bg-amber-400/[0.045] dark:hover:bg-amber-400/[0.09]";
+    default:         return "hover:bg-muted/30";
   }
 }
 

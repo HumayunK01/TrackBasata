@@ -78,9 +78,8 @@ export function FaxCard({
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <StatusIcon status={
             row.overall_status.startsWith("Resolved") ? "Successfully Sent"
-            : row.overall_status === "All Steps Failed" ? "Failed"
-            : row.overall_status.startsWith("Waiting") ? "Waiting"
-            : "Pending"
+            : (row.overall_status === "All Steps Failed" || row.overall_status === "Failed") ? "Failed"
+            : "Waiting"
           } />
           {displayStatus(row.overall_status)}
         </span>

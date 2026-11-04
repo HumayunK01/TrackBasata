@@ -13,7 +13,7 @@ export type StepField = "step1" | "step2" | "step3";
 
 export type TrackerRow = Tables<"fax_tracker">;
 
-export const STEP_STATUSES: StepStatus[] = ["Pending", "Waiting", "Successfully Sent", "Failed"];
+export const STEP_STATUSES: StepStatus[] = ["Waiting", "Successfully Sent", "Failed"];
 
 const stepEnum = z.enum(["Failed", "Successfully Sent", "Waiting", "Pending"]);
 
@@ -58,10 +58,27 @@ export function normalizeStepsSequential(
   if (field === "step1") step1 = value;
   if (field === "step2") step2 = value;
   if (field === "step3") step3 = value;
-  if (step1 === "Successfully Sent") { step2 = null; step3 = null; }
-  else if (step1 !== "Failed") { step2 = null; step3 = null; }
-  else if (step2 === "Successfully Sent") { step3 = null; }
-  else if (step2 !== "Failed") { step3 = null; }
+
+  if (step1 === "Successfully Sent" || step1 === "Waiting") {
+    step2 = null;
+    step3 = null;
+  } else if (step1 === "Failed") {
+    // If step 1 fails, automatically put step 2 on sending
+    if (step2 === null || step2 === "Pending") {
+      step2 = "Waiting";
+    }
+    if (step2 === "Successfully Sent" || step2 === "Waiting") {
+      step3 = null;
+    } else if (step2 === "Failed") {
+      // If step 2 fails, automatically put step 3 on sending
+      if (step3 === null || step3 === "Pending") {
+        step3 = "Waiting";
+      }
+    }
+  } else {
+    step2 = null;
+    step3 = null;
+  }
   return { step1, step2, step3 };
 }
 
@@ -72,8 +89,8 @@ export function normalizeStepsIndependent(
 ): { step1: StepStatus; step2: StepStatus | null; step3: StepStatus | null } {
   return {
     step1: field === "step1" ? value : row.step1,
-    step2: field === "step2" ? value : (row.step2 ?? "Pending"),
-    step3: field === "step3" ? value : (row.step3 ?? "Pending"),
+    step2: field === "step2" ? value : (row.step2 ?? "Waiting"),
+    step3: field === "step3" ? value : (row.step3 ?? "Waiting"),
   };
 }
 
