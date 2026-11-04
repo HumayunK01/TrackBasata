@@ -57,7 +57,7 @@ type PageSize = (typeof ALLOWED_PAGE_SIZES)[number];
 
 const MODES: { id: TrackerMode; label: string }[] = [
   { id: "fax", label: "Fax" },
-  { id: "indexable", label: "Indexable" },
+  // { id: "indexable", label: "Indexable" },
 ];
 
 function parseStatuses(raw: string | null): Set<string> {
@@ -99,12 +99,12 @@ const FaxTrackerPage = () => {
   );
 
   const mode: TrackerMode = useMemo(() => {
-    const m = searchParams.get("mode")?.toLowerCase();
-    if (m === "indexable" || m === "fax") return m as TrackerMode;
-    const saved = localStorage.getItem(MODE_KEY) as TrackerMode | null;
-    if (saved === "indexable" || saved === "fax") return saved;
+    // const m = searchParams.get("mode")?.toLowerCase();
+    // if (m === "indexable" || m === "fax") return m as TrackerMode;
+    // const saved = localStorage.getItem(MODE_KEY) as TrackerMode | null;
+    // if (saved === "indexable" || saved === "fax") return saved;
     return "fax";
-  }, [searchParams]);
+  }, []);
 
   const handleModeChange = (newMode: TrackerMode) => {
     localStorage.setItem(MODE_KEY, newMode);
@@ -521,7 +521,8 @@ const FaxTrackerPage = () => {
 
             {/* Unified Command Toolbar */}
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              {/* Mode Switcher (Fax vs Indexable) */}
+              {/* Mode Switcher (Fax vs Indexable) - commented out while Indexable is inactive */}
+              {/*
               <div className="inline-flex items-center rounded-xl bg-background/90 dark:bg-black/35 p-1 border border-border/70 text-xs h-10 shrink-0 shadow-2xs">
                 {MODES.map((m) => {
                   const isActive = mode === m.id;
@@ -553,6 +554,7 @@ const FaxTrackerPage = () => {
                   );
                 })}
               </div>
+              */}
 
               {/* Account Switcher */}
               <DropdownMenu>
@@ -1081,7 +1083,7 @@ const FaxTrackerPage = () => {
             <AlertDialogTitle className="text-base font-bold">Delete account?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               This deletes the account <span className="font-semibold text-foreground">{accountToDelete?.name}</span>
-              {" "}and <span className="font-semibold text-destructive">all of its patients in both Fax and Indexable</span>. This cannot be undone.
+              {" "}and <span className="font-semibold text-destructive">all of its tracked patients</span>. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0 mt-2">
