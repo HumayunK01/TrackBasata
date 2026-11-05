@@ -4,17 +4,18 @@ import { DayEntrySheet } from "@/components/ar/DayEntrySheet";
 import { DaysTable } from "@/components/ar/DaysTable";
 import { useDailyLogs } from "@/hooks/useDailyLogs";
 import { useProfile } from "@/hooks/useProfile";
-import { CalendarDays, Plus } from "@/components/ui/icons";
+import { CalendarDays, CalendarRange, Plus } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ar/industrial";
 import Skeleton from "react-loading-skeleton";
-import type { DailyLog } from "@/types/log";
+import { getNextContinuingDate, type DailyLog, type GroupedDailyLog } from "@/types/log";
 
 const DailyLogPage = () => {
   const { data: logs = [], isLoading } = useDailyLogs();
   const { data: profile } = useProfile();
   const userName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || undefined;
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<DailyLog | null>(null);
+  const [leaveMode, setLeaveMode] = useState(false);
+  const [editing, setEditing] = useState<DailyLog | GroupedDailyLog | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -23,6 +24,12 @@ const DailyLogPage = () => {
       if (e.key === "n" || e.key === "N") {
         e.preventDefault();
         setEditing(null);
+        setLeaveMode(false);
+        setOpen(true);
+      } else if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        setEditing(null);
+        setLeaveMode(true);
         setOpen(true);
       }
     };
@@ -31,13 +38,21 @@ const DailyLogPage = () => {
   }, []);
 
   const existingDates = useMemo(() => logs.map((l) => l.log_date), [logs]);
+  const suggestedDate = useMemo(() => getNextContinuingDate(logs), [logs]);
 
   const openNew = () => {
     setEditing(null);
+    setLeaveMode(false);
     setOpen(true);
   };
-  const openEdit = (log: DailyLog) => {
+  const openNewLeave = () => {
+    setEditing(null);
+    setLeaveMode(true);
+    setOpen(true);
+  };
+  const openEdit = (log: DailyLog | GroupedDailyLog) => {
     setEditing(log);
+    setLeaveMode(log.is_off_day);
     setOpen(true);
   };
 
@@ -57,11 +72,21 @@ const DailyLogPage = () => {
               <EmptyState
                 icon={CalendarDays}
                 title="No Logs Recorded Yet"
-                hint="Start logging your daily document counts to build your tracking history."
+                hint="Start logging your daily document counts or plan upcoming leaves."
                 action={
-                  <Button size="sm" onClick={openNew} className="h-9 gap-1.5 cursor-pointer">
-                    <Plus className="size-4" /> Log your first day
-                  </Button>
+                  <div className="flex items-center justify-center gap-2.5 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openNewLeave}
+                      className="h-9 gap-1.5 border-sky-500/35 bg-sky-500/[0.06] text-sky-600 dark:text-sky-400 hover:bg-sky-500/15 cursor-pointer"
+                    >
+                      <CalendarRange className="size-4" /> Add Leave
+                    </Button>
+                    <Button size="sm" onClick={openNew} className="h-9 gap-1.5 cursor-pointer">
+                      <Plus className="size-4" /> Log your first day
+                    </Button>
+                  </div>
                 }
               />
             </div>
@@ -70,6 +95,7 @@ const DailyLogPage = () => {
               logs={logs}
               onEdit={openEdit}
               onNew={openNew}
+              onNewLeave={openNewLeave}
               userName={userName}
             />
           )}
@@ -81,6 +107,8 @@ const DailyLogPage = () => {
         onOpenChange={setOpen}
         editing={editing}
         existingDates={existingDates}
+        defaultLeaveMode={leaveMode}
+        suggestedDate={suggestedDate}
       />
     </>
   );

@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import type { DailyLog, DailyLogInsert } from "@/types/log";
+import {
+  type DailyLog,
+  type DailyLogInsert,
+  type LeaveTypeId,
+  getDatesInRange,
+  formatLeaveNotes,
+} from "@/types/log";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/lib/api";
@@ -99,26 +105,104 @@ export function useUpsertLog() {
   });
 }
 
-export function useDeleteLog() {
+export function useUpsertLeaveRange() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (date: string) => {
-      try {
-        return await api.delete(`/logs?date=${encodeURIComponent(date)}`);
-      } catch {
-        const user_id = await getUserId();
-        const { error } = await supabase
+    mutationFn: async ({
+      startDate,
+      endDate,
+      leaveType,
+      notes,
+      previousDates = [],
+    }: {
+      startDate: string;
+      endDate: string;
+      leaveType: LeaveTypeId;
+      notes?: string | null;
+      previousDates?: string[];
+    }) => {
+      const targetDates = getDatesInRange(startDate, endDate);
+      const formattedNotes = formatLeaveNotes(leaveType, notes);
+      const removedDates = previousDates.filter((d) => !targetDates.includes(d));
+
+      const user_id = await getUserId();
+
+      // Remove any dates that were trimmed when editing a leave span
+      if (removedDates.length > 0) {
+        const { error: delError } = await supabase
           .from("daily_logs")
           .delete()
           .eq("user_id", user_id)
-          .eq("log_date", date);
-        if (error) throw error;
-        return { deleted: true };
+          .in("log_date", removedDates);
+        if (delError) throw delError;
       }
+
+      const nowIso = new Date().toISOString();
+      const rows = targetDates.map((d) => ({
+        user_id,
+        log_date: d,
+        counts: {},
+        is_off_day: true,
+        notes: formattedNotes,
+        updated_at: nowIso,
+      }));
+
+      const { data, error } = await supabase
+        .from("daily_logs")
+        .upsert(rows, { onConflict: "user_id,log_date" })
+        .select();
+
+      if (error) throw error;
+      return (data ?? []) as DailyLog[];
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const days = getDatesInRange(variables.startDate, variables.endDate).length;
+      toast.success(
+        days > 1
+          ? `${variables.leaveType} saved (${days} days in 1 row)`
+          : `${variables.leaveType} saved`,
+      );
       qc.invalidateQueries({ queryKey: ["daily_logs"] });
-      toast.success("Log deleted");
+    },
+    onError: (e: unknown) => {
+      toast.error(formatError(e));
+    },
+  });
+}
+
+export function useDeleteLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dateOrDates: string | string[]) => {
+      const dates = Array.isArray(dateOrDates) ? dateOrDates : [dateOrDates];
+      if (dates.length === 1) {
+        try {
+          return await api.delete(`/logs?date=${encodeURIComponent(dates[0])}`);
+        } catch {
+          const user_id = await getUserId();
+          const { error } = await supabase
+            .from("daily_logs")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("log_date", dates[0]);
+          if (error) throw error;
+          return { deleted: true };
+        }
+      }
+
+      const user_id = await getUserId();
+      const { error } = await supabase
+        .from("daily_logs")
+        .delete()
+        .eq("user_id", user_id)
+        .in("log_date", dates);
+      if (error) throw error;
+      return { deleted: true };
+    },
+    onSuccess: (_data, dateOrDates) => {
+      qc.invalidateQueries({ queryKey: ["daily_logs"] });
+      const count = Array.isArray(dateOrDates) ? dateOrDates.length : 1;
+      toast.success(count > 1 ? `Leave (${count} days) deleted` : "Log deleted");
     },
     onError: (e: unknown) => {
       toast.error(formatError(e));

@@ -1,5 +1,5 @@
 import type { Category } from "@/hooks/useCategories";
-import { type DailyLog, type DailyLogInsert, totalForLog, isoDate, isWeekend } from "@/types/log";
+import { type DailyLog, type DailyLogInsert, totalForLog, isoDate, isWeekend, groupDailyLogs } from "@/types/log";
 
 const DAY_MS = 86_400_000;
 
@@ -251,14 +251,23 @@ export async function downloadPDF(
 
   // ── Table ──
   const dayName = (iso: string) => weekday(iso);
+  const groupedAsc = [...groupDailyLogs(logs)].reverse();
 
-  const body = sorted.map((l) => {
+  const body = groupedAsc.map((l) => {
     if (l.is_off_day) {
+      const dateStr =
+        l.day_count > 1
+          ? `${formatUSDate(l.start_date)} – ${formatUSDate(l.end_date)}`
+          : formatUSDate(l.start_date);
+      const dayStr =
+        l.day_count > 1
+          ? `${dayName(l.start_date).slice(0, 3)}–${dayName(l.end_date).slice(0, 3)} (${l.day_count}d)`
+          : dayName(l.start_date);
       return [
-        formatUSDate(l.log_date),
-        dayName(l.log_date),
+        dateStr,
+        dayStr,
         ...activeCategories.map(() => "—"),
-        isWeekend(l.log_date) ? "Weekend" : "Off Day",
+        l.leave_type === "Weekend Off" ? "Weekend" : l.leave_type,
       ];
     }
     return [
@@ -316,8 +325,8 @@ export async function downloadPDF(
       cellPadding: { top: 6.5, bottom: 6.5, left: 8, right: 8 },
     },
     columnStyles: {
-      0: { cellWidth: 70, halign: "left" },
-      1: { cellWidth: 70, halign: "left" },
+      0: { cellWidth: 95, halign: "left" },
+      1: { cellWidth: 75, halign: "left" },
       ...Object.fromEntries(activeCategories.map((_, i) => [i + 2, { halign: "right" as const }])),
       [activeCategories.length + 2]: { halign: "right" as const, fontStyle: "bold" as const },
     },
@@ -327,7 +336,7 @@ export async function downloadPDF(
         data.cell.styles.halign = "right";
       }
       // Style weekend/off-day rows
-      if (data.section === "body" && sorted[data.row.index]?.is_off_day) {
+      if (data.section === "body" && groupedAsc[data.row.index]?.is_off_day) {
         data.cell.styles.textColor = [156, 163, 175];
         data.cell.styles.fillColor = [248, 249, 250];
         data.cell.styles.fontStyle = "italic";

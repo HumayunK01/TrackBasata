@@ -1,4 +1,10 @@
-import { formatTableDate, isWeekend, totalForLog, type DailyLog } from "@/types/log";
+import {
+  formatTableDate,
+  getLeaveBadgeClasses,
+  totalForLog,
+  type DailyLog,
+  type GroupedDailyLog,
+} from "@/types/log";
 import { colorForKey } from "@/lib/cat-colors";
 import type { Category } from "@/hooks/useCategories";
 import { Button } from "@/components/ui/button";
@@ -10,13 +16,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BedDouble, ChevronLeft, ChevronRight } from "@/components/ui/icons";
+import { BedDouble, CalendarRange, ChevronLeft, ChevronRight } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 const TABLE_PAGE_SIZE = 20;
 
 interface ReportDayTableProps {
-  filtered: DailyLog[];
+  filtered: GroupedDailyLog[];
   categories: Category[];
   workingLogs: DailyLog[];
   totalDocs: number;
@@ -24,7 +30,7 @@ interface ReportDayTableProps {
   tablePage: number;
   totalTablePages: number;
   tablePageNumbers: (number | "…")[];
-  paginatedRows: DailyLog[];
+  paginatedRows: GroupedDailyLog[];
   onPageChange: (p: number) => void;
 }
 
@@ -85,9 +91,9 @@ export function ReportDayTable({
           <TableBody>
             {paginatedRows.map((l) => {
               const rowTotal = totalForLog(l);
-              const isWeekendRow = isWeekend(l.log_date);
               const weekday = getWeekdayShort(l.log_date);
               const barPct = Math.min(100, Math.round((rowTotal / maxDayTotal) * 100));
+              const isMultiDay = l.day_count > 1 && l.start_date !== l.end_date;
 
               return l.is_off_day ? (
                 <TableRow
@@ -95,30 +101,47 @@ export function ReportDayTable({
                   className="border-b border-border/35 last:border-0 bg-muted/10 hover:bg-muted/15"
                 >
                   <TableCell className="pl-5 tabular-nums font-mono text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-9 text-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/75 border border-border/40 shrink-0">
-                        {weekday}
-                      </span>
-                      <span>{formatTableDate(l.log_date)}</span>
-                    </div>
+                    {isMultiDay ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-foreground/90">
+                          <span>{formatTableDate(l.start_date)}</span>
+                          <span className="text-muted-foreground/50">→</span>
+                          <span>{formatTableDate(l.end_date)}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground/75">
+                          {getWeekdayShort(l.start_date)} – {getWeekdayShort(l.end_date)} · {l.day_count}d
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-9 text-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/75 border border-border/40 shrink-0">
+                          {weekday}
+                        </span>
+                        <span>{formatTableDate(l.log_date)}</span>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell colSpan={categories.length + 1} className="pr-5">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={cn(
                             "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border",
-                            isWeekendRow
-                              ? "bg-muted/40 text-muted-foreground border-border/50"
-                              : "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                            getLeaveBadgeClasses(l.leave_type),
                           )}
                         >
                           <BedDouble className="size-3" />
-                          <span>{isWeekendRow ? "Weekend" : "Off Day"}</span>
+                          <span>{l.leave_type}</span>
                         </span>
-                        {l.notes && (
+                        {l.day_count > 1 && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/60 border border-border/50 text-[10px] font-mono font-semibold text-foreground/80">
+                            <CalendarRange className="size-2.5 text-muted-foreground" />
+                            <span>{l.day_count} Days</span>
+                          </span>
+                        )}
+                        {l.clean_notes && (
                           <span className="text-xs text-muted-foreground italic truncate max-w-[220px] sm:max-w-xs">
-                            &ldquo;{l.notes}&rdquo;
+                            &ldquo;{l.clean_notes}&rdquo;
                           </span>
                         )}
                       </div>

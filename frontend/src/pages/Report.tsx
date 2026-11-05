@@ -13,7 +13,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useFaxResolvedByDay, FAX_CATEGORY_KEY, FAX_CATEGORY_LABEL, FAX_CATEGORY_SHORT } from "@/hooks/useFaxTracker";
 import { useIndexableResolvedByDay, INDEXABLE_CATEGORY_KEY, INDEXABLE_CATEGORY_LABEL, INDEXABLE_CATEGORY_SHORT } from "@/hooks/useIndexableTracker";
 import { useProfile } from "@/hooks/useProfile";
-import { isoDate, formatTableDate, isWeekend, totalForLog } from "@/types/log";
+import { isoDate, formatTableDate, isWeekend, totalForLog, groupDailyLogs } from "@/types/log";
 import { FigHeader, EmptyState } from "@/components/ar/industrial";
 import { downloadCSV, downloadJSON, downloadPDF, formatUSDate } from "@/lib/log-utils";
 import { Download, FileJson, FileText, FileType, ChevronDown, CalendarRange, CalendarDays } from "@/components/ui/icons";
@@ -258,8 +258,9 @@ const ReportPage = () => {
     [categoryBreakdown, sortedWorkingAsc, faxByDay, indexableByDay],
   );
 
-  const totalTablePages = Math.ceil(filtered.length / TABLE_PAGE_SIZE);
-  const paginatedRows = filtered.slice(
+  const groupedFiltered = useMemo(() => groupDailyLogs(filtered), [filtered]);
+  const totalTablePages = Math.ceil(groupedFiltered.length / TABLE_PAGE_SIZE);
+  const paginatedRows = groupedFiltered.slice(
     (tablePage - 1) * TABLE_PAGE_SIZE,
     tablePage * TABLE_PAGE_SIZE,
   );
@@ -579,7 +580,7 @@ const ReportPage = () => {
                   sub={`${filtered.length} ${filtered.length === 1 ? "day" : "days"} (${workingLogs.length} active, ${weekendDays + offDays} off)`}
                 />
                 <ReportDayTable
-                  filtered={filtered}
+                  filtered={groupedFiltered}
                   categories={activeReportCategories}
                   workingLogs={workingLogs}
                   totalDocs={totalDocs}
