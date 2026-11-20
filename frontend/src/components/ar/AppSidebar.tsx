@@ -13,6 +13,7 @@ import {
   Users,
   Building2,
   HelpCircle,
+  Clock,
 } from "@/components/ui/icons";
 import {
   Sidebar,
@@ -51,6 +52,7 @@ function buildGroups(isAdmin: boolean) {
         { title: "Daily Log", icon: CalendarDays, path: "/log" },
         { title: "Counter", icon: Hash, path: "/counter" },
         { title: "Tracker", icon: Send, path: "/tracker" },
+        { title: "Overtime", icon: Clock, path: "/overtime" },
         { title: "Vault", icon: KeyRound, path: "/vault" },
       ],
     },

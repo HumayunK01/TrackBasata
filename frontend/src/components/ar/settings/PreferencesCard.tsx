@@ -36,6 +36,7 @@ const START_PAGES = [
   { path: "/counter", label: "Counter", desc: "Live counting with keyboard shortcuts", icon: Hash },
   { path: "/log", label: "Daily Log", desc: "Daily document logs and history", icon: CalendarDays },
   { path: "/tracker", label: "Tracker", desc: "Incoming faxes & indexables workflow", icon: Send },
+  { path: "/overtime", label: "Overtime", desc: "Log and review extra shift hours", icon: Clock },
   { path: "/facilities", label: "Facilities", desc: "Clinic directory and verified numbers", icon: Building2 },
 ];
 

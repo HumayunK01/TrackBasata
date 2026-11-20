@@ -17,6 +17,7 @@ import {
   ReportPage,
   CounterPage,
   FaxTrackerPage,
+  OvertimePage,
   VaultPage,
   TeamPage,
   FacilitiesPage,
@@ -64,6 +65,7 @@ const TITLES: Record<string, string> = {
   "/counter": "Counter",
   "/tracker": "Fax Tracker",
   "/fax-tracker": "Fax Tracker",
+  "/overtime": "Overtime",
   "/vault": "Vault",
   "/team": "Team",
   "/facilities": "Facilities",
@@ -122,6 +124,7 @@ const App = () => (
                         <Route path="/tracker" element={<FaxTrackerPage />} />
                         {/* Legacy path — the page now hosts both Fax and Indexable */}
                         <Route path="/fax-tracker" element={<FaxTrackerPage />} />
+                        <Route path="/overtime" element={<OvertimePage />} />
                         <Route path="/vault" element={<VaultPage />} />
                         <Route path="/team" element={<TeamPage />} />
                         <Route path="/facilities" element={<FacilitiesPage />} />

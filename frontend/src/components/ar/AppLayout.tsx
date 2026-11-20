@@ -14,6 +14,7 @@ const pageTitles: Record<string, string> = {
   "/log": "Daily Log",
   "/counter": "Counter",
   "/tracker": "Tracker",
+  "/overtime": "Overtime",
   "/report": "Report",
   "/vault": "Vault",
   "/console": "Console",

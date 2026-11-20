@@ -25,6 +25,35 @@ export interface WhatsNewEntry {
 // ── Entries (newest first) ────────────────────────────────────────────────
 export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
   {
+    id: "version-3-0-3-mini",
+    date: "2026-11-21",
+    title: "Overtime (OT) Tracking",
+    description:
+      "Log your extra shift hours, view monthly totals, and export your overtime history in one place.",
+    body: [
+      (
+        <>
+          <strong className="text-foreground font-semibold">New Overtime Page:</strong> Open <em>Overtime</em> from the sidebar (or set it as your default start page in Settings) to keep track of all your extra hours.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Fast Entry:</strong> Pick your OT date, enter your start and end times (even overnight shifts), and add optional notes. Total overtime hours are calculated automatically, or you can use quick buttons like <em>+1h</em> and <em>+2h</em>.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Summary, Search &amp; Downloads:</strong> See your total and monthly overtime hours at a glance, copy an entry in one click, or download your records as a CSV spreadsheet or PDF report.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Private by Default:</strong> Your overtime entries stay visible only to you, while admins can view all team members&apos; overtime together and filter by who added each entry.
+        </>
+      ),
+    ],
+  },
+  {
     id: "version-3-0-2-mini",
     date: "2026-11-03",
     title: "Default Start Page & Settings Polish",

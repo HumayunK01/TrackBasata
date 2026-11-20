@@ -10,6 +10,10 @@ export function StatCard({
   loading,
   active,
   onClick,
+  unit,
+  displayValue,
+  footerLabel,
+  activeBadge = "Selected",
 }: {
   label: string;
   value: number;
@@ -17,6 +21,10 @@ export function StatCard({
   loading: boolean;
   active?: boolean;
   onClick?: () => void;
+  unit?: string;
+  displayValue?: string;
+  footerLabel?: string;
+  activeBadge?: string;
 }) {
   const toneConfig = {
     emerald: {
@@ -95,10 +103,10 @@ export function StatCard({
                 toneConfig.text,
               )}
             >
-              {display}
+              {displayValue ?? display}
             </span>
             <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
-              {value === 1 ? "patient" : "patients"}
+              {unit ?? (value === 1 ? "patient" : "patients")}
             </span>
           </>
         )}
@@ -106,10 +114,10 @@ export function StatCard({
 
       {/* Footer divider: Filter state indicator */}
       <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-        <span>{active ? "Active filter" : "Click to filter"}</span>
+        <span>{footerLabel ?? (active ? "Active filter" : "Click to filter")}</span>
         {active && (
           <span className="font-semibold text-emerald-500 dark:text-emerald-400">
-            Selected
+            {activeBadge}
           </span>
         )}
       </div>

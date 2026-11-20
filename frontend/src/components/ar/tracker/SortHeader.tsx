@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 export type SortKey = "patient_name" | "overall_status" | "updated_at" | "file_name" | "patient_dob" | "worked_by";
 
-export function SortHeader({
+export function SortHeader<K extends string = SortKey>({
   label,
   sortKey,
   sort,
@@ -11,9 +11,9 @@ export function SortHeader({
   align,
 }: {
   label: string;
-  sortKey: SortKey;
-  sort: { key: SortKey; dir: "asc" | "desc" } | null;
-  onSort: (key: SortKey) => void;
+  sortKey: K;
+  sort: { key: K; dir: "asc" | "desc" } | null;
+  onSort: (key: K) => void;
   align: "left" | "center";
 }) {
   const active = sort?.key === sortKey;

@@ -346,6 +346,48 @@ export type Database = {
         }
         Relationships: []
       }
+      overtime_logs: {
+        Row: {
+          id: string
+          ot_date: string
+          start_time: string
+          end_time: string
+          duration_minutes: number
+          account_name: string
+          doc_count: number
+          notes: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ot_date: string
+          start_time: string
+          end_time: string
+          duration_minutes: number
+          account_name: string
+          doc_count?: number
+          notes?: string | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ot_date?: string
+          start_time?: string
+          end_time?: string
+          duration_minutes?: number
+          account_name?: string
+          doc_count?: number
+          notes?: string | null
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

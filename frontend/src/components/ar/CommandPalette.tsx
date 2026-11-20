@@ -19,6 +19,7 @@ import {
   Moon,
   Volume2,
   VolumeX,
+  Clock,
 } from "@/components/ui/icons";
 import { useTheme } from "@/hooks/useTheme";
 import { useIsAdmin } from "@/hooks/useProfile";
@@ -105,6 +106,14 @@ export function CommandPalette() {
         icon: Send,
         action: () => { navigate("/tracker"); setOpen(false); },
         keywords: ["tracker", "fax", "indexable", "resolution"],
+      },
+      {
+        id: "nav-overtime",
+        title: "Overtime (OT) Logs",
+        category: "Navigation",
+        icon: Clock,
+        action: () => { navigate("/overtime"); setOpen(false); },
+        keywords: ["overtime", "ot", "extra hours", "hours", "shift", "log"],
       },
       {
         id: "nav-facilities",
