@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   addMinutesToTime,
   computeDurationMinutes,
@@ -8,7 +8,11 @@ import {
   OvertimeLogSchema,
   type OvertimeLog,
 } from "@/hooks/useOvertimeLogs";
-import { overtimeToCSV, overtimeToJSON } from "@/lib/overtime-utils";
+import {
+  copyOvertimeEntry,
+  overtimeToCSV,
+  overtimeToJSON,
+} from "@/lib/overtime-utils";
 
 describe("Overtime time & duration helpers", () => {
   it("computes same-day durations accurately", () => {
@@ -68,7 +72,7 @@ describe("OvertimeLogSchema validation", () => {
   });
 });
 
-describe("Overtime export helpers", () => {
+describe("Overtime export & copy helpers", () => {
   const sampleRow: OvertimeLog = {
     id: "ot-1",
     ot_date: "2026-11-20",
@@ -83,6 +87,10 @@ describe("Overtime export helpers", () => {
     updated_at: "2026-11-20T20:00:00Z",
   };
 
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("neutralizes spreadsheet formula prefixes in CSV export and includes Added By when provided", () => {
     const csvWithAdmin = overtimeToCSV([sampleRow], () => "Alex Doe");
     expect(csvWithAdmin).toContain("Added By");
@@ -94,6 +102,17 @@ describe("Overtime export helpers", () => {
     expect(csvUser).not.toContain("Added By");
   });
 
+  it("marks overnight end times with (+1d) in CSV export", () => {
+    const overnightRow: OvertimeLog = {
+      ...sampleRow,
+      start_time: "22:30",
+      end_time: "01:00",
+      duration_minutes: 150,
+    };
+    const csv = overtimeToCSV([overnightRow]);
+    expect(csv).toContain("1:00 AM (+1d)");
+  });
+
   it("includes summary totals in JSON export without account or doc fields", () => {
     const json = JSON.parse(overtimeToJSON([sampleRow], () => "Alex Doe"));
     expect(json.summary.entries).toBe(1);
@@ -102,5 +121,27 @@ describe("Overtime export helpers", () => {
     expect(json.entries[0].added_by).toBe("Alex Doe");
     expect(json.entries[0].account_name).toBeUndefined();
     expect(json.entries[0].doc_count).toBeUndefined();
+  });
+
+  it("copies OT Date, Overtime Window, Duration, and Notes without Added By", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    const ok = await copyOvertimeEntry({
+      ...sampleRow,
+      notes: "Stayed for urgent faxes",
+    });
+
+    expect(ok).toBe(true);
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copiedText = writeText.mock.calls[0][0] as string;
+    expect(copiedText).toContain("OT Date\t");
+    expect(copiedText).toContain("Overtime Window\t5:00 PM – 7:30 PM");
+    expect(copiedText).toContain("Duration\t2h 30m");
+    expect(copiedText).toContain("Notes\tStayed for urgent faxes");
+    expect(copiedText).not.toContain("Added By");
   });
 });
