@@ -677,7 +677,7 @@ const CredentialsPage = () => {
                     target="_blank"
                     rel="noreferrer noopener"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/65 hover:text-emerald-400 truncate mt-0.5 max-w-full"
+                    className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/65 hover:text-emerald-600 dark:hover:text-emerald-400 truncate mt-0.5 max-w-full"
                     title={c.website ?? ""}
                   >
                     <Globe className="size-2.5 shrink-0 opacity-70" />
@@ -712,7 +712,7 @@ const CredentialsPage = () => {
                 type="button"
                 onClick={() => copyField(`${c.id}:login`, c.login_id, "Login ID")}
                 title={`${c.login_id} — click to copy`}
-                className="press-scale text-left font-medium text-foreground/90 hover:text-emerald-400 truncate flex-1 min-w-0 cursor-pointer text-xs transition-colors"
+                className="press-scale text-left font-medium text-foreground/90 hover:text-emerald-600 dark:hover:text-emerald-400 truncate flex-1 min-w-0 cursor-pointer text-xs transition-colors"
               >
                 {c.login_id}
               </button>
@@ -723,7 +723,7 @@ const CredentialsPage = () => {
                 className={cn(
                   "size-6 rounded-md flex items-center justify-center shrink-0 press-scale transition-colors cursor-pointer",
                   copied.has(`${c.id}:login`)
-                    ? "text-emerald-400 bg-emerald-500/15"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                     : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
                 )}
               >
@@ -749,7 +749,7 @@ const CredentialsPage = () => {
                 className={cn(
                   "font-mono text-xs truncate min-w-24 text-left cursor-pointer transition-colors",
                   show
-                    ? "text-emerald-400 font-medium"
+                    ? "text-emerald-600 dark:text-emerald-400 font-medium"
                     : "text-muted-foreground/65 tracking-[0.16em] hover:text-foreground",
                 )}
               >
@@ -762,7 +762,7 @@ const CredentialsPage = () => {
                 className={cn(
                   "size-6 rounded-md flex items-center justify-center transition-colors cursor-pointer shrink-0",
                   show
-                    ? "text-emerald-400 bg-emerald-500/10"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
                     : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
                 )}
               >
@@ -775,7 +775,7 @@ const CredentialsPage = () => {
                 className={cn(
                   "size-6 rounded-md flex items-center justify-center shrink-0 press-scale transition-colors cursor-pointer",
                   copied.has(`${c.id}:pwd`)
-                    ? "text-emerald-400 bg-emerald-500/15"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                     : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
                 )}
               >
@@ -801,7 +801,7 @@ const CredentialsPage = () => {
                 className={cn(
                   "size-7 rounded-lg flex items-center justify-center press-scale transition-colors cursor-pointer",
                   copied.has(`${c.id}:copy`)
-                    ? "text-emerald-400 bg-emerald-500/15"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                     : "text-muted-foreground/65 hover:text-foreground hover:bg-muted/60",
                 )}
               >
@@ -965,7 +965,7 @@ const CredentialsPage = () => {
                   className={cn(
                     "h-9 rounded-xl px-3 border text-xs font-medium shrink-0 cursor-pointer shadow-2xs transition-colors",
                     showSelectionChrome
-                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15 font-semibold"
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15 font-semibold"
                       : "border-border/70 bg-background/90 dark:bg-black/35 hover:bg-muted/60 text-foreground",
                   )}
                 >
@@ -1197,7 +1197,7 @@ const CredentialsPage = () => {
             {selected.size > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-2.5 border border-emerald-500/30 bg-emerald-500/[0.06] rounded-xl px-3.5 py-2 animate-fade-in">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center size-5 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px] font-bold font-mono">
+                  <span className="inline-flex items-center justify-center size-5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold font-mono">
                     {selectedRows.length}
                   </span>
                   <span className="text-xs font-medium text-foreground">
@@ -1369,7 +1369,7 @@ const CredentialsPage = () => {
                                       className="size-5 rounded-sm"
                                     />
                                   ) : (
-                                    <Folder className="size-3.5 text-emerald-400" />
+                                    <Folder className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                                   )}
                                 </div>
                                 <h2 className="text-sm font-semibold text-foreground tracking-tight truncate">
@@ -1389,7 +1389,7 @@ const CredentialsPage = () => {
                                       className="size-5 rounded-sm"
                                     />
                                   ) : (
-                                    <Folder className="size-4 text-emerald-400" />
+                                    <Folder className="size-4 text-emerald-600 dark:text-emerald-400" />
                                   )}
                                 </div>
                                 <div>
@@ -1397,7 +1397,7 @@ const CredentialsPage = () => {
                                     <h2 className="text-sm font-semibold text-foreground tracking-tight">
                                       {section.name}
                                     </h2>
-                                    <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                                       {section.items.length} {section.items.length === 1 ? "credential" : "credentials"}
                                     </span>
                                   </div>
@@ -1417,12 +1417,12 @@ const CredentialsPage = () => {
                               className={cn(
                                 "h-7 px-2.5 rounded-lg text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer",
                                 copied.has(sectionCopyKey)
-                                  ? "text-emerald-400 bg-emerald-500/15"
+                                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                               )}
                             >
                               {copied.has(sectionCopyKey) ? (
-                                <Check className="size-3 text-emerald-400" />
+                                <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
                               ) : (
                                 <Copy className="size-3" />
                               )}
@@ -1446,7 +1446,7 @@ const CredentialsPage = () => {
                                 type="button"
                                 onClick={() => handleSelectFolder(section.folder!)}
                                 title={`Open ${section.name} folder`}
-                                className="h-7 px-2 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                className="h-7 px-2 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 inline-flex items-center gap-1 transition-colors cursor-pointer"
                               >
                                 <span className="hidden md:inline">Focus</span>
                                 <ArrowRight className="size-3" />

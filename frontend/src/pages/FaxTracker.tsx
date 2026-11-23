@@ -919,7 +919,7 @@ const FaxTrackerPage = () => {
                     className="group flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer hover:bg-muted/80 focus:bg-muted/80 transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <FileText className="size-4" />
                       </div>
                       <div className="min-w-0">
@@ -937,7 +937,7 @@ const FaxTrackerPage = () => {
                     className="group flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer hover:bg-muted/80 focus:bg-muted/80 transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="size-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="size-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <Copy className="size-4" />
                       </div>
                       <div className="min-w-0">
@@ -955,7 +955,7 @@ const FaxTrackerPage = () => {
                     className="group flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer hover:bg-muted/80 focus:bg-muted/80 transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="size-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="size-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <FileCheck className="size-4" />
                       </div>
                       <div className="min-w-0">

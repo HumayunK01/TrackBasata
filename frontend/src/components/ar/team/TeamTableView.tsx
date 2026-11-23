@@ -87,7 +87,7 @@ export const TeamTableView = React.memo(function TeamTableView({
                         🥇
                       </span>
                     ) : index === 1 && m.totalDocs > 0 ? (
-                      <span className="inline-flex items-center justify-center size-6 rounded-full bg-slate-300/20 text-slate-300 text-xs shadow-2xs">
+                      <span className="inline-flex items-center justify-center size-6 rounded-full bg-slate-500/15 dark:bg-slate-300/20 text-slate-600 dark:text-slate-300 text-xs shadow-2xs">
                         🥈
                       </span>
                     ) : index === 2 && m.totalDocs > 0 ? (

@@ -73,7 +73,7 @@ export function EditNotesPopover({
       {open && (
         <PopoverPrimitive.Portal>
           <div
-            className="fixed inset-0 bg-black/50 z-40 pointer-events-auto"
+            className="fixed inset-0 bg-slate-900/25 dark:bg-black/50 z-40 pointer-events-auto"
             aria-hidden="true"
             onClick={handleCancel}
           />

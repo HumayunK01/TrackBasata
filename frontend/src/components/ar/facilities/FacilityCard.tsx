@@ -183,7 +183,7 @@ export function FacilityCard({
                 <DropdownMenuContent
                   align="end"
                   sideOffset={6}
-                  className="w-48 rounded-xl border border-border/80 dark:border-white/10 bg-popover/95 backdrop-blur-xl p-1.5 shadow-xl shadow-black/25"
+                  className="w-48 rounded-xl border border-border/80 dark:border-white/10 bg-popover/95 backdrop-blur-xl p-1.5 shadow-lg dark:shadow-xl dark:shadow-black/25"
                 >
                   <DropdownMenuItem
                     onClick={() => void copyFacilityTable(f)}

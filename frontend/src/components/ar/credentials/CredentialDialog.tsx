@@ -127,7 +127,7 @@ export function CredentialDialog({ open, onOpenChange, row, folderId: initialFol
       <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-xl border-border/60 rounded-2xl shadow-xl p-5 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2.5">
-            <div className="size-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <div className="size-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
               <KeyRound className="size-4" />
             </div>
             <div>

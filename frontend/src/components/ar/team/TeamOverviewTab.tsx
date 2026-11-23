@@ -413,7 +413,7 @@ export const TeamOverviewTab = React.memo(function TeamOverviewTab({
                 strokeWidth={2.5}
                 fill="url(#userEmeraldGradient)"
                 dot={{ r: 3, fill: "#10b981", strokeWidth: 1, stroke: "#047857" }}
-                activeDot={{ r: 5, fill: "#10b981", stroke: "#ffffff", strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: "#10b981", stroke: "hsl(var(--card))", strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>

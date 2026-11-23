@@ -397,7 +397,7 @@ export const TeamAnalyticsCharts = React.memo(function TeamAnalyticsCharts({
                     strokeWidth={2.5}
                     fill="url(#timelineEmerald)"
                     dot={{ r: 3, fill: "#10b981", strokeWidth: 1, stroke: "#047857" }}
-                    activeDot={{ r: 6, fill: "#10b981", strokeWidth: 2, stroke: "#ffffff" }}
+                    activeDot={{ r: 6, fill: "#10b981", strokeWidth: 2, stroke: "hsl(var(--card))" }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

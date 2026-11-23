@@ -112,7 +112,7 @@ export function CredentialCardItem({
                 rel="noreferrer noopener"
                 onClick={(e) => e.stopPropagation()}
                 title={`Open ${cleanDomain}`}
-                className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/65 hover:text-emerald-400 transition-colors truncate max-w-[9.5rem] shrink-0"
+                className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/65 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors truncate max-w-[9.5rem] shrink-0"
               >
                 <Globe className="size-2.5 shrink-0 opacity-70" />
                 <span className="truncate">{cleanDomain}</span>
@@ -134,7 +134,7 @@ export function CredentialCardItem({
               target="_blank"
               rel="noreferrer noopener"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground/75 hover:text-emerald-400 transition-colors truncate mt-0.5 max-w-full"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground/75 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors truncate mt-0.5 max-w-full"
               title={website}
             >
               <Globe className="size-3 shrink-0 opacity-70" />
@@ -160,7 +160,7 @@ export function CredentialCardItem({
             className={cn(
               "size-7 rounded-lg flex items-center justify-center press-scale transition-colors cursor-pointer",
               copiedFull
-                ? "text-emerald-400 bg-emerald-500/15"
+                ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                 : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 max-md:opacity-100",
             )}
           >
@@ -249,7 +249,7 @@ export function CredentialCardItem({
             className={cn(
               "size-6 rounded-md flex items-center justify-center press-scale transition-colors cursor-pointer shrink-0",
               copiedLogin
-                ? "text-emerald-400 bg-emerald-500/15"
+                ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                 : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
             )}
           >
@@ -269,7 +269,7 @@ export function CredentialCardItem({
             className={cn(
               "flex-1 min-w-0 text-left text-xs font-mono truncate cursor-pointer transition-colors",
               revealed
-                ? "text-emerald-400 font-medium select-all"
+                ? "text-emerald-600 dark:text-emerald-400 font-medium select-all"
                 : "text-muted-foreground/65 tracking-[0.16em] hover:text-foreground/90",
             )}
           >
@@ -284,7 +284,7 @@ export function CredentialCardItem({
               className={cn(
                 "size-6 rounded-md flex items-center justify-center transition-colors cursor-pointer",
                 revealed
-                  ? "text-emerald-400 bg-emerald-500/10"
+                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
                   : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
               )}
             >
@@ -298,7 +298,7 @@ export function CredentialCardItem({
               className={cn(
                 "size-6 rounded-md flex items-center justify-center press-scale transition-colors cursor-pointer",
                 copiedPassword
-                  ? "text-emerald-400 bg-emerald-500/15"
+                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
                   : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
               )}
             >

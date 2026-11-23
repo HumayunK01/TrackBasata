@@ -909,11 +909,11 @@ export default function CounterPage() {
                   className={cn(
                     "flex items-center gap-1.5 text-2xs font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-2xs transition-colors duration-150",
                     logsLoading || isSyncing || upsert.isPending
-                      ? "bg-sky-500/10 text-sky-400 border-sky-500/25"
+                      ? "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/25"
                       : saved
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
                       : total > 0
-                      ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                      ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25"
                       : "bg-muted text-muted-foreground border-border/40"
                   )}
                 >

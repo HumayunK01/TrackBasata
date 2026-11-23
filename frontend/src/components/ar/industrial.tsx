@@ -162,7 +162,7 @@ export function CategoryStatCard({
           </span>
           <span className="mt-1.5 text-[11px] font-mono leading-none">
             {todayCount !== undefined && todayCount > 0 ? (
-              <span className="text-emerald-400 font-semibold">+{todayCount} today</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+{todayCount} today</span>
             ) : (
               <span className="text-muted-foreground/65 text-[10px] uppercase tracking-wider font-mono">
                 docs

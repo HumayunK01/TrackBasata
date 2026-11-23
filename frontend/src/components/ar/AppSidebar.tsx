@@ -102,7 +102,7 @@ export function AppSidebar() {
         </Link>
         <Link
           to="/"
-          className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1.5 hover:bg-white/[0.06] transition-all size-9"
+          className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1.5 hover:bg-muted/70 dark:hover:bg-white/[0.06] transition-all size-9"
           title="Basata.ai Tracker"
         >
           <AppFavicon
@@ -149,9 +149,9 @@ export function AppSidebar() {
                         layoutId="sidebar-active-pill"
                         className={cn(
                           "absolute inset-0 rounded-xl pointer-events-none z-0",
-                          "bg-white/[0.08] dark:bg-white/[0.07]",
-                          "border border-black/[0.04] dark:border-white/[0.08]",
-                          "shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                          "bg-primary/10 dark:bg-white/[0.07]",
+                          "border border-primary/20 dark:border-white/[0.08]",
+                          "shadow-2xs dark:shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]",
                         )}
                         transition={reduce ? { duration: 0 } : activeSpringTransition}
                       />
@@ -180,8 +180,8 @@ export function AppSidebar() {
                           className={cn(
                             "size-[18px] shrink-0 transition-all duration-200",
                             active
-                              ? "text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
-                              : "text-zinc-400 dark:text-zinc-400 group-hover/btn:text-foreground group-hover/btn:scale-105",
+                              ? "text-emerald-600 dark:text-emerald-400 dark:drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
+                              : "text-muted-foreground group-hover/btn:text-foreground group-hover/btn:scale-105",
                           )}
                         />
                         <span className="truncate tracking-tight group-data-[collapsible=icon]:hidden">{item.title}</span>
@@ -216,9 +216,9 @@ export function AppSidebar() {
                       layoutId="sidebar-active-pill"
                       className={cn(
                         "absolute inset-0 rounded-xl pointer-events-none z-0",
-                        "bg-white/[0.08] dark:bg-white/[0.07]",
-                        "border border-black/[0.04] dark:border-white/[0.08]",
-                        "shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                        "bg-primary/10 dark:bg-white/[0.07]",
+                        "border border-primary/20 dark:border-white/[0.08]",
+                        "shadow-2xs dark:shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]",
                       )}
                       transition={reduce ? { duration: 0 } : activeSpringTransition}
                     />
@@ -247,8 +247,8 @@ export function AppSidebar() {
                         className={cn(
                           "size-[18px] shrink-0 transition-all duration-200",
                           active
-                            ? "text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
-                            : "text-zinc-400 dark:text-zinc-400 group-hover/btn:text-foreground group-hover/btn:scale-105",
+                            ? "text-emerald-600 dark:text-emerald-400 dark:drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
+                            : "text-muted-foreground group-hover/btn:text-foreground group-hover/btn:scale-105",
                         )}
                       />
                       <span className="truncate flex-1 tracking-tight group-data-[collapsible=icon]:hidden" title={link.title}>
@@ -263,40 +263,27 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
 
-      {/* Modern Status & Version Footer */}
-      <SidebarFooter className="p-2 group-data-[collapsible=icon]:p-1.5 border-t border-sidebar-border/40 shrink-0">
-        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-white/[0.02] dark:bg-white/[0.02] border border-border/40 w-full group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
-          {/* Expanded view */}
-          <div className="flex items-center gap-2 min-w-0 group-data-[collapsible=icon]:hidden">
-            <span className="relative flex size-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex rounded-full size-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-            </span>
-            <span className="text-[11px] font-medium text-muted-foreground/80 tracking-tight truncate select-none">
-              Operational
-            </span>
-          </div>
+      {/* Version Footer */}
+      <SidebarFooter className="p-2 group-data-[collapsible=icon]:p-1.5 border-t border-sidebar-border/40 shrink-0 flex items-center justify-center">
+        {/* Expanded view */}
+        <span className="font-mono text-[11px] font-medium text-muted-foreground/75 bg-muted/40 dark:bg-white/[0.04] px-2.5 py-1 rounded-lg border border-border/40 select-none group-data-[collapsible=icon]:hidden">
+          {APP_VERSION}
+        </span>
 
-          <span className="font-mono text-[10px] font-medium text-muted-foreground/60 bg-muted/40 dark:bg-white/[0.04] px-1.5 py-0.5 rounded-md border border-border/40 select-none group-data-[collapsible=icon]:hidden">
-            {APP_VERSION}
-          </span>
-
-          {/* Collapsed view icon */}
-          <div className="hidden group-data-[collapsible=icon]:flex">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="size-9 rounded-xl flex items-center justify-center hover:bg-white/[0.06] transition-colors cursor-default">
-                  <span className="relative flex size-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" align="center">
-                Operational • {APP_VERSION}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+        {/* Collapsed view */}
+        <div className="hidden group-data-[collapsible=icon]:flex">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="h-8 px-1.5 rounded-lg flex items-center justify-center hover:bg-muted/70 dark:hover:bg-white/[0.06] transition-colors cursor-default">
+                <span className="font-mono text-[10px] font-medium text-muted-foreground/75 select-none">
+                  {APP_VERSION}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="center">
+              Version {APP_VERSION}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </SidebarFooter>
 

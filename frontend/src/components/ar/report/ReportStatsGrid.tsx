@@ -76,10 +76,10 @@ export function ReportStatsGrid({
             target={filteredCount || 1}
             size={26}
             strokeWidth={2.5}
-            color="rgb(56, 189, 248)"
+            color="rgb(14, 165, 233)"
             className="shrink-0"
           >
-            <CalendarDays className="size-3 text-sky-400" />
+            <CalendarDays className="size-3 text-sky-600 dark:text-sky-400" />
           </ActivityRing>
         </div>
 
@@ -96,7 +96,7 @@ export function ReportStatsGrid({
           <span>
             {weekendDays} wknd · {offDays} off
           </span>
-          <span className="text-sky-400 font-semibold">{shiftRate}% active</span>
+          <span className="text-sky-600 dark:text-sky-400 font-semibold">{shiftRate}% active</span>
         </div>
       </div>
 
@@ -112,7 +112,7 @@ export function ReportStatsGrid({
             color="rgb(168, 85, 247)"
             className="shrink-0"
           >
-            <TrendingUp className="size-3 text-purple-400" />
+            <TrendingUp className="size-3 text-purple-600 dark:text-purple-400" />
           </ActivityRing>
         </div>
 
@@ -127,7 +127,7 @@ export function ReportStatsGrid({
 
         <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
           <span>Per active workday</span>
-          <span className="text-purple-400 font-semibold">Pace</span>
+          <span className="text-purple-600 dark:text-purple-400 font-semibold">Pace</span>
         </div>
       </div>
 
@@ -140,10 +140,10 @@ export function ReportStatsGrid({
             target={Math.max(60, avgPerDay || 60)}
             size={26}
             strokeWidth={2.5}
-            color="rgb(245, 158, 11)"
+            color="rgb(217, 119, 6)"
             className="shrink-0"
           >
-            <Award className="size-3 text-amber-400" />
+            <Award className="size-3 text-amber-600 dark:text-amber-400" />
           </ActivityRing>
         </div>
 
@@ -160,7 +160,7 @@ export function ReportStatsGrid({
 
         <div className="mt-3 pt-2.5 border-t border-border/45 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
           <span>{bestDay ? formatTableDate(bestDay.log_date) : "No shifts"}</span>
-          <span className="text-amber-400 font-semibold">
+          <span className="text-amber-600 dark:text-amber-400 font-semibold">
             {peakVsAvg > 0 ? `+${peakVsAvg}% vs avg` : "Record"}
           </span>
         </div>

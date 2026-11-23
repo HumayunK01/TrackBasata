@@ -444,7 +444,7 @@ export function WhatsNewButton({ className }: { className?: string } = {}) {
       >
         <Bell className="size-[18px]" />
         {hasNew && (
-          <span className="absolute top-1 right-1 size-1.5 rounded-full bg-emerald-500 ring-2 ring-background animate-pulse" aria-hidden />
+          <span className="absolute top-2 right-2 size-1.5 rounded-full bg-emerald-500 ring-2 ring-background animate-pulse" aria-hidden />
         )}
       </Button>
 

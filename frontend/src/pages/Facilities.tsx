@@ -653,7 +653,7 @@ export default function FacilitiesPage() {
               }
               className="sticky bottom-3 z-30 flex justify-center pointer-events-none pt-2"
             >
-              <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-2xl border border-border/80 dark:border-white/15 bg-card/95 backdrop-blur-xl px-3.5 py-2 shadow-2xl shadow-black/40">
+              <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-2xl border border-border/80 dark:border-white/15 bg-card/95 backdrop-blur-xl px-3.5 py-2 shadow-xl dark:shadow-2xl dark:shadow-black/40">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground px-1.5">
                   <span className="inline-flex size-5 items-center justify-center rounded-md bg-primary/15 text-primary font-mono text-[11px] font-bold tabular-nums">
                     {selectedFacilities.length}
@@ -711,7 +711,7 @@ export default function FacilitiesPage() {
                     align="end"
                     side="top"
                     sideOffset={8}
-                    className="w-48 rounded-xl border border-border/80 dark:border-white/10 bg-popover/95 backdrop-blur-xl p-1.5 shadow-xl shadow-black/25 space-y-0.5"
+                    className="w-48 rounded-xl border border-border/80 dark:border-white/10 bg-popover/95 backdrop-blur-xl p-1.5 shadow-lg dark:shadow-xl dark:shadow-black/25 space-y-0.5"
                   >
                     <DropdownMenuItem
                       onClick={() => {

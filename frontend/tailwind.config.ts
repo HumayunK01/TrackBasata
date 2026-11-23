@@ -28,10 +28,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans, system-ui)", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "Roboto", "sans-serif"],
-        heading: ["var(--font-heading, 'Hubot Sans Variable')", "'Hubot Sans'", "sans-serif"],
-        hubot: ["var(--font-hubot, 'Hubot Sans Variable')", "'Hubot Sans'", "sans-serif"],
-        mono: ["var(--font-mono, 'Hubot Sans Variable')", "monospace"],
+        sans: ["var(--font-sans, 'DM Sans')", "system-ui", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "Roboto", "sans-serif"],
+        heading: ["var(--font-heading, 'DM Sans')", "system-ui", "sans-serif"],
+        hubot: ["var(--font-hubot, 'DM Sans')", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono, 'DM Sans')", "ui-monospace", "monospace"],
       },
       fontSize: {
         "2xs": ["var(--text-2xs, 0.6875rem)", { lineHeight: "1rem" }],

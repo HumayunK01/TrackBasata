@@ -127,7 +127,7 @@ export function PreferencesCard({ tzPreference, onTzChange }: PreferencesCardPro
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Moon className="size-3.5 text-emerald-400" />
+                <Moon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-xs font-semibold text-foreground">Dark Mode</span>
               </div>
               {theme === "dark" ? (

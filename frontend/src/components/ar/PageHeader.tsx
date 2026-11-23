@@ -52,7 +52,7 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
         <div className="h-full px-2.5 sm:px-4 flex items-center justify-between gap-2 sm:gap-4">
           {/* Left Context: Sidebar Toggle & Page Title */}
           <div className="flex items-center gap-3 shrink-0 min-w-0">
-            <SidebarTrigger className="shrink-0 size-9 rounded-lg text-foreground/85 hover:text-foreground hover:bg-white/[0.06] active:scale-[0.95] transition-all [&_svg]:!size-[22px] flex items-center justify-center cursor-pointer shadow-none border-0" />
+            <SidebarTrigger className="shrink-0 size-9 rounded-xl text-foreground/80 hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[20px] flex items-center justify-center cursor-pointer shadow-none border-0" />
 
             <div className="min-w-0 flex flex-col justify-center">
               {title && (
@@ -67,7 +67,7 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
                     {title}
                   </motion.h1>
                   {subtitle && (
-                    <span className="hidden md:inline-block text-[10px] font-medium text-muted-foreground/80 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06] truncate">
+                    <span className="hidden md:inline-block text-[10px] font-medium text-muted-foreground bg-muted/60 dark:bg-white/[0.04] px-1.5 py-0.5 rounded border border-border/60 dark:border-white/[0.06] truncate">
                       {subtitle}
                     </span>
                   )}
@@ -83,79 +83,78 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
           </div>
 
           {/* Right Actions & User Identity */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {actions}
 
-            {/* Grouped Header Utility Toolbar (Fixed h-9 height) */}
-            <div className="h-9 flex items-center gap-0.5 bg-muted/30 dark:bg-white/[0.03] px-1.5 rounded-xl border border-border/60 dark:border-white/10 backdrop-blur-xs">
-              {/* Quick Command Search */}
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-                className="h-7 px-2.5 gap-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] active:scale-[0.97] transition-all flex items-center text-xs font-medium cursor-pointer group"
-                title="Quick Command Palette (⌘K / Ctrl+K)"
-                aria-label="Open Command Palette"
-              >
-                <Search className="size-3.5 text-muted-foreground/75 group-hover:text-foreground transition-colors shrink-0" />
-                <span className="hidden sm:inline-block text-[11.5px] font-medium tracking-tight text-muted-foreground/80 group-hover:text-foreground transition-colors">
-                  Search
+            {/* Command Search Trigger */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+              className="group h-9 px-2.5 sm:pl-3 sm:pr-2 sm:w-44 md:w-52 rounded-xl bg-card/85 dark:bg-white/[0.04] hover:bg-muted/70 dark:hover:bg-white/[0.08] border border-border/70 dark:border-white/[0.09] hover:border-border dark:hover:border-white/[0.16] shadow-2xs dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] active:scale-[0.98] transition-all duration-150 flex items-center justify-between gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              title="Quick Command Palette (⌘K / Ctrl+K)"
+              aria-label="Open Command Palette"
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <Search className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors truncate">
+                  Search…
                 </span>
-                <kbd className="hidden sm:inline-block font-mono text-[10px] font-medium text-muted-foreground/60 bg-white/[0.04] px-1.5 py-0.2 rounded border border-white/[0.08]">
-                  ⌘K
-                </kbd>
-              </button>
+              </span>
+              <kbd className="hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded-md font-mono text-[10px] font-medium text-muted-foreground/85 bg-muted/75 dark:bg-white/[0.07] border border-border/70 dark:border-white/[0.1] leading-none select-none shrink-0">
+                ⌘K
+              </kbd>
+            </button>
 
-              <div className="h-3.5 w-px bg-border/50 dark:bg-white/[0.08] mx-0.5" />
+            {/* Floating Utility Icons */}
+            <div className="flex items-center gap-0.5">
+              <WhatsNewButton className="size-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px]" />
 
-              {/* What's New */}
-              <WhatsNewButton className="size-7 rounded-lg text-muted-foreground/80 hover:text-foreground hover:bg-white/[0.06] active:scale-[0.96] transition-all [&_svg]:!size-[16px]" />
-
-              {/* Dark / Light Toggle */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-lg text-muted-foreground/80 hover:text-foreground hover:bg-white/[0.06] active:scale-[0.96] transition-all [&_svg]:!size-[16px] cursor-pointer"
+                className="size-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px] cursor-pointer"
                 onClick={toggle}
                 title={theme === "dark" ? "Light mode" : "Dark mode"}
                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
-                {theme === "dark" ? <Sun className="size-[16px]" /> : <Moon className="size-[16px]" />}
+                {theme === "dark" ? <Sun className="size-[17px]" /> : <Moon className="size-[17px]" />}
               </Button>
 
-              {/* Settings */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-lg text-muted-foreground/80 hover:text-foreground hover:bg-white/[0.06] active:scale-[0.96] transition-all [&_svg]:!size-[16px] cursor-pointer"
+                className="size-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px] cursor-pointer"
                 onClick={() => navigate("/settings")}
                 title="Settings"
                 aria-label="Settings"
               >
-                <Settings className="size-[16px]" />
+                <Settings className="size-[17px]" />
               </Button>
             </div>
 
-            {/* Unified User Profile Dropdown Pill (Matching h-9 rounded-xl) */}
+            <div className="hidden sm:block h-4 w-px bg-border/60 dark:bg-white/[0.08] mx-0.5" aria-hidden="true" />
+
+            {/* User Profile Trigger */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="h-9 group flex items-center gap-2 pl-1.5 pr-2.5 rounded-xl bg-muted/30 dark:bg-white/[0.03] hover:bg-muted/50 dark:hover:bg-white/[0.06] border border-border/60 dark:border-white/10 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.985]"
+                  className="h-9 group flex items-center gap-2 pl-1.5 pr-2.5 rounded-xl bg-card/85 dark:bg-white/[0.04] hover:bg-muted/70 dark:hover:bg-white/[0.08] data-[state=open]:bg-muted/80 dark:data-[state=open]:bg-white/[0.09] border border-border/70 dark:border-white/[0.09] hover:border-border dark:hover:border-white/[0.16] shadow-2xs dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98]"
                   aria-label={`User profile for ${name}`}
                 >
-                  <div className="size-6 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-bold text-[10.5px] flex items-center justify-center shrink-0">
+                  <div className="size-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
                     {initials}
                   </div>
-                  <span className="hidden md:inline-block text-xs font-semibold text-foreground tracking-tight max-w-[130px] truncate group-hover:text-foreground">
+                  <span className="hidden md:inline-block text-xs font-semibold text-foreground/95 group-hover:text-foreground tracking-tight max-w-[130px] truncate">
                     {name}
                   </span>
-                  <ChevronDown className="size-3.5 text-muted-foreground/70 group-hover:text-foreground transition-transform duration-150 group-data-[state=open]:rotate-180 shrink-0" />
+                  <ChevronDown className="size-3.5 text-muted-foreground/75 group-hover:text-foreground transition-transform duration-200 group-data-[state=open]:rotate-180 shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                sideOffset={6}
-                className="w-64 rounded-xl border border-border/60 dark:border-white/10 bg-card/95 backdrop-blur-xl p-1.5 shadow-xl font-sans"
+                sideOffset={8}
+                className="w-64 rounded-2xl border border-border/60 dark:border-white/10 bg-card/95 backdrop-blur-xl p-1.5 shadow-2xl font-sans"
               >
                 {/* User Identity Header */}
                 <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg">

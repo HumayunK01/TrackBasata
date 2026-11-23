@@ -197,8 +197,8 @@ export function CounterCard({
               className={cn(
                 "float-badge absolute text-sm sm:text-base font-bold font-mono px-2 py-0.5 rounded-full border shadow-sm",
                 badge.text.startsWith("+")
-                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                  : "bg-rose-500/15 border-rose-500/40 text-rose-400"
+                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                  : "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-400"
               )}
             >
               {badge.text}
@@ -229,7 +229,7 @@ export function CounterCard({
               {total > 0 && (
                 <>
                   <span className="text-border">·</span>
-                  <span className="text-emerald-500 dark:text-emerald-400 font-semibold">{share}%</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{share}%</span>
                 </>
               )}
             </>
@@ -266,7 +266,7 @@ export function CounterCard({
           onPointerUp={inc.stop}
           onPointerLeave={inc.stop}
           onPointerCancel={inc.stop}
-          className="flex-[1.4] flex items-center justify-center gap-1.5 h-9 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-mono font-semibold text-xs active:scale-[0.96] transition-all duration-100 touch-manipulation cursor-pointer shadow-2xs"
+          className="flex-[1.4] flex items-center justify-center gap-1.5 h-9 rounded-xl border border-emerald-600/25 dark:border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-mono font-semibold text-xs active:scale-[0.96] transition-all duration-100 touch-manipulation cursor-pointer shadow-2xs"
           aria-label={`Increase ${cat.label}`}
           title="Hold to count rapidly"
         >

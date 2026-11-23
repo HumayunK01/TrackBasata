@@ -63,7 +63,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
         onClick={() => onChange("curve")}
         className={`h-6 w-6 rounded-md p-0 ${
           value === "curve"
-            ? "bg-background shadow-xs text-foreground"
+            ? "bg-card dark:bg-background shadow-xs text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="Curve view"
@@ -77,7 +77,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
         onClick={() => onChange("bars")}
         className={`h-6 w-6 rounded-md p-0 ${
           value === "bars"
-            ? "bg-background shadow-xs text-foreground"
+            ? "bg-card dark:bg-background shadow-xs text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="Bar view"

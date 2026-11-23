@@ -118,7 +118,7 @@ export function TodayBreakdownChart({
         <div className="flex items-center justify-between gap-2 text-2xs font-mono font-semibold uppercase tracking-wider text-muted-foreground/75">
           <span>What's Being Counted</span>
           {total > 0 && (
-            <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
               {countedItems.length} active ({total} docs)
             </span>
           )}
