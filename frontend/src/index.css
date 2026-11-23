@@ -229,7 +229,7 @@
     --skeleton-highlight: 216 24% 86%;
     --popover-border: 216 20% 84%;
     --sidebar-background: 216 26% 96.5%; /* #F4F6FA */
-    --sidebar-foreground: 220 22% 26%;   /* #343F52 */
+    --sidebar-foreground: 222 32% 15%;   /* #1A2230 — Matches main foreground ink */
     --sidebar-primary: 160 84% 31%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 158 38% 91%;
@@ -302,7 +302,7 @@
       0 4px 10px -4px rgb(15 23 42 / 0.06);
 
     --sidebar-background: 216 26% 96.5%; /* #F4F6FA — Soft off-white sidebar */
-    --sidebar-foreground: 220 22% 26%;   /* #343F52 */
+    --sidebar-foreground: 222 32% 15%;   /* #1A2230 — Matches main foreground ink */
     --sidebar-primary: 160 84% 31%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 158 38% 91%;

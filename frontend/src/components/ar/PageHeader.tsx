@@ -73,7 +73,7 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
                   )}
                 </div>
               )}
-              <div className="text-[11px] font-mono text-muted-foreground/70 tracking-tight mt-0.5 truncate select-none">
+              <div className="text-[11px] font-mono text-foreground/70 dark:text-muted-foreground/70 tracking-tight mt-0.5 truncate select-none">
                 {formatHeaderDate(date)}
               </div>
               {!title && subtitle && (
@@ -95,24 +95,24 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
               aria-label="Open Command Palette"
             >
               <span className="flex items-center gap-2 min-w-0">
-                <Search className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors truncate">
+                <Search className="size-3.5 text-foreground/80 dark:text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                <span className="hidden sm:inline-block text-xs font-medium text-foreground/80 dark:text-muted-foreground group-hover:text-foreground transition-colors truncate">
                   Search…
                 </span>
               </span>
-              <kbd className="hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded-md font-mono text-[10px] font-medium text-muted-foreground/85 bg-muted/75 dark:bg-white/[0.07] border border-border/70 dark:border-white/[0.1] leading-none select-none shrink-0">
+              <kbd className="hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded-md font-mono text-[10px] font-medium text-foreground/80 dark:text-muted-foreground/85 bg-muted/75 dark:bg-white/[0.07] border border-border/70 dark:border-white/[0.1] leading-none select-none shrink-0">
                 ⌘K
               </kbd>
             </button>
 
             {/* Floating Utility Icons */}
             <div className="flex items-center gap-0.5">
-              <WhatsNewButton className="size-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px]" />
+              <WhatsNewButton className="size-9 rounded-xl text-foreground/85 dark:text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px]" />
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px] cursor-pointer"
+                className="size-9 rounded-xl text-foreground/85 dark:text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px] cursor-pointer"
                 onClick={toggle}
                 title={theme === "dark" ? "Light mode" : "Dark mode"}
                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -123,7 +123,7 @@ export function PageHeader({ subtitle, title, actions, now }: PageHeaderProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px] cursor-pointer"
+                className="size-9 rounded-xl text-foreground/85 dark:text-muted-foreground hover:text-foreground hover:bg-muted/70 dark:hover:bg-white/[0.07] active:scale-[0.95] transition-all [&_svg]:!size-[17px] cursor-pointer"
                 onClick={() => navigate("/settings")}
                 title="Settings"
                 aria-label="Settings"

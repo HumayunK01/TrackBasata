@@ -102,7 +102,7 @@ export function AppSidebar() {
         </Link>
         <Link
           to="/"
-          className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1.5 hover:bg-muted/70 dark:hover:bg-white/[0.06] transition-all size-9"
+          className="hidden group-data-[collapsible=icon]:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1.5 hover:bg-muted/70 dark:hover:bg-white/[0.06] transition-all size-10"
           title="Basata.ai Tracker"
         >
           <AppFavicon
@@ -131,7 +131,7 @@ export function AppSidebar() {
               <div className="hidden group-data-[collapsible=icon]:block my-1.5 mx-auto w-5 h-px bg-border/40" />
             )}
             <div className={cn("px-2.5 pb-1 group-data-[collapsible=icon]:hidden", groupIdx === 0 ? "pt-0.5" : "pt-1.5")}>
-              <span className="text-[10px] font-bold tracking-[0.08em] text-muted-foreground/60 uppercase select-none font-mono">
+              <span className="text-[11px] font-bold tracking-[0.08em] text-foreground/75 dark:text-muted-foreground/60 uppercase select-none font-mono">
                 {group.label}
               </span>
             </div>
@@ -142,7 +142,7 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem
                     key={item.path}
-                    className="relative group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
+                    className="relative group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
                   >
                     {active && (
                       <motion.div
@@ -161,12 +161,12 @@ export function AppSidebar() {
                       isActive={active}
                       tooltip={item.title}
                       className={cn(
-                        "group/btn relative z-10 h-9 w-full rounded-xl px-2.5 font-medium text-[13px] transition-all duration-150 active:scale-[0.985]",
-                        "text-muted-foreground/85 hover:text-foreground hover:bg-muted/40 dark:hover:bg-white/[0.04]",
+                        "group/btn relative z-10 h-[38px] w-full rounded-xl px-2.5 font-medium text-[14px] transition-all duration-150 active:scale-[0.985]",
+                        "text-foreground dark:text-muted-foreground/85 hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/[0.04]",
                         active && [
                           "text-foreground font-semibold !bg-transparent data-[active=true]:!bg-transparent shadow-none border-transparent",
                         ],
-                        "group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center",
+                        "group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center",
                       )}
                     >
                       <Link
@@ -178,10 +178,10 @@ export function AppSidebar() {
                       >
                         <item.icon
                           className={cn(
-                            "size-[18px] shrink-0 transition-all duration-200",
+                            "!size-[19px] group-data-[collapsible=icon]:!size-[21px] shrink-0 transition-all duration-200",
                             active
                               ? "text-emerald-600 dark:text-emerald-400 dark:drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
-                              : "text-muted-foreground group-hover/btn:text-foreground group-hover/btn:scale-105",
+                              : "text-foreground/85 dark:text-muted-foreground group-hover/btn:text-foreground group-hover/btn:scale-105",
                           )}
                         />
                         <span className="truncate tracking-tight group-data-[collapsible=icon]:hidden">{item.title}</span>
@@ -198,7 +198,7 @@ export function AppSidebar() {
         <div className="group-data-[collapsible=icon]:mb-0">
           <div className="hidden group-data-[collapsible=icon]:block my-1.5 mx-auto w-5 h-px bg-border/40" />
           <div className="px-2.5 pt-1.5 pb-1 group-data-[collapsible=icon]:hidden">
-            <span className="text-[10px] font-bold tracking-[0.08em] text-muted-foreground/60 uppercase select-none font-mono">
+            <span className="text-[11px] font-bold tracking-[0.08em] text-foreground/75 dark:text-muted-foreground/60 uppercase select-none font-mono">
               Resources
             </span>
           </div>
@@ -209,7 +209,7 @@ export function AppSidebar() {
               return (
                 <SidebarMenuItem
                   key={link.path}
-                  className="relative group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
+                  className="relative group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
                 >
                   {active && (
                     <motion.div
@@ -228,12 +228,12 @@ export function AppSidebar() {
                     isActive={active}
                     tooltip={link.title}
                     className={cn(
-                      "group/btn relative z-10 h-9 w-full rounded-xl px-2.5 font-medium text-[13px] transition-all duration-150 active:scale-[0.985]",
-                      "text-muted-foreground/85 hover:text-foreground hover:bg-muted/40 dark:hover:bg-white/[0.04]",
+                      "group/btn relative z-10 h-[38px] w-full rounded-xl px-2.5 font-medium text-[14px] transition-all duration-150 active:scale-[0.985]",
+                      "text-foreground dark:text-muted-foreground/85 hover:text-foreground hover:bg-muted/60 dark:hover:bg-white/[0.04]",
                       active && [
                         "text-foreground font-semibold !bg-transparent data-[active=true]:!bg-transparent shadow-none border-transparent",
                       ],
-                      "group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center",
+                      "group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center",
                     )}
                   >
                     <Link
@@ -245,10 +245,10 @@ export function AppSidebar() {
                     >
                       <link.icon
                         className={cn(
-                          "size-[18px] shrink-0 transition-all duration-200",
+                          "!size-[19px] group-data-[collapsible=icon]:!size-[21px] shrink-0 transition-all duration-200",
                           active
                             ? "text-emerald-600 dark:text-emerald-400 dark:drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] scale-100"
-                            : "text-muted-foreground group-hover/btn:text-foreground group-hover/btn:scale-105",
+                            : "text-foreground/85 dark:text-muted-foreground group-hover/btn:text-foreground group-hover/btn:scale-105",
                         )}
                       />
                       <span className="truncate flex-1 tracking-tight group-data-[collapsible=icon]:hidden" title={link.title}>
@@ -266,7 +266,7 @@ export function AppSidebar() {
       {/* Version Footer */}
       <SidebarFooter className="p-2 group-data-[collapsible=icon]:p-1.5 border-t border-sidebar-border/40 shrink-0 flex items-center justify-center">
         {/* Expanded view */}
-        <span className="font-mono text-[11px] font-medium text-muted-foreground/75 bg-muted/40 dark:bg-white/[0.04] px-2.5 py-1 rounded-lg border border-border/40 select-none group-data-[collapsible=icon]:hidden">
+        <span className="font-mono text-xs font-medium text-foreground/80 dark:text-muted-foreground/75 bg-muted/40 dark:bg-white/[0.04] px-2.5 py-1 rounded-lg border border-border/40 select-none group-data-[collapsible=icon]:hidden">
           {APP_VERSION}
         </span>
 
@@ -275,7 +275,7 @@ export function AppSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="h-8 px-1.5 rounded-lg flex items-center justify-center hover:bg-muted/70 dark:hover:bg-white/[0.06] transition-colors cursor-default">
-                <span className="font-mono text-[10px] font-medium text-muted-foreground/75 select-none">
+                <span className="font-mono text-[11px] font-medium text-foreground/80 dark:text-muted-foreground/75 select-none">
                   {APP_VERSION}
                 </span>
               </div>
