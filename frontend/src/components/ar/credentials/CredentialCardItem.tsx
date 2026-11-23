@@ -1,5 +1,4 @@
-import { Check, Copy, Eye, EyeOff, FolderInput, Globe, MoreVertical, Pencil, Trash2, User } from "@/components/ui/icons";
-import { ServiceLogo } from "./ServiceLogo";
+import { Check, Copy, Eye, EyeOff, FolderInput, MoreVertical, Pencil, Trash2, User } from "@/components/ui/icons";
 import { SelectCheckbox } from "./SelectCheckbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,12 +35,6 @@ interface CredentialCardItemProps {
   onDelete: () => void;
 }
 
-function formatDomain(website: string | null | undefined): string | null {
-  const raw = (website ?? "").trim();
-  if (!raw) return null;
-  return raw.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-}
-
 export function CredentialCardItem({
   credential: c,
   selectionMode = false,
@@ -61,8 +54,6 @@ export function CredentialCardItem({
   onEdit,
   onDelete,
 }: CredentialCardItemProps) {
-  const website = c.website?.trim();
-  const cleanDomain = formatDomain(website);
   const note = c.notes?.trim() ?? "";
   const isLongNote = note.length > 56 || note.includes("\n");
   const showCheckbox = selectionMode || selected;
@@ -71,85 +62,58 @@ export function CredentialCardItem({
     <div
       onClick={selectionMode ? onToggleSelect : undefined}
       className={cn(
-        "group/card relative rounded-2xl border bg-card/70 backdrop-blur-md p-3.5 sm:p-4 transition-all duration-150 flex flex-col justify-between gap-3",
+        "group/card relative rounded-2xl border bg-card/90 backdrop-blur-md p-4 transition-all duration-150 flex flex-col justify-between gap-3.5",
         selectionMode && "cursor-pointer select-none",
         selected
           ? "border-emerald-500/60 bg-emerald-500/[0.05] ring-1 ring-emerald-500/25 shadow-sm"
-          : "border-border/55 hover:border-border/85 hover:bg-card/90 shadow-2xs",
+          : "border-border/70 hover:border-border hover:bg-card shadow-2xs",
       )}
     >
-      {/* Top Identity Header */}
-      <div className="flex items-center gap-3 min-w-0">
-        {showCheckbox && (
-          <div
-            className="shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SelectCheckbox
-              ariaLabel={`Select ${c.service}`}
-              checked={selected}
-              onChange={onToggleSelect}
-            />
-          </div>
-        )}
+      {/* Top Identity Header: Clear Hierarchy using full card width */}
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+          {showCheckbox && (
+            <div
+              className="shrink-0 pt-0.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SelectCheckbox
+                ariaLabel={`Select ${c.service}`}
+                checked={selected}
+                onChange={onToggleSelect}
+              />
+            </div>
+          )}
 
-        <div className="size-9 rounded-xl bg-muted/40 border border-border/50 p-1.5 flex items-center justify-center shrink-0">
-          <ServiceLogo service={c.service} website={c.website} className="size-6 rounded-md" />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0 flex-1 space-y-1">
             <h3
-              className="font-semibold text-foreground text-[13.5px] truncate leading-snug tracking-tight"
+              className="font-bold text-foreground text-[15px] truncate leading-tight tracking-tight"
               title={c.service}
             >
               {c.service}
             </h3>
-            {cleanDomain && note && (
-              <a
-                href={website!.startsWith("http") ? website! : `https://${website}`}
-                target="_blank"
-                rel="noreferrer noopener"
-                onClick={(e) => e.stopPropagation()}
-                title={`Open ${cleanDomain}`}
-                className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/65 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors truncate max-w-[9.5rem] shrink-0"
-              >
-                <Globe className="size-2.5 shrink-0 opacity-70" />
-                <span className="truncate">{cleanDomain}</span>
-              </a>
+
+            {note ? (
+              <div className="flex items-center gap-1.5 min-w-0" title={note}>
+                <User className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-[12.5px] font-medium text-foreground/80 dark:text-foreground/75 truncate leading-snug">
+                  {note}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <User className="size-3.5 text-muted-foreground/60 shrink-0" />
+                <span className="text-xs text-muted-foreground/70 truncate leading-snug">
+                  {c.login_id}
+                </span>
+              </div>
             )}
           </div>
-
-          {/* Primary Differentiator Subtitle: Account Owner / Note or Website */}
-          {note ? (
-            <div className="flex items-center gap-1.5 mt-0.5 min-w-0" title={note}>
-              <User className="size-3 text-emerald-500/80 dark:text-emerald-400/80 shrink-0" />
-              <span className="text-xs font-medium text-foreground/85 truncate leading-tight">
-                {note}
-              </span>
-            </div>
-          ) : cleanDomain ? (
-            <a
-              href={website!.startsWith("http") ? website! : `https://${website}`}
-              target="_blank"
-              rel="noreferrer noopener"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground/75 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors truncate mt-0.5 max-w-full"
-              title={website}
-            >
-              <Globe className="size-3 shrink-0 opacity-70" />
-              <span className="truncate">{cleanDomain}</span>
-            </a>
-          ) : (
-            <p className="text-[11px] text-muted-foreground/55 truncate mt-0.5">
-              {c.login_id}
-            </p>
-          )}
         </div>
 
         {/* Top-Right Quick Actions */}
         <div
-          className="flex items-center gap-0.5 shrink-0"
+          className="flex items-center gap-1 shrink-0 -mr-1 -mt-0.5"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -161,7 +125,7 @@ export function CredentialCardItem({
               "size-7 rounded-lg flex items-center justify-center press-scale transition-colors cursor-pointer",
               copiedFull
                 ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
-                : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 max-md:opacity-100",
+                : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/60",
             )}
           >
             {copiedFull ? <Check className="size-3.5 animate-fade-in" /> : <Copy className="size-3.5" />}
@@ -173,7 +137,7 @@ export function CredentialCardItem({
                 variant="ghost"
                 size="icon"
                 aria-label={`Actions for ${c.service}`}
-                className="size-7 rounded-lg text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 shrink-0 cursor-pointer"
+                className="size-7 rounded-lg text-muted-foreground/75 hover:text-foreground hover:bg-muted/60 shrink-0 cursor-pointer"
               >
                 <MoreVertical className="size-3.5" />
               </Button>
@@ -223,21 +187,21 @@ export function CredentialCardItem({
         </div>
       </div>
 
-      {/* Unified 2-Row Credential Surface (Eliminates 3 nested boxes per card) */}
+      {/* Unified 2-Row Credential Surface with structured label column */}
       <div
-        className="rounded-xl bg-muted/25 dark:bg-black/20 border border-border/45 divide-y divide-border/35 overflow-hidden"
+        className="rounded-xl bg-muted/35 dark:bg-black/25 border border-border/60 divide-y divide-border/50 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Row 1: Login ID */}
-        <div className="flex items-center gap-2.5 h-9 px-3 hover:bg-muted/35 transition-colors group/row">
-          <span className="w-9 shrink-0 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/55 select-none">
+        <div className="flex items-center gap-2.5 h-10 px-3.5 hover:bg-muted/50 transition-colors group/row">
+          <span className="w-11 shrink-0 pr-2 border-r border-border/50 text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground/80 select-none">
             User
           </span>
           <button
             type="button"
             onClick={onCopyLogin}
             title={`${c.login_id} — click to copy`}
-            className="flex-1 min-w-0 text-left text-xs font-medium text-foreground/90 hover:text-foreground truncate cursor-pointer transition-colors"
+            className="flex-1 min-w-0 text-left text-[13px] font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 truncate cursor-pointer transition-colors"
           >
             {c.login_id}
           </button>
@@ -247,10 +211,10 @@ export function CredentialCardItem({
             title="Copy Login ID"
             aria-label="Copy Login ID"
             className={cn(
-              "size-6 rounded-md flex items-center justify-center press-scale transition-colors cursor-pointer shrink-0",
+              "size-7 rounded-lg flex items-center justify-center press-scale transition-colors cursor-pointer shrink-0",
               copiedLogin
                 ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
-                : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
+                : "text-muted-foreground/70 hover:text-foreground hover:bg-background/80",
             )}
           >
             {copiedLogin ? <Check className="size-3.5 animate-fade-in" /> : <Copy className="size-3.5" />}
@@ -258,8 +222,8 @@ export function CredentialCardItem({
         </div>
 
         {/* Row 2: Password */}
-        <div className="flex items-center gap-2.5 h-9 px-3 hover:bg-muted/35 transition-colors group/row">
-          <span className="w-9 shrink-0 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/55 select-none">
+        <div className="flex items-center gap-2.5 h-10 px-3.5 hover:bg-muted/50 transition-colors group/row">
+          <span className="w-11 shrink-0 pr-2 border-r border-border/50 text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground/80 select-none">
             Pass
           </span>
           <button
@@ -267,25 +231,25 @@ export function CredentialCardItem({
             onClick={onCopyPassword}
             title={revealed ? `${c.password} — click to copy` : "Click to copy password"}
             className={cn(
-              "flex-1 min-w-0 text-left text-xs font-mono truncate cursor-pointer transition-colors",
+              "flex-1 min-w-0 text-left text-[13px] font-mono truncate cursor-pointer transition-colors",
               revealed
-                ? "text-emerald-600 dark:text-emerald-400 font-medium select-all"
-                : "text-muted-foreground/65 tracking-[0.16em] hover:text-foreground/90",
+                ? "text-emerald-600 dark:text-emerald-400 font-semibold select-all"
+                : "text-muted-foreground/75 tracking-[0.18em] hover:text-foreground",
             )}
           >
             {revealed ? c.password : "••••••••••••"}
           </button>
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={onToggleReveal}
               title={revealed ? "Hide password" : "Show password"}
               aria-label={revealed ? "Hide password" : "Show password"}
               className={cn(
-                "size-6 rounded-md flex items-center justify-center transition-colors cursor-pointer",
+                "size-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer",
                 revealed
-                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
-                  : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
+                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
+                  : "text-muted-foreground/70 hover:text-foreground hover:bg-background/80",
               )}
             >
               {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
@@ -296,10 +260,10 @@ export function CredentialCardItem({
               title="Copy Password"
               aria-label="Copy Password"
               className={cn(
-                "size-6 rounded-md flex items-center justify-center press-scale transition-colors cursor-pointer",
+                "size-7 rounded-lg flex items-center justify-center press-scale transition-colors cursor-pointer",
                 copiedPassword
                   ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15"
-                  : "text-muted-foreground/55 hover:text-foreground hover:bg-muted/60",
+                  : "text-muted-foreground/70 hover:text-foreground hover:bg-background/80",
               )}
             >
               {copiedPassword ? <Check className="size-3.5 animate-fade-in" /> : <Copy className="size-3.5" />}

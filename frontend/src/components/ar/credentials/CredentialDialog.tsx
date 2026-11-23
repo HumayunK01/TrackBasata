@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useUpsertCredential, type Credential, type CredentialFolder } from "@/hooks/useCredentials";
-import { Eye, EyeOff, Folder, Globe, Info, KeyRound, Loader2, User, WandSparkles } from "@/components/ui/icons";
+import { Eye, EyeOff, Folder, Info, KeyRound, Loader2, User, WandSparkles } from "@/components/ui/icons";
 import {
   Select,
   SelectContent,
@@ -161,39 +161,22 @@ export function CredentialDialog({ open, onOpenChange, row, folderId: initialFol
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cred-service" className="text-xs font-semibold text-foreground">
-                Service / Portal <span className="text-destructive font-medium">*</span>
-              </Label>
-              <Input
-                id="cred-service"
-                placeholder="e.g. Athena One, Basata"
-                value={form.service}
-                className={cn(
-                  "h-10 rounded-xl bg-muted/40 border-border/50 font-medium text-xs focus-visible:ring-emerald-500/40",
-                  required.service && error && "border-destructive/60",
-                )}
-                autoFocus
-                onChange={(e) => set("service")(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && save()}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="cred-website" className="text-xs font-semibold text-foreground flex items-center gap-1">
-                <Globe className="size-3 text-muted-foreground" />
-                Website <span className="font-normal text-muted-foreground/65">(optional)</span>
-              </Label>
-              <Input
-                id="cred-website"
-                placeholder="e.g. www.basata.ai"
-                value={form.website}
-                className="h-10 rounded-xl bg-muted/40 border-border/50 font-medium text-xs focus-visible:ring-emerald-500/40"
-                onChange={(e) => set("website")(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && save()}
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cred-service" className="text-xs font-semibold text-foreground">
+              Service / Portal <span className="text-destructive font-medium">*</span>
+            </Label>
+            <Input
+              id="cred-service"
+              placeholder="e.g. Athena One, Basata"
+              value={form.service}
+              className={cn(
+                "h-10 rounded-xl bg-muted/40 border-border/50 font-medium text-xs focus-visible:ring-emerald-500/40",
+                required.service && error && "border-destructive/60",
+              )}
+              autoFocus
+              onChange={(e) => set("service")(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && save()}
+            />
           </div>
 
           <div className="space-y-1.5">

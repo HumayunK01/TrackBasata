@@ -17,7 +17,6 @@ import { EmptyState } from "@/components/ar/industrial";
 import { CredentialDialog } from "@/components/ar/credentials/CredentialDialog";
 import { NewFolderDialog } from "@/components/ar/credentials/NewFolderDialog";
 import { RenameFolderDialog } from "@/components/ar/credentials/RenameFolderDialog";
-import { ServiceLogo } from "@/components/ar/credentials/ServiceLogo";
 import { SelectCheckbox } from "@/components/ar/credentials/SelectCheckbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +55,6 @@ import {
   Folder,
   FolderInput,
   FolderPlus,
-  Globe,
   KeyRound,
   Layers,
   LayoutGrid,
@@ -630,10 +628,6 @@ const CredentialsPage = () => {
       const show = revealed.has(c.id);
       const isSelected = selected.has(c.id);
       const rowOtherFolders = folders.filter((f) => f.id !== c.folder_id);
-      const cleanDomain = (c.website ?? "")
-        .trim()
-        .replace(/^https?:\/\//i, "")
-        .replace(/\/+$/, "");
 
       return (
         <tr
@@ -658,12 +652,9 @@ const CredentialsPage = () => {
             </td>
           )}
 
-          {/* Service & Website */}
+          {/* Service */}
           <td className="px-3.5 py-2.5">
             <div className="flex items-center gap-2.5 min-w-0 max-w-xs">
-              <div className="size-8 rounded-lg bg-muted/40 border border-border/45 p-1 flex items-center justify-center shrink-0">
-                <ServiceLogo service={c.service} website={c.website} className="size-5 rounded" />
-              </div>
               <div className="min-w-0 flex-1">
                 <span
                   className="font-semibold text-foreground truncate block text-xs leading-tight"
@@ -671,19 +662,6 @@ const CredentialsPage = () => {
                 >
                   {c.service}
                 </span>
-                {cleanDomain && (
-                  <a
-                    href={c.website!.startsWith("http") ? c.website! : `https://${c.website}`}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/65 hover:text-emerald-600 dark:hover:text-emerald-400 truncate mt-0.5 max-w-full"
-                    title={c.website ?? ""}
-                  >
-                    <Globe className="size-2.5 shrink-0 opacity-70" />
-                    <span className="truncate">{cleanDomain}</span>
-                  </a>
-                )}
               </div>
             </div>
           </td>
@@ -883,7 +861,7 @@ const CredentialsPage = () => {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by service, person, login ID, or website..."
+                  placeholder="Search by service, person, or login ID..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10 pr-14 h-9 rounded-xl bg-background/90 dark:bg-black/35 border-border/70 text-xs shadow-2xs focus-visible:ring-1 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/50"
@@ -1339,7 +1317,6 @@ const CredentialsPage = () => {
                 <div className="space-y-7">
                   {folderSections.map((section) => {
                     const isCollapsed = showAll && collapsedSections.has(section.id);
-                    const sampleItem = section.items[0];
                     const sectionCopyKey = `sec:${section.id}:copy`;
 
                     return (
@@ -1361,17 +1338,6 @@ const CredentialsPage = () => {
                                     )}
                                   />
                                 </span>
-                                <div className="size-7 rounded-lg bg-muted/35 border border-border/45 p-1 flex items-center justify-center shrink-0">
-                                  {sampleItem ? (
-                                    <ServiceLogo
-                                      service={sampleItem.service}
-                                      website={sampleItem.website}
-                                      className="size-5 rounded-sm"
-                                    />
-                                  ) : (
-                                    <Folder className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                  )}
-                                </div>
                                 <h2 className="text-sm font-semibold text-foreground tracking-tight truncate">
                                   {section.name}
                                 </h2>
@@ -1381,17 +1347,6 @@ const CredentialsPage = () => {
                               </button>
                             ) : (
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="size-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-1.5 flex items-center justify-center shrink-0">
-                                  {sampleItem ? (
-                                    <ServiceLogo
-                                      service={sampleItem.service}
-                                      website={sampleItem.website}
-                                      className="size-5 rounded-sm"
-                                    />
-                                  ) : (
-                                    <Folder className="size-4 text-emerald-600 dark:text-emerald-400" />
-                                  )}
-                                </div>
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <h2 className="text-sm font-semibold text-foreground tracking-tight">
