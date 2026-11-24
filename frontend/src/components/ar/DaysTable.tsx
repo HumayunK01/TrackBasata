@@ -68,6 +68,25 @@ import { EmptyState } from "@/components/ar/industrial";
 import { cn } from "@/lib/utils";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+const HIDDEN_DAILY_LOG_COLUMNS = new Set([
+  "workedonng",
+  "ng",
+  "patientchartcreated",
+  "ptchart",
+  "workedonfilingfailed",
+  "filingfailed",
+  "failed",
+]);
+
+function isHiddenDailyLogColumn(c: Pick<Category, "key" | "short" | "label">): boolean {
+  const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s_-]+/g, "");
+  return (
+    HIDDEN_DAILY_LOG_COLUMNS.has(norm(c.key)) ||
+    HIDDEN_DAILY_LOG_COLUMNS.has(norm(c.short)) ||
+    HIDDEN_DAILY_LOG_COLUMNS.has(norm(c.label))
+  );
+}
+
 function getVal(l: Pick<DailyLog, "counts">, key: string): number {
   return (l.counts ?? {})[key] ?? 0;
 }
@@ -465,7 +484,11 @@ export function DaysTable({ logs, onEdit, onNew, onNewLeave, userName }: Props) 
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const reduce = useReducedMotion();
   const deleteLog = useDeleteLog();
-  const { data: categories = [] } = useCategories();
+  const { data: rawCategories = [] } = useCategories();
+  const categories = useMemo(
+    () => rawCategories.filter((c) => !isHiddenDailyLogColumn(c)),
+    [rawCategories],
+  );
   const [hideZeroCategories, setHideZeroCategories] = useState(true);
 
   // Track categories that have > 0 contributions across this user's logs

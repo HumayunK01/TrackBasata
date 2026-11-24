@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   PieChart,
   Pie,
@@ -17,7 +18,7 @@ import type { Profile } from "@/hooks/useProfile";
 import type { TeamProductivitySummary } from "@/hooks/useTeamData";
 import { colorForKey } from "@/lib/cat-colors";
 import { cn } from "@/lib/utils";
-import { CheckCheck, ChevronLeft, ChevronRight } from "@/components/ui/icons";
+import { CheckCheck, ChevronDown, ChevronLeft, ChevronRight } from "@/components/ui/icons";
 import { PieChart as PieIcon, BarChart3, LayoutGrid } from "lucide-react";
 
 interface Props {
@@ -185,6 +186,10 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
   const [activeTab, setActiveTab] = useState<"donut-focus" | "team-graph" | "all-donuts">("donut-focus");
   const [selectedCatKey, setSelectedCatKey] = useState<string>("");
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
+  const [wrapPills, setWrapPills] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   // Horizontal drag & slide controllers for category pills
   const pillBarRef = useRef<HTMLDivElement>(null);
@@ -192,6 +197,30 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
   const startXRef = useRef(0);
   const startScrollLeftRef = useRef(0);
   const hasDraggedRef = useRef(false);
+
+  const updateScrollIndicators = useCallback(() => {
+    const el = pillBarRef.current;
+    if (!el || wrapPills) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, [wrapPills]);
+
+  useEffect(() => {
+    const el = pillBarRef.current;
+    if (!el || activeTab !== "donut-focus") return;
+    updateScrollIndicators();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateScrollIndicators) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", updateScrollIndicators);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", updateScrollIndicators);
+    };
+  }, [activeTab, wrapPills, categories.length, updateScrollIndicators]);
 
   const handlePillMouseDown = (e: React.MouseEvent) => {
     if (!pillBarRef.current) return;
@@ -444,15 +473,15 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
 
         {/* Tab Switcher */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="inline-flex items-center rounded-xl bg-muted/40 p-1 border border-border/50 text-xs">
+          <div className="inline-flex items-center rounded-xl bg-muted/55 dark:bg-black/30 p-1 border border-border/65 text-xs">
             <button
               type="button"
               onClick={() => setActiveTab("donut-focus")}
               className={cn(
                 "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
                 activeTab === "donut-focus"
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-card dark:bg-white/[0.09] text-foreground border border-border/70 dark:border-white/12 shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
               )}
             >
               <PieIcon className="size-3.5" />
@@ -464,8 +493,8 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               className={cn(
                 "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
                 activeTab === "team-graph"
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-card dark:bg-white/[0.09] text-foreground border border-border/70 dark:border-white/12 shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
               )}
             >
               <BarChart3 className="size-3.5" />
@@ -477,8 +506,8 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
               className={cn(
                 "px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
                 activeTab === "all-donuts"
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-card dark:bg-white/[0.09] text-foreground border border-border/70 dark:border-white/12 shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
               )}
             >
               <LayoutGrid className="size-3.5" />
@@ -492,73 +521,146 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
       {/* ── VIEW 1: CATEGORY DONUT CIRCLE & CONTRIBUTOR RINGS ── */}
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === "donut-focus" && currentCategory && (
-        <div className="space-y-4">
-          {/* Category Chips Bar with Click-to-Drag & Smooth Arrows */}
-          <div className="relative flex items-center gap-1.5 group/pills">
-            {/* Scroll Left Button */}
-            <button
-              type="button"
-              onClick={() => scrollPills(-220)}
-              className="hidden sm:flex size-7 rounded-xl bg-card border border-border/70 items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 shrink-0 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
-              title="Slide left"
-            >
-              <ChevronLeft className="size-3.5" />
-            </button>
-
-            {/* Draggable & Scrollable Pills container */}
-            <div
-              ref={pillBarRef}
-              onMouseDown={handlePillMouseDown}
-              onMouseMove={handlePillMouseMove}
-              onMouseUp={handlePillMouseUp}
-              onMouseLeave={handlePillMouseUp}
-              onWheel={handlePillWheel}
-              className={cn(
-                "flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 select-none transition-colors",
-                isDraggingPills ? "cursor-grabbing" : "cursor-grab"
-              )}
-            >
-              {categoryWorkload.map((c) => {
-                const isSelected = (selectedCatKey || categoryWorkload[0].key) === c.key;
-                return (
+        <div className="bg-card border border-border/70 rounded-2xl shadow-2xs overflow-hidden">
+          {/* Docked Category Selector Header Bar */}
+          <div className="relative border-b border-border/60 bg-muted/30 dark:bg-white/[0.02] px-3 sm:px-4 py-2.5 flex items-center gap-2">
+            {/* Scrollable or Wrapped Pills Track */}
+            <div className="relative flex-1 min-w-0 flex items-center">
+              {/* Left Gradient Mask + Smart Scroll Button (only shown when scrolled right) */}
+              {!wrapPills && canScrollLeft && (
+                <div className="absolute left-0 inset-y-0 z-20 flex items-center pr-5 bg-gradient-to-r from-card via-card/90 to-transparent pointer-events-none">
                   <button
-                    key={c.key}
                     type="button"
-                    onClick={() => {
-                      if (!hasDraggedRef.current) {
-                        setSelectedCatKey(c.key);
-                      }
-                    }}
-                    className={cn(
-                      "px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 border flex items-center gap-2",
-                      isSelected
-                        ? "bg-card text-foreground font-semibold shadow-xs border-primary scale-[1.02]"
-                        : "bg-card/60 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    )}
+                    onClick={() => scrollPills(-260)}
+                    className="pointer-events-auto size-7 rounded-lg bg-card border border-border/80 flex items-center justify-center text-foreground/80 hover:text-foreground hover:border-primary/50 shadow-xs transition-all cursor-pointer active:scale-95"
+                    aria-label="Scroll categories left"
+                    title="Scroll left"
                   >
-                    <span className="size-2.5 rounded-full shrink-0 shadow-xs pointer-events-none" style={{ backgroundColor: c.color }} />
-                    <span className="pointer-events-none">{c.label}</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-muted/60 text-foreground/80 font-bold pointer-events-none">
-                      {c.totalDocs.toLocaleString()}
-                    </span>
+                    <ChevronLeft className="size-3.5" />
                   </button>
-                );
-              })}
+                </div>
+              )}
+
+              <div
+                ref={pillBarRef}
+                onScroll={updateScrollIndicators}
+                onMouseDown={wrapPills ? undefined : handlePillMouseDown}
+                onMouseMove={wrapPills ? undefined : handlePillMouseMove}
+                onMouseUp={wrapPills ? undefined : handlePillMouseUp}
+                onMouseLeave={wrapPills ? undefined : handlePillMouseUp}
+                onWheel={wrapPills ? undefined : handlePillWheel}
+                role="tablist"
+                aria-label="Categories"
+                className={cn(
+                  "flex items-center gap-1.5 w-full select-none py-0.5",
+                  wrapPills
+                    ? "flex-wrap"
+                    : cn(
+                        "overflow-x-auto no-scrollbar",
+                        isDraggingPills ? "cursor-grabbing" : "cursor-grab"
+                      )
+                )}
+              >
+                {categoryWorkload.map((c) => {
+                  const isSelected = (selectedCatKey || categoryWorkload[0].key) === c.key;
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isSelected}
+                      onClick={(e) => {
+                        if (!hasDraggedRef.current) {
+                          setSelectedCatKey(c.key);
+                          e.currentTarget.scrollIntoView({
+                            behavior: reduceMotion ? "auto" : "smooth",
+                            inline: "nearest",
+                            block: "nearest",
+                          });
+                        }
+                      }}
+                      className={cn(
+                        "relative z-10 h-9 px-3 rounded-xl text-[13px] transition-colors shrink-0 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                        isSelected
+                          ? "text-foreground font-semibold"
+                          : "text-foreground/75 dark:text-muted-foreground font-medium hover:text-foreground hover:bg-card/60 dark:hover:bg-white/[0.04]"
+                      )}
+                    >
+                      {isSelected && (
+                        <motion.span
+                          layoutId="console-matrix-cat-pill"
+                          className="absolute inset-0 rounded-xl bg-card dark:bg-white/[0.09] border border-border/90 dark:border-white/15 shadow-xs -z-10"
+                          transition={
+                            reduceMotion
+                              ? { duration: 0 }
+                              : { type: "spring", stiffness: 460, damping: 34 }
+                          }
+                        />
+                      )}
+                      <span
+                        className="size-2.5 rounded-full shrink-0 pointer-events-none transition-shadow"
+                        style={{
+                          backgroundColor: c.color,
+                          boxShadow: isSelected
+                            ? `0 0 0 3px color-mix(in srgb, ${c.color} 22%, transparent)`
+                            : undefined,
+                        }}
+                      />
+                      <span className="pointer-events-none whitespace-nowrap tracking-tight">
+                        {c.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[11px] font-mono tabular-nums px-1.5 py-0.5 rounded-md leading-none pointer-events-none transition-colors",
+                          isSelected
+                            ? "bg-primary/12 text-primary font-bold"
+                            : "bg-muted/80 dark:bg-white/[0.06] text-muted-foreground font-semibold"
+                        )}
+                      >
+                        {c.totalDocs.toLocaleString()}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right Gradient Mask + Smart Scroll Button (only shown when more pills exist to the right) */}
+              {!wrapPills && canScrollRight && (
+                <div className="absolute right-0 inset-y-0 z-20 flex items-center pl-6 bg-gradient-to-l from-card via-card/90 to-transparent pointer-events-none">
+                  <button
+                    type="button"
+                    onClick={() => scrollPills(260)}
+                    className="pointer-events-auto size-7 rounded-lg bg-card border border-border/80 flex items-center justify-center text-foreground/80 hover:text-foreground hover:border-primary/50 shadow-xs transition-all cursor-pointer active:scale-95"
+                    aria-label="Scroll categories right"
+                    title="Scroll right"
+                  >
+                    <ChevronRight className="size-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Scroll Right Button */}
-            <button
-              type="button"
-              onClick={() => scrollPills(220)}
-              className="hidden sm:flex size-7 rounded-xl bg-card border border-border/70 items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 shrink-0 transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
-              title="Slide right"
-            >
-              <ChevronRight className="size-3.5" />
-            </button>
+            {/* Expand / Wrap All Toggle when many categories exist */}
+            {categoryWorkload.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setWrapPills((w) => !w)}
+                title={wrapPills ? "Collapse into single row" : `Show all ${categoryWorkload.length} categories`}
+                className={cn(
+                  "hidden md:inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border text-[11px] font-mono font-semibold shrink-0 transition-colors cursor-pointer",
+                  wrapPills
+                    ? "bg-primary/10 text-primary border-primary/25"
+                    : "bg-card/80 dark:bg-white/[0.04] text-muted-foreground hover:text-foreground border-border/70"
+                )}
+              >
+                <span>{wrapPills ? "Single row" : `All ${categoryWorkload.length}`}</span>
+                <ChevronDown className={cn("size-3 transition-transform duration-200", wrapPills && "rotate-180")} />
+              </button>
+            )}
           </div>
 
-          {/* Main Visual Card: Donut Chart on Left, Contributor Circular Gauges on Right */}
-          <div className="bg-card border border-border/70 rounded-2xl p-5 shadow-2xs">
+          {/* Main Visual Body: Donut Chart on Left, Contributor Circular Gauges on Right */}
+          <div className="p-5">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
               {/* Left Column: Big Interactive Donut Chart with Center Metric Circle */}
               <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 relative">
@@ -631,7 +733,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">
                     Team Members
                   </span>
-                  <span className="text-xs font-mono text-emerald-500 flex items-center gap-1 font-semibold">
+                  <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                     <CheckCheck className="size-3.5" />
                     <span>Total: 100%</span>
                   </span>
@@ -672,7 +774,7 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                                 {contrib.name}
                               </span>
                               {isMe && (
-                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 leading-none">
                                   You
                                 </span>
                               )}
@@ -680,9 +782,9 @@ export const CategoryContributionMatrix = React.memo(function CategoryContributi
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span
                                 className={cn(
-                                  "text-[9px] font-bold font-mono px-1.5 py-0.2 rounded",
+                                  "text-[9px] font-bold font-mono px-1.5 py-0.5 rounded leading-none",
                                   rank === 0
-                                    ? "bg-amber-500/15 text-amber-500"
+                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                                     : "bg-muted text-muted-foreground"
                                 )}
                               >
