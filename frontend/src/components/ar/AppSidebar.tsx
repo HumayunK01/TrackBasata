@@ -4,6 +4,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   FileBarChart,
+  FileText,
   Hash,
   X,
   BookOpen,
@@ -74,6 +75,11 @@ const externalLinks = [
     title: "Labeling Guide",
     icon: Tags,
     path: "/resources/test-patients",
+  },
+  {
+    title: "Phoenix Heart Updates",
+    icon: FileText,
+    path: "/resources/phoenix-heart-updates",
   },
 ];
 

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   FileBarChart,
+  FileText,
   Hash,
   Send,
   Building2,
@@ -176,6 +177,14 @@ export function CommandPalette() {
         icon: Tags,
         action: () => { navigate("/resources/test-patients"); setOpen(false); },
         keywords: ["labeling", "test patients", "inbox labels"],
+      },
+      {
+        id: "res-phoenix-heart-updates",
+        title: "Phoenix Heart Updates",
+        category: "Resources",
+        icon: FileText,
+        action: () => { navigate("/resources/phoenix-heart-updates"); setOpen(false); },
+        keywords: ["phoenix heart", "updates", "announcements", "changes", "docs"],
       },
 
       // Actions

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { BookOpen, ExternalLink, RefreshCw, Tags } from "lucide-react";
+import { BookOpen, ExternalLink, FileText, RefreshCw, Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ponytail: doc ids live in code; to link a new reference doc, add a slug here
@@ -23,6 +23,15 @@ export const DOCS = {
     externalUrl: "https://docs.google.com/document/d/1-ukEpMxL1YvdE4w7DNwhA3xRyGcimeH8ScGjqa03Pr0/edit?usp=sharing",
     icon: Tags,
     badge: "Inbox & Test Patients",
+  },
+  "phoenix-heart-updates": {
+    id: "phoenix-heart-updates",
+    title: "Phoenix Heart Updates",
+    path: "/resources/phoenix-heart-updates",
+    url: "https://docs.google.com/document/d/1GHtAaT-bvGBDeYY7Z6ULxghtIzbUC9YZLn9et72Xukw/preview",
+    externalUrl: "https://docs.google.com/document/d/1GHtAaT-bvGBDeYY7Z6ULxghtIzbUC9YZLn9et72Xukw/edit?usp=sharing",
+    icon: FileText,
+    badge: "Clinic Updates",
   },
 } as const;
 
@@ -49,6 +58,7 @@ export function ResourceViewer() {
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({
     "cheat-sheet": 0,
     "test-patients": 0,
+    "phoenix-heart-updates": 0,
   });
 
   useEffect(() => {
@@ -82,7 +92,7 @@ export function ResourceViewer() {
       {/* Quick switcher & document utility bar */}
       <div className="flex items-center justify-between gap-2 shrink-0 px-2 py-1.5 rounded-lg border border-border/60 bg-card/60 backdrop-blur-xs">
         {/* Document switch tabs */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0">
           {DOC_SLUGS.map((slug) => {
             const item = DOCS[slug];
             const isActive = activeSlug === slug;
@@ -92,7 +102,7 @@ export function ResourceViewer() {
                 key={slug}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all select-none",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all select-none shrink-0",
                   isActive
                     ? "bg-background text-foreground shadow-2xs border border-border/80 font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50",

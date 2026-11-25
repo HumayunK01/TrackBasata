@@ -25,6 +25,7 @@ const pageTitles: Record<string, string> = {
   "/scenarios": "Scenarios & SOP Guide",
   "/resources/cheat-sheet": "Cheat Sheet",
   "/resources/test-patients": "Labeling Guide",
+  "/resources/phoenix-heart-updates": "Phoenix Heart Updates",
   "/privacy": "Privacy Policy",
   "/cookies": "Cookie Policy",
   "/terms": "Terms of Service",

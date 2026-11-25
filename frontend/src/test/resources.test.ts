@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import { DOCS, DOC_SLUGS, preloadResources } from "@/pages/Resources";
 
 describe("Resource Docs Configuration", () => {
-  it("defines cheat-sheet and test-patients slugs", () => {
+  it("defines cheat-sheet, test-patients, and phoenix-heart-updates slugs", () => {
     expect(DOC_SLUGS).toContain("cheat-sheet");
     expect(DOC_SLUGS).toContain("test-patients");
+    expect(DOC_SLUGS).toContain("phoenix-heart-updates");
   });
 
   it("has valid preview and external URLs for each doc", () => {
