@@ -25,6 +25,35 @@ export interface WhatsNewEntry {
 // ── Entries (newest first) ────────────────────────────────────────────────
 export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = [
   {
+    id: "version-3-0-4-mini",
+    date: "2026-11-26",
+    title: "Quick Links Slider & Workspace Polish",
+    description:
+      "One-click access to HRMS, NextGen, Basata, and Athena from a draggable right-edge dock, plus Counter, Settings, and notification upgrades.",
+    body: [
+      (
+        <>
+          <strong className="text-foreground font-semibold">Quick Links Slider:</strong> Launch <em>HRMS</em>, <em>NextGen</em>, <em>Basata</em>, and <em>Athena</em> in one click from the new favicon dock on the right edge of your screen. Click anywhere on the page to tuck it away, or drag the closed arrow tab up and down to keep it wherever you prefer for your shift.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Refined Counter Cards &amp; Breakdown:</strong> Active counter cards now feature a subtle document-doodle wallpaper, zero-padded single-digit counts (<em>01</em>–<em>09</em>), an inline Quick Add category tray, and a cleaner proportional category share bar.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Full-Width Settings &amp; Tabs:</strong> Reworked Profile, Preferences, Categories, and Danger Zone tabs with miniature Light and Dark mode previews, live category previews when adding or editing, and cleaner two-column controls.
+        </>
+      ),
+      (
+        <>
+          <strong className="text-foreground font-semibold">Sleeker Notifications &amp; Sign-In:</strong> Moved toast notifications to the bottom-right corner with compact status badges so they never cover header controls, paired with a refreshed Phoenix Heart sign-in screen and streamlined Console, Daily Log, and Vault views.
+        </>
+      ),
+    ],
+  },
+  {
     id: "version-3-0-3-mini",
     date: "2026-11-21",
     title: "Overtime (OT) Tracking",

@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/ar/AppSidebar";
 import { MobileTabBar } from "@/components/ar/MobileTabBar";
 import { PageHeader } from "@/components/ar/PageHeader";
 import { HrmsReminder } from "@/components/ar/HrmsReminder";
+import { QuickLinksSlider } from "@/components/ar/QuickLinksSlider";
 import { ResourceViewer, preloadResources } from "@/pages/Resources";
 import { CommandPalette } from "@/components/ar/CommandPalette";
 import { cn } from "@/lib/utils";
@@ -114,6 +115,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <MobileTabBar />
       </div>
+      <QuickLinksSlider />
       <HrmsReminder />
       <CommandPalette />
     </div>
