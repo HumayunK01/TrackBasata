@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { colorForKey, withAlpha } from "@/lib/cat-colors";
 import type { Category } from "@/hooks/useCategories";
 import { Minus, Plus, X } from "@/components/ui/icons";
@@ -48,7 +48,6 @@ export function CounterCard({
   cat,
   count,
   maxCount,
-  total = 0,
   onIncrement,
   onDecrement,
   onRemove,
@@ -58,9 +57,20 @@ export function CounterCard({
   const [floatingBadges, setFloatingBadges] = useState<FloatingBadge[]>([]);
   const prevCountRef = useRef(count);
   const fill = maxCount > 0 ? Math.min(100, (count / maxCount) * 100) : 0;
-  const share = total > 0 ? Math.round((count / total) * 100) : 0;
   const cardRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const rawPatternId = useId();
+  const patternId = `doc-doodle-${rawPatternId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const patternOffset = useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < cat.key.length; i++) {
+      hash = (hash * 31 + cat.key.charCodeAt(i)) | 0;
+    }
+    return {
+      x: Math.abs(hash) % 140,
+      y: Math.abs(hash >> 4) % 140,
+    };
+  }, [cat.key]);
 
   const spawnBadge = useCallback((text: string) => {
     const id = Date.now() + Math.random();
@@ -136,6 +146,103 @@ export function CounterCard({
         aria-hidden
       />
 
+      {/* Seamless Document & Clinical Doodle Wallpaper */}
+      <svg
+        className="absolute inset-0 size-full pointer-events-none select-none text-foreground opacity-[0.065] dark:opacity-[0.075] group-hover:opacity-[0.09] dark:group-hover:opacity-[0.105] transition-opacity duration-200"
+        aria-hidden="true"
+      >
+        <defs>
+          <pattern
+            id={patternId}
+            width="168"
+            height="168"
+            patternUnits="userSpaceOnUse"
+            patternTransform={`translate(${patternOffset.x} ${patternOffset.y})`}
+          >
+            <g
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {/* 1. Folded-corner document */}
+              <g transform="translate(26 26) rotate(-13)">
+                <path d="M -8 -10 H 3 L 8 -5 V 10 C 8 11.1 7.1 12 6 12 H -6 C -7.1 12 -8 11.1 -8 10 Z" />
+                <path d="M 3 -10 V -5 H 8" />
+                <path d="M -4 -1 H 4 M -4 3.5 H 4 M -4 8 H 1" />
+              </g>
+
+              {/* 2. Medical chart clipboard */}
+              <g transform="translate(86 24) rotate(11)">
+                <rect x="-8" y="-9" width="16" height="20" rx="2.5" />
+                <rect x="-4" y="-11.5" width="8" height="4" rx="1.2" />
+                <path d="M -4 -1 L -2 1 L 3 -3.5 M -4 4.5 H 4 M -4 8 H 1.5" />
+              </g>
+
+              {/* 3. Paperclip doodle */}
+              <g transform="translate(144 28) rotate(-16)">
+                <path d="M -2.5 -4 V 5.5 C -2.5 8 0 10 2.2 10 C 4.7 10 6.5 8 6.5 5.5 V -5.5 C 6.5 -9 3.6 -11.5 0 -11.5 C -3.6 -11.5 -6.5 -9 -6.5 -5.5 V 4" />
+              </g>
+
+              {/* 4. Fax / Intake tray */}
+              <g transform="translate(54 68) rotate(14)">
+                <path d="M -5 -10 H 5 V -2 H -5 Z" />
+                <rect x="-9" y="-2" width="18" height="10" rx="2" />
+                <path d="M -5 8 V 11 H 5 V 8 M 5 1.5 H 6.5" />
+              </g>
+
+              {/* 5. Verified / Stamped page */}
+              <g transform="translate(120 72) rotate(-11)">
+                <rect x="-8" y="-10" width="16" height="20" rx="2.5" />
+                <path d="M -4.5 -5 H 4.5 M -4.5 -1 H 1.5" />
+                <circle cx="2.5" cy="5" r="3.5" />
+                <path d="M 1 5 L 2.1 6.1 L 4.1 3.9" />
+              </g>
+
+              {/* 6. File folder tab */}
+              <g transform="translate(24 106) rotate(9)">
+                <path d="M -10 -6 C -10 -7.1 -9.1 -8 -8 -8 H -3 L -1 -5.5 H 8 C 9.1 -5.5 10 -4.6 10 -3.5 V 6.5 C 10 7.6 9.1 8.5 8 8.5 H -8 C -9.1 8.5 -10 7.6 -10 6.5 Z" />
+                <path d="M -6 2 H 2" />
+              </g>
+
+              {/* 7. EKG rhythm slip */}
+              <g transform="translate(84 114) rotate(-9)">
+                <rect x="-10" y="-7.5" width="20" height="15" rx="2.5" />
+                <path d="M -7 1 H -3.5 L -2 -4.5 L 0.5 4.5 L 2.2 1 H 7" />
+              </g>
+
+              {/* 8. Stacked documents */}
+              <g transform="translate(144 116) rotate(13)">
+                <path d="M -5 -10 H 6 C 7.1 -10 8 -9.1 8 -8 V 6" />
+                <rect x="-8" y="-7" width="13" height="17" rx="2" />
+                <path d="M -4.5 -2 H 1.5 M -4.5 2 H 1.5 M -4.5 6 H -0.5" />
+              </g>
+
+              {/* 9. Referral envelope */}
+              <g transform="translate(50 148) rotate(-8)">
+                <rect x="-9.5" y="-6.5" width="19" height="13" rx="2" />
+                <path d="M -8.5 -5.5 L 0 1 L 8.5 -5.5" />
+              </g>
+
+              {/* 10. Index tag */}
+              <g transform="translate(116 148) rotate(10)">
+                <path d="M -8 -5 H 3 L 8.5 0 L 3 5 H -8 C -9.1 5 -10 4.1 -10 3 V -3 C -10 -4.1 -9.1 -5 -8 -5 Z" />
+                <circle cx="3.2" cy="0" r="1.2" />
+              </g>
+
+              {/* Subtle micro-accents */}
+              <circle cx="56" cy="28" r="1" />
+              <path d="M 18 64 H 21.5 M 19.75 62.25 V 65.75" />
+              <path d="M 85 66 H 88.5 M 86.75 64.25 V 67.75" />
+              <circle cx="150" cy="72" r="1" />
+              <circle cx="18" cy="148" r="1" />
+            </g>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+      </svg>
+
       {/* Grounded bottom color baseline accent */}
       <div
         className="absolute inset-x-0 bottom-0 h-0.5 pointer-events-none"
@@ -185,7 +292,7 @@ export function CounterCard({
             triggerDecrement();
           }
         }}
-        className="relative flex-1 flex flex-col items-center justify-center py-7 sm:py-9 mx-1 rounded-xl active:scale-[0.97] transition-transform duration-100 touch-manipulation select-none outline-none cursor-pointer"
+        className="relative z-10 flex-1 flex flex-col items-center justify-center py-7 sm:py-9 mx-1 rounded-xl active:scale-[0.97] transition-transform duration-100 touch-manipulation select-none outline-none cursor-pointer"
         title="Tap to count (+1)"
         aria-label={`${cat.label}: ${count}. Tap to add one.`}
       >
@@ -218,27 +325,18 @@ export function CounterCard({
             color: count > 0 ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground) / 0.35)",
           }}
         >
-          {count}
+          {String(count).padStart(2, "0")}
         </span>
 
-        {/* Share of total volume */}
-        <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground leading-none">
-          {count > 0 ? (
-            <>
-              <span>{count} {count === 1 ? "doc" : "docs"}</span>
-              {total > 0 && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{share}%</span>
-                </>
-              )}
-            </>
-          ) : (
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50">
-              zero docs
-            </span>
+        {/* Unit label */}
+        <span
+          className={cn(
+            "mt-2.5 text-[10px] font-mono font-bold uppercase tracking-wider leading-none",
+            count > 0 ? "text-muted-foreground/75" : "text-muted-foreground/45"
           )}
-        </div>
+        >
+          DOCS
+        </span>
       </button>
 
       {/* Tactile Bottom Stepper Controls matching Console/Report buttons */}

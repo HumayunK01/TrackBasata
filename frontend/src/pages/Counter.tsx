@@ -14,8 +14,7 @@ import { useCategories, type Category } from "@/hooks/useCategories";
 import { useUpsertLog, useDailyLogs } from "@/hooks/useDailyLogs";
 import { isoDate, totalForLog, isWeekend, type DailyLog } from "@/types/log";
 import { FigHeader, EmptyState } from "@/components/ar/industrial";
-import { RotateCcw, Hash, Plus, Tag, RefreshCw, AlertTriangle, FileCheck } from "@/components/ui/icons";
-import { ActivityRing } from "@/components/ar/ActivityRing";
+import { RotateCcw, Hash, Plus, RefreshCw, AlertTriangle } from "@/components/ui/icons";
 import { supabase, getUserId } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAnimatedNumber } from "@/hooks/useAnimatedNumber";
@@ -30,7 +29,6 @@ import { cn } from "@/lib/utils";
 
 // Import modular components
 import { CounterCard } from "@/components/ar/counter/CounterCard";
-import { CategoryPicker } from "@/components/ar/counter/CategoryPicker";
 import { NewCategoryDialog } from "@/components/ar/counter/NewCategoryDialog";
 import { TodayBreakdownChart } from "@/components/ar/counter/TodayBreakdownChart";
 
@@ -144,7 +142,6 @@ export default function CounterPage() {
     };
   });
 
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [overwriteOpen, setOverwriteOpen] = useState(false);
@@ -410,8 +407,21 @@ export default function CounterPage() {
   }, [counts, markDirty, queueBroadcast, categories]);
 
   const total = activeCategories.reduce((s, c) => s + getCount(c.key), 0);
+  const countedCategoryCount = activeCategories.filter((c) => getCount(c.key) > 0).length;
   const maxCount = activeCategories.reduce((m, c) => Math.max(m, getCount(c.key)), 0);
   const animatedTotal = useAnimatedNumber(total);
+  const formattedTodayDate = useMemo(() => {
+    try {
+      return new Date(`${todayIso}T00:00:00`).toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return todayIso;
+    }
+  }, [todayIso]);
 
   const counterGridClass = useMemo(() => {
     const len = activeCategories.length;
@@ -895,26 +905,26 @@ export default function CounterPage() {
 
       <main className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 relative z-[1] [overscroll-behavior-y:contain]">
         <div className="w-full max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-fade-in">
-          {/* ── Section 1: Today's Total (Matching Report & Console KPI Style) ── */}
+          {/* ── Section 1: Today's Total ── */}
           <section className="space-y-3.5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <FigHeader
                 title="Today's Total"
-                sub={`${activeCategories.length} active · ${total} documents today`}
-                className="mb-0 flex-1 min-w-[240px]"
+                sub={formattedTodayDate}
+                className="mb-0 flex-1 min-w-[220px]"
               />
               <div className="flex items-center gap-2 shrink-0">
-                {/* Sync status badge */}
+                {/* Sync status pill */}
                 <div
                   className={cn(
-                    "flex items-center gap-1.5 text-2xs font-mono font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-2xs transition-colors duration-150",
+                    "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors duration-150",
                     logsLoading || isSyncing || upsert.isPending
                       ? "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/25"
                       : saved
                       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
                       : total > 0
                       ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25"
-                      : "bg-muted text-muted-foreground border-border/40"
+                      : "bg-muted text-muted-foreground border-border/50"
                   )}
                 >
                   <span
@@ -923,7 +933,7 @@ export default function CounterPage() {
                       logsLoading || isSyncing || upsert.isPending
                         ? "bg-sky-400 animate-spin"
                         : saved
-                        ? "bg-emerald-500 pulse-breathe"
+                        ? "bg-emerald-500"
                         : total > 0
                         ? "bg-amber-500 animate-pulse"
                         : "bg-muted-foreground"
@@ -960,48 +970,44 @@ export default function CounterPage() {
                   variant="ghost"
                   size="sm"
                   aria-label="Reset counter"
-                  className="h-7 px-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                  className="h-7 px-2.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                   onClick={() => setResetOpen(true)}
                   disabled={total === 0 && activeCategories.length === 0}
                 >
                   <RotateCcw className="size-3.5" />
-                  <span className="hidden xs:inline ml-1 font-semibold text-xs">Reset</span>
+                  <span className="hidden xs:inline ml-1 font-medium text-xs">Reset</span>
                 </Button>
               </div>
             </div>
 
-            {/* Today's Total Hero Card */}
-            <div className="group relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 rounded-2xl border border-border/65 bg-card/80 p-5 sm:p-6 shadow-2xs transition-colors duration-150 hover:border-border">
-              {/* Left: Total docs & date */}
-              <div className="shrink-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">Today's Total</span>
-                  <span className="text-[11px] font-mono text-muted-foreground/60">· {todayIso}</span>
+            {/* Today's Total Summary Card */}
+            <div className="flex flex-col xl:flex-row xl:items-center gap-5 xl:gap-7 rounded-2xl border border-border/65 bg-card/80 p-5 sm:p-6 shadow-2xs transition-colors duration-150 hover:border-border">
+              {/* Left Anchor: Shift Document Volume */}
+              <div className="shrink-0 xl:min-w-[196px]">
+                <span className="block text-xs font-medium text-muted-foreground">
+                  Documents Counted
+                </span>
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-[44px] font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
+                    {String(animatedTotal).padStart(2, "0")}
+                  </span>
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground/70">
+                    DOCS
+                  </span>
                 </div>
-                <div className="flex items-center gap-3.5">
-                  <ActivityRing
-                    value={total}
-                    target={Math.max(50, total)}
-                    size={52}
-                    strokeWidth={3}
-                    color="hsl(var(--primary))"
-                    className="shrink-0"
-                  >
-                    <FileCheck className="size-6 text-emerald-500 dark:text-emerald-400" />
-                  </ActivityRing>
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="text-4xl sm:text-5xl font-bold font-mono tabular-nums tracking-tight text-foreground leading-none">
-                      {animatedTotal}
-                    </span>
-                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground/70 pb-0.5">
-                      docs
-                    </span>
-                  </div>
-                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {countedCategoryCount > 0
+                    ? `${countedCategoryCount} of ${activeCategories.length} active ${
+                        activeCategories.length === 1 ? "category" : "categories"
+                      }`
+                    : activeCategories.length > 0
+                    ? `${activeCategories.length} active · ready to count`
+                    : "No active categories"}
+                </p>
               </div>
 
-              {/* Circle chart showing 100% and what are being counted */}
-              <div className="flex-1 min-w-0 pt-4 xl:pt-0 border-t xl:border-t-0 xl:border-l border-border/45 xl:pl-6">
+              {/* Right Breakdown: Proportional Bar + Sorted Category Shares */}
+              <div className="flex-1 min-w-0 pt-4 xl:pt-0 border-t xl:border-t-0 xl:border-l border-border/45 xl:pl-7">
                 <TodayBreakdownChart
                   activeCategories={activeCategories}
                   counts={counts}
@@ -1053,10 +1059,10 @@ export default function CounterPage() {
               sub={`${availableToAdd.length} available to track`}
             />
 
-            <div className="rounded-2xl border border-border/65 bg-card/80 p-4 space-y-3.5 shadow-2xs">
+            <div className="rounded-2xl border border-border/65 bg-card/80 p-4 shadow-2xs">
               {/* Quick Add Available Categories Rail */}
               {availableToAdd.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-muted-foreground">
                       Quick Add to Counter
@@ -1066,82 +1072,55 @@ export default function CounterPage() {
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {availableToAdd.slice(0, 8).map((cat) => {
+                    {availableToAdd.map((cat) => {
                       const clr = colorForKey(cat.key);
-                      const vol = categoryWorkVolume.get(cat.key) ?? 0;
                       return (
                         <button
                           key={cat.key}
                           type="button"
                           onClick={() => addCategory(cat)}
-                          title={
-                            vol > 0
-                              ? `${cat.label} · ${vol.toLocaleString()} documents worked`
-                              : `${cat.label} · Never worked yet`
-                          }
+                          title={`Add ${cat.label}`}
                           className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl border border-border/60 bg-muted/30 hover:bg-muted text-xs font-medium text-foreground transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs group"
                         >
                           <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: clr }} />
                           <span>{cat.label}</span>
-                          {vol > 0 && (
-                            <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
-                              {vol >= 1000 ? `${(vol / 1000).toFixed(1)}k` : vol}
-                            </span>
-                          )}
                           <Plus className="size-3 text-muted-foreground group-hover:text-foreground shrink-0 ml-0.5" />
                         </button>
                       );
                     })}
-                    {availableToAdd.length > 8 && (
-                      <button
-                        type="button"
-                        onClick={() => setPickerOpen(true)}
-                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl border border-dashed border-border/80 text-xs font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
-                      >
-                        +{availableToAdd.length - 8} more…
-                      </button>
-                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setNewCatOpen(true)}
+                      disabled={catsLoading}
+                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="size-3.5 shrink-0" />
+                      <span>Add Category</span>
+                    </button>
                   </div>
                 </div>
-              ) : activeCategories.length > 0 ? (
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground py-0.5">
-                  <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span>All {categories.length} categories are active in your counter</span>
-                </div>
-              ) : null}
-
-              {/* Main Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1 border-t border-border/40">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPickerOpen(true)}
-                  disabled={catsLoading || availableToAdd.length === 0}
-                  className="w-full sm:flex-1 h-9 rounded-xl border-border/70 bg-background/80 hover:bg-muted/60 text-xs font-medium justify-between px-3.5 cursor-pointer shadow-2xs"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Plus className="size-3.5 text-emerald-500 shrink-0" />
-                    <span className="truncate">
-                      {availableToAdd.length === 0
-                        ? "All categories in counter"
-                        : "Browse All Tray Categories"}
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span>
+                      {activeCategories.length > 0
+                        ? `All ${categories.length} categories are active in your counter`
+                        : "Create a category to start counting today's documents"}
                     </span>
                   </div>
-                  <span className="font-mono text-[10px] font-medium text-muted-foreground px-2 py-0.5 rounded-md bg-muted/60 border border-border/50 shrink-0">
-                    {availableToAdd.length} left
-                  </span>
-                </Button>
-
-                <Button
-                  type="button"
-                  onClick={() => setNewCatOpen(true)}
-                  disabled={catsLoading}
-                  className="w-full sm:w-auto h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-xs shadow-emerald-600/20 cursor-pointer shrink-0"
-                >
-                  <Tag className="size-3.5 mr-1.5" />
-                  <span>New Category</span>
-                </Button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewCatOpen(true)}
+                    disabled={catsLoading}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="size-3.5 shrink-0" />
+                    <span>Add Category</span>
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -1150,18 +1129,11 @@ export default function CounterPage() {
             <EmptyState
               icon={Hash}
               title="No Active Counters"
-              hint="Add categories from the tray above or press 'Browse All' to begin tracking document counts for today."
+              hint="Select any category from the tray above to begin tracking document counts for today."
             />
           )}
         </div>
       </main>
-
-      <CategoryPicker
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        categories={availableToAdd}
-        onPick={addCategory}
-      />
 
       <NewCategoryDialog
         open={newCatOpen}
