@@ -1,18 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import {
   Sun,
   Moon,
   Volume2,
-  VolumeX,
-  Globe,
   Clock,
   Check,
-  ShieldCheck,
-  Cookie,
-  ArrowUpRight,
-  Scale,
-  Compass,
   LayoutDashboard,
   Hash,
   CalendarDays,
@@ -32,18 +24,20 @@ interface PreferencesCardProps {
 }
 
 const START_PAGES = [
-  { path: "/console", label: "Console", desc: "Overview, charts & team breakdown", icon: LayoutDashboard },
-  { path: "/counter", label: "Counter", desc: "Live counting with keyboard shortcuts", icon: Hash },
-  { path: "/log", label: "Daily Log", desc: "Daily document logs and history", icon: CalendarDays },
-  { path: "/tracker", label: "Tracker", desc: "Incoming faxes & indexables workflow", icon: Send },
-  { path: "/overtime", label: "Overtime", desc: "Log and review extra shift hours", icon: Clock },
-  { path: "/facilities", label: "Facilities", desc: "Clinic directory and verified numbers", icon: Building2 },
+  { path: "/console", label: "Console", desc: "Analytics & team overview", icon: LayoutDashboard },
+  { path: "/counter", label: "Counter", desc: "Live shift tap counter", icon: Hash },
+  { path: "/log", label: "Daily Log", desc: "Daily volume records", icon: CalendarDays },
+  { path: "/tracker", label: "Tracker", desc: "Fax & indexable pipeline", icon: Send },
+  { path: "/overtime", label: "Overtime", desc: "Extra shift hours log", icon: Clock },
+  { path: "/facilities", label: "Facilities", desc: "Verified clinic numbers", icon: Building2 },
 ];
 
 export function PreferencesCard({ tzPreference, onTzChange }: PreferencesCardProps) {
   const { theme, toggle } = useTheme();
   const [feedbackOn, setFeedbackOn] = useState(() => isFeedbackEnabled());
-  const [startPage, setStartPage] = useState(() => localStorage.getItem("default_start_page") ?? "/console");
+  const [startPage, setStartPage] = useState(
+    () => localStorage.getItem("default_start_page") ?? "/console"
+  );
 
   const handleStartPageChange = (path: string, label: string) => {
     setStartPage(path);
@@ -70,7 +64,6 @@ export function PreferencesCard({ tzPreference, onTzChange }: PreferencesCardPro
   const ORG_TZ = "America/Phoenix";
   const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  // Live clocks for regional preview
   const [currentTime, setCurrentTime] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -93,102 +86,146 @@ export function PreferencesCard({ tzPreference, onTzChange }: PreferencesCardPro
     hour12: true,
   }).format(currentTime);
 
+  const isDark = theme === "dark";
+
   return (
-    <div className="space-y-5">
-      {/* ── 1. Visual Theme ── */}
-      <div className="bg-card/80 border border-border/65 rounded-xl p-4 sm:p-5 shadow-2xs space-y-3.5">
-        <div className="flex items-center justify-between pb-3 border-b border-border/60">
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-              {theme === "dark" ? <Moon className="size-4" strokeWidth={1.75} /> : <Sun className="size-4" strokeWidth={1.75} />}
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-semibold text-foreground">Appearance</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Choose light or dark mode</p>
-            </div>
-          </div>
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {theme === "dark" ? "Dark Active" : "Light Active"}
-          </span>
+    <div className="rounded-2xl border border-border/65 bg-card/85 divide-y divide-border/50 shadow-2xs">
+      {/* ── Row 1: Appearance ── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8 p-5 sm:p-6">
+        <div className="md:col-span-4 space-y-1">
+          <h3 className="text-sm font-semibold text-foreground">Appearance</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Choose how Basata Tracker looks on this workstation.
+          </p>
         </div>
 
-        {/* Visual Theme Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
-          {/* Dark Mode Card */}
+        <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Appearance">
+          {/* Light Mode Preview Card */}
           <button
             type="button"
-            onClick={() => theme !== "dark" && toggle()}
+            role="radio"
+            aria-checked={!isDark}
+            onClick={() => isDark && toggle()}
             className={cn(
-              "group relative flex flex-col p-3.5 rounded-xl border text-left transition-all cursor-pointer",
-              theme === "dark"
-                ? "border-emerald-500/60 bg-emerald-500/[0.04] ring-1 ring-emerald-500/30"
-                : "border-border/60 bg-card hover:bg-muted/40"
+              "group rounded-xl border p-3 text-left transition-colors duration-150 cursor-pointer outline-none",
+              !isDark
+                ? "border-primary bg-primary/[0.04]"
+                : "border-border/65 bg-card hover:bg-muted/35 hover:border-border"
             )}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Moon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-semibold text-foreground">Dark Mode</span>
+            {/* Miniature Light UI Schematic */}
+            <div className="h-20 rounded-lg border border-slate-200 bg-[#F8FAFC] overflow-hidden flex mb-3 select-none">
+              <div className="w-11 border-r border-slate-200 bg-white p-2 flex flex-col gap-1.5">
+                <div className="h-2 w-5 rounded-sm bg-emerald-500" />
+                <div className="h-1.5 w-6 rounded-sm bg-slate-200" />
+                <div className="h-1.5 w-5 rounded-sm bg-slate-200" />
+                <div className="h-1.5 w-6 rounded-sm bg-slate-200" />
               </div>
-              {theme === "dark" ? (
-                <span className="size-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">
-                  <Check className="size-2.5" strokeWidth={2.5} />
+              <div className="flex-1 p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="h-2 w-14 rounded-sm bg-slate-800" />
+                  <div className="size-2 rounded-full bg-emerald-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="h-9 rounded-md bg-white border border-slate-200 p-1.5">
+                    <div className="h-2 w-6 rounded-sm bg-slate-700" />
+                  </div>
+                  <div className="h-9 rounded-md bg-white border border-slate-200 p-1.5">
+                    <div className="h-2 w-7 rounded-sm bg-emerald-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sun className="size-3.5 text-amber-500 shrink-0" />
+                <span className="text-xs font-semibold text-foreground">Light</span>
+              </div>
+              {!isDark ? (
+                <span className="size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                  <Check className="size-2.5" strokeWidth={2.6} />
                 </span>
               ) : (
-                <span className="size-4 rounded-full border border-border/70" />
+                <span className="size-4 rounded-full border border-border/80" />
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Dark theme with high contrast for comfortable daily use.
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Crisp daylight surfaces for bright clinical offices.
             </p>
           </button>
 
-          {/* Light Mode Card */}
+          {/* Dark Mode Preview Card */}
           <button
             type="button"
-            onClick={() => theme === "dark" && toggle()}
+            role="radio"
+            aria-checked={isDark}
+            onClick={() => !isDark && toggle()}
             className={cn(
-              "group relative flex flex-col p-3.5 rounded-xl border text-left transition-all cursor-pointer",
-              theme !== "dark"
-                ? "border-emerald-500/60 bg-emerald-500/[0.04] ring-1 ring-emerald-500/30"
-                : "border-border/60 bg-card hover:bg-muted/40"
+              "group rounded-xl border p-3 text-left transition-colors duration-150 cursor-pointer outline-none",
+              isDark
+                ? "border-primary bg-primary/[0.05]"
+                : "border-border/65 bg-card hover:bg-muted/35 hover:border-border"
             )}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Sun className="size-3.5 text-amber-500" />
-                <span className="text-xs font-semibold text-foreground">Light Mode</span>
+            {/* Miniature Dark UI Schematic */}
+            <div className="h-20 rounded-lg border border-slate-800 bg-[#111828] overflow-hidden flex mb-3 select-none">
+              <div className="w-11 border-r border-slate-800 bg-[#161F31] p-2 flex flex-col gap-1.5">
+                <div className="h-2 w-5 rounded-sm bg-emerald-400" />
+                <div className="h-1.5 w-6 rounded-sm bg-slate-700" />
+                <div className="h-1.5 w-5 rounded-sm bg-slate-700" />
+                <div className="h-1.5 w-6 rounded-sm bg-slate-700" />
               </div>
-              {theme !== "dark" ? (
-                <span className="size-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">
-                  <Check className="size-2.5" strokeWidth={2.5} />
+              <div className="flex-1 p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="h-2 w-14 rounded-sm bg-slate-200" />
+                  <div className="size-2 rounded-full bg-emerald-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="h-9 rounded-md bg-[#202938] border border-slate-700/80 p-1.5">
+                    <div className="h-2 w-6 rounded-sm bg-slate-200" />
+                  </div>
+                  <div className="h-9 rounded-md bg-[#202938] border border-slate-700/80 p-1.5">
+                    <div className="h-2 w-7 rounded-sm bg-emerald-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Moon className="size-3.5 text-emerald-500 shrink-0" />
+                <span className="text-xs font-semibold text-foreground">Dark</span>
+              </div>
+              {isDark ? (
+                <span className="size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                  <Check className="size-2.5" strokeWidth={2.6} />
                 </span>
               ) : (
-                <span className="size-4 rounded-full border border-border/70" />
+                <span className="size-4 rounded-full border border-border/80" />
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Clean light theme for well-lit office environments.
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Low-glare slate surfaces comfortable for long shifts.
             </p>
           </button>
         </div>
       </div>
 
-      {/* ── 2. Default Start Page ── */}
-      <div className="bg-card/80 border border-border/65 rounded-xl p-4 sm:p-5 shadow-2xs space-y-3.5">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-border/60">
-          <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-500">
-            <Compass className="size-4" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-foreground">Default Start Page</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Choose which page opens first when you open Basata Tracker
-            </p>
-          </div>
+      {/* ── Row 2: Default Start Page ── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8 p-5 sm:p-6">
+        <div className="md:col-span-4 space-y-1">
+          <h3 className="text-sm font-semibold text-foreground">Default Start Page</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Select which workspace view opens first when you launch or sign in.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-0.5">
+        <div
+          className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"
+          role="radiogroup"
+          aria-label="Default Start Page"
+        >
           {START_PAGES.map((page) => {
             const isSelected = startPage === page.path;
             const Icon = page.icon;
@@ -196,251 +233,192 @@ export function PreferencesCard({ tzPreference, onTzChange }: PreferencesCardPro
               <button
                 key={page.path}
                 type="button"
+                role="radio"
+                aria-checked={isSelected}
                 onClick={() => handleStartPageChange(page.path, page.label)}
                 className={cn(
-                  "group relative flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer",
+                  "group flex flex-col justify-between rounded-xl border p-3.5 text-left transition-colors duration-150 cursor-pointer outline-none",
                   isSelected
-                    ? "border-emerald-500/60 bg-emerald-500/[0.04] ring-1 ring-emerald-500/30"
-                    : "border-border/60 bg-card hover:bg-muted/40"
+                    ? "border-primary bg-primary/[0.04]"
+                    : "border-border/65 bg-card hover:bg-muted/35 hover:border-border"
                 )}
               >
-                <div
-                  className={cn(
-                    "size-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    isSelected ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground group-hover:text-foreground"
-                  )}
-                >
-                  <Icon className="size-3.5" strokeWidth={1.75} />
-                </div>
-                <div className="space-y-0.5 flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-foreground">{page.label}</span>
-                    {isSelected && (
-                      <span className="size-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">
-                        <Check className="size-2.5" strokeWidth={2.5} />
-                      </span>
-                    )}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon
+                      className={cn(
+                        "size-4 shrink-0 transition-colors",
+                        isSelected
+                          ? "text-primary"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                      strokeWidth={1.8}
+                    />
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      {page.label}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-normal">
-                    {page.desc}
-                  </p>
+
+                  {isSelected ? (
+                    <span className="size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                      <Check className="size-2.5" strokeWidth={2.6} />
+                    </span>
+                  ) : (
+                    <span className="size-4 rounded-full border border-border/75 shrink-0" />
+                  )}
                 </div>
+
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  {page.desc}
+                </p>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── 3. Sound & Vibration ── */}
-      <div className="bg-card/80 border border-border/65 rounded-xl p-4 sm:p-5 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/60 gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-              {feedbackOn ? <Volume2 className="size-4" strokeWidth={1.75} /> : <VolumeX className="size-4" strokeWidth={1.75} />}
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-semibold text-foreground">Sound &amp; Vibration</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Play a click sound and vibrate on mobile when counting
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleTestAudio}
-              className="h-7 px-2.5 rounded-lg text-xs font-medium cursor-pointer"
-            >
-              <Volume2 className="size-3 mr-1 text-muted-foreground" />
-              Test Sound
-            </Button>
-
-            <div className="flex items-center gap-2 pl-2 sm:border-l sm:border-border/60">
-              <Switch
-                id="feedback-switch"
-                checked={feedbackOn}
-                onCheckedChange={handleToggleFeedback}
-              />
-              <label
-                htmlFor="feedback-switch"
-                className="text-xs font-medium text-foreground cursor-pointer select-none"
-              >
-                {feedbackOn ? "On" : "Muted"}
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 4. Time Zone ── */}
-      <div className="bg-card/80 border border-border/65 rounded-xl p-4 sm:p-5 shadow-2xs space-y-3.5">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-border/60">
-          <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-500">
-            <Globe className="size-4" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-foreground">Time Zone</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Choose the time zone used for your logs and reports
-            </p>
-          </div>
+      {/* ── Row 3: Time Zone ── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8 p-5 sm:p-6">
+        <div className="md:col-span-4 space-y-1">
+          <h3 className="text-sm font-semibold text-foreground">Time Zone</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Controls shift timestamps and date cutoffs across logs and reports.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+        <div
+          className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3"
+          role="radiogroup"
+          aria-label="Time Zone"
+        >
           {/* Clinic Time */}
-          <label
+          <button
+            type="button"
+            role="radio"
+            aria-checked={tzPreference === "org"}
+            onClick={() => onTzChange("org")}
             className={cn(
-              "group relative flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer",
+              "rounded-xl border p-4 text-left transition-colors duration-150 cursor-pointer outline-none space-y-2",
               tzPreference === "org"
-                ? "border-emerald-500/60 bg-emerald-500/[0.04] ring-1 ring-emerald-500/30"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                ? "border-primary bg-primary/[0.04]"
+                : "border-border/65 bg-card hover:bg-muted/35 hover:border-border"
             )}
           >
-            <input
-              type="radio"
-              name="tz"
-              value="org"
-              checked={tzPreference === "org"}
-              onChange={() => onTzChange("org")}
-              className="size-3.5 mt-0.5 accent-emerald-600 cursor-pointer"
-            />
-            <div className="space-y-1 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">Clinic Time (Arizona)</span>
-                {tzPreference === "org" && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                    Active
-                  </span>
-                )}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-semibold text-foreground truncate">
+                  Clinic Time (Arizona)
+                </span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 shrink-0">
+                  Recommended
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-foreground font-mono">
-                <Clock className="size-3 text-muted-foreground" />
-                <span>{orgTimeStr}</span>
-                <span className="text-[10px] text-muted-foreground font-sans">({ORG_TZ})</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-normal pt-0.5">
-                Standardizes logs across all facilities (recommended).
-              </p>
+              {tzPreference === "org" ? (
+                <span className="size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                  <Check className="size-2.5" strokeWidth={2.6} />
+                </span>
+              ) : (
+                <span className="size-4 rounded-full border border-border/75 shrink-0" />
+              )}
             </div>
-          </label>
+
+            <div className="flex items-baseline gap-2 font-mono tabular-nums">
+              <span className="text-sm font-bold text-foreground">{orgTimeStr}</span>
+              <span className="text-[11px] text-muted-foreground">{ORG_TZ}</span>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-normal">
+              Aligns daily cutoffs across all Phoenix Heart team members.
+            </p>
+          </button>
 
           {/* Local Device Time */}
-          <label
+          <button
+            type="button"
+            role="radio"
+            aria-checked={tzPreference === "local"}
+            onClick={() => onTzChange("local")}
             className={cn(
-              "group relative flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer",
+              "rounded-xl border p-4 text-left transition-colors duration-150 cursor-pointer outline-none space-y-2",
               tzPreference === "local"
-                ? "border-emerald-500/60 bg-emerald-500/[0.04] ring-1 ring-emerald-500/30"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                ? "border-primary bg-primary/[0.04]"
+                : "border-border/65 bg-card hover:bg-muted/35 hover:border-border"
             )}
           >
-            <input
-              type="radio"
-              name="tz"
-              value="local"
-              checked={tzPreference === "local"}
-              onChange={() => onTzChange("local")}
-              className="size-3.5 mt-0.5 accent-emerald-600 cursor-pointer"
-            />
-            <div className="space-y-1 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">Your Local Time</span>
-                {tzPreference === "local" && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                    Active
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-foreground font-mono">
-                <Clock className="size-3 text-muted-foreground" />
-                <span>{localTimeStr}</span>
-                <span className="text-[10px] text-muted-foreground font-sans truncate max-w-[110px]">({LOCAL_TZ})</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-normal pt-0.5">
-                Uses the current clock of your computer.
-              </p>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-foreground truncate">
+                Device Local Time
+              </span>
+              {tzPreference === "local" ? (
+                <span className="size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                  <Check className="size-2.5" strokeWidth={2.6} />
+                </span>
+              ) : (
+                <span className="size-4 rounded-full border border-border/75 shrink-0" />
+              )}
             </div>
-          </label>
+
+            <div className="flex items-baseline gap-2 font-mono tabular-nums min-w-0">
+              <span className="text-sm font-bold text-foreground shrink-0">{localTimeStr}</span>
+              <span className="text-[11px] text-muted-foreground truncate">{LOCAL_TZ}</span>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-normal">
+              Displays timestamps using this computer’s local clock.
+            </p>
+          </button>
         </div>
       </div>
 
-      {/* ── 5. Policies & Terms ── */}
-      <div className="bg-card/80 border border-border/65 rounded-xl p-4 sm:p-5 shadow-2xs space-y-3.5">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-border/60">
-          <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-            <ShieldCheck className="size-4" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-foreground">Policies &amp; Terms</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Usage guidelines and privacy policies</p>
-          </div>
+      {/* ── Row 4: Sound & Haptics ── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8 p-5 sm:p-6">
+        <div className="md:col-span-4 space-y-1">
+          <h3 className="text-sm font-semibold text-foreground">Counter Sound &amp; Haptics</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Audio click and mobile tap vibration when incrementing or decrementing counts.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-0.5">
-          {/* Terms of Service */}
-          <Link
-            to="/terms"
-            className="group flex items-start gap-2.5 p-3 rounded-lg border border-border/60 bg-card hover:bg-muted/40 transition-all cursor-pointer"
-          >
-            <div className="size-7 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0 group-hover:text-foreground">
-              <Scale className="size-3.5" strokeWidth={1.75} />
-            </div>
-            <div className="space-y-0.5 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                  Terms
-                </span>
-                <ArrowUpRight className="size-3 text-muted-foreground" />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-normal">
-                Usage agreement and service rules.
+        <div className="md:col-span-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/55 bg-muted/25 px-4 py-3.5">
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold text-foreground">
+                {feedbackOn ? "Tactile feedback enabled" : "Silent counting mode"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {feedbackOn
+                  ? "Plays a soft click on each count tap or hotkey press."
+                  : "Audio clicks and haptic pulses are muted."}
               </p>
             </div>
-          </Link>
 
-          {/* Privacy Policy */}
-          <Link
-            to="/privacy"
-            className="group flex items-start gap-2.5 p-3 rounded-lg border border-border/60 bg-card hover:bg-muted/40 transition-all cursor-pointer"
-          >
-            <div className="size-7 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0 group-hover:text-foreground">
-              <ShieldCheck className="size-3.5" strokeWidth={1.75} />
-            </div>
-            <div className="space-y-0.5 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                  Privacy
-                </span>
-                <ArrowUpRight className="size-3 text-muted-foreground" />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-normal">
-                How your logs and data are protected.
-              </p>
-            </div>
-          </Link>
+            <div className="flex items-center gap-3 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestAudio}
+                className="h-8 px-3 rounded-lg border-border/80 bg-card hover:bg-muted text-xs font-medium cursor-pointer"
+              >
+                <Volume2 className="size-3.5 mr-1.5 text-muted-foreground" />
+                Preview sound
+              </Button>
 
-          {/* Cookie Policy */}
-          <Link
-            to="/cookies"
-            className="group flex items-start gap-2.5 p-3 rounded-lg border border-border/60 bg-card hover:bg-muted/40 transition-all cursor-pointer"
-          >
-            <div className="size-7 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0 group-hover:text-foreground">
-              <Cookie className="size-3.5" strokeWidth={1.75} />
-            </div>
-            <div className="space-y-0.5 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                  Cookies
-                </span>
-                <ArrowUpRight className="size-3 text-muted-foreground" />
+              <div className="flex items-center gap-2 pl-3 border-l border-border/60">
+                <Switch
+                  id="feedback-switch"
+                  checked={feedbackOn}
+                  onCheckedChange={handleToggleFeedback}
+                />
+                <label
+                  htmlFor="feedback-switch"
+                  className="text-xs font-medium text-foreground cursor-pointer select-none min-w-[38px]"
+                >
+                  {feedbackOn ? "On" : "Off"}
+                </label>
               </div>
-              <p className="text-[11px] text-muted-foreground leading-normal">
-                Local storage and session details.
-              </p>
             </div>
-          </Link>
+          </div>
         </div>
       </div>
     </div>

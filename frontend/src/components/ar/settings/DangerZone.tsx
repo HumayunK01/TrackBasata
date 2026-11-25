@@ -1,6 +1,5 @@
-import type { Dispatch } from "react";
+import { useState, type Dispatch } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,9 +12,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   AlertTriangle,
+  Eye,
+  EyeOff,
   Loader2,
   Trash2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface DelState {
   open: boolean;
@@ -38,108 +40,133 @@ interface DangerZoneProps {
   onDeleteAccount: () => void;
 }
 
+const cleanInputClass =
+  "w-full h-10 rounded-xl bg-background dark:bg-white/[0.03] border border-border/80 hover:border-border focus:border-destructive px-3 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-colors duration-150";
+
 export function DangerZone({ delState, delDispatch, onDeleteAccount }: DangerZoneProps) {
+  const [showPw, setShowPw] = useState(false);
+
   return (
     <>
-      <div className="bg-card/80 border border-destructive/25 rounded-xl shadow-2xs overflow-hidden">
-        {/* Header Bar */}
-        <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 border-b border-destructive/20 bg-destructive/[0.03]">
-          <div className="size-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 text-destructive">
-            <AlertTriangle className="size-4" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h2 className="text-xs sm:text-sm font-semibold text-destructive">Delete Account</h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Permanently remove your account and logs</p>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 sm:p-5 space-y-4">
-          <div className="p-3.5 rounded-lg bg-destructive/[0.04] border border-destructive/15 text-xs text-muted-foreground leading-relaxed">
-            <p className="font-medium text-foreground mb-1">Please read carefully:</p>
-            Deleting your account will permanently remove all your daily logs, category counts, and preferences. You will be signed out immediately and this action cannot be undone.
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg border border-border/60 bg-muted/20 gap-3">
-            <div>
-              <p className="text-xs font-semibold text-foreground">Permanent Account Deletion</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Requires your password to authorize.
-              </p>
+      <div className="rounded-2xl border border-destructive/30 bg-card/85 p-5 sm:p-6 shadow-2xs">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-8 items-start">
+          <div className="md:col-span-5 space-y-1.5">
+            <div className="inline-flex items-center gap-2 text-destructive">
+              <AlertTriangle className="size-4 shrink-0" />
+              <h2 className="text-sm sm:text-base font-semibold">Delete Account</h2>
             </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="h-8 px-3 rounded-lg text-xs font-medium cursor-pointer shrink-0"
-              onClick={() => delDispatch({ type: "open" })}
-            >
-              <Trash2 className="size-3.5 mr-1.5" />
-              Delete Account
-            </Button>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Permanently remove your Basata Tracker profile and all personal activity records. This action cannot be undone.
+            </p>
+          </div>
+
+          <div className="md:col-span-7 space-y-4">
+            <div className="rounded-xl border border-destructive/20 bg-destructive/[0.04] p-4 space-y-2 text-xs">
+              <p className="font-semibold text-foreground">
+                Deleting your account will immediately erase:
+              </p>
+              <ul className="space-y-1 text-muted-foreground list-disc pl-4">
+                <li>All daily document logs, historical category counts, and shift notes</li>
+                <li>Personal overtime records and workspace preferences</li>
+                <li>Your active sign-in credentials and workspace membership</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <span className="text-xs text-muted-foreground">
+                Requires confirmation and your current password.
+              </span>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setShowPw(false);
+                  delDispatch({ type: "open" });
+                }}
+                className="h-9 px-4 rounded-xl text-xs font-semibold cursor-pointer shrink-0 self-start sm:self-auto"
+              >
+                <Trash2 className="size-3.5 mr-1.5" />
+                Delete account…
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Confirmation Modal */}
       <AlertDialog open={delState.open} onOpenChange={(o) => !o && delDispatch({ type: "close" })}>
-        <AlertDialogContent className="sm:max-w-md border border-border/80 bg-card rounded-xl p-5 shadow-xl">
+        <AlertDialogContent className="sm:max-w-md border border-border/80 bg-card rounded-2xl p-6 shadow-xl">
           <AlertDialogHeader>
             <div className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="size-4 shrink-0" />
-              <AlertDialogTitle className="text-sm font-semibold">Delete Account?</AlertDialogTitle>
+              <AlertDialogTitle className="text-base font-bold">
+                Permanently delete your account?
+              </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="space-y-3 mt-2 text-xs leading-relaxed text-muted-foreground">
-              <span>
-                All your historical counts, daily logs, and custom categories will be permanently deleted.
+            <AlertDialogDescription className="space-y-2 mt-2 text-xs leading-relaxed text-muted-foreground">
+              <span className="block">
+                All of your historical counts, daily logs, and account settings will be permanently deleted and cannot be recovered.
               </span>
-
               <span className="block pt-1">
-                To confirm, type <strong className="text-foreground select-all font-mono font-bold">DELETE</strong> and enter your current password:
+                Type <strong className="text-foreground select-all font-mono font-bold">DELETE</strong> and enter your current password to confirm:
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="space-y-2.5 my-2">
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Type DELETE to confirm:
+          <div className="space-y-3 my-2">
+            <div className="space-y-1.5">
+              <label htmlFor="delete-confirm-text" className="text-xs font-medium text-foreground block">
+                Confirmation phrase
               </label>
-              <Input
+              <input
+                id="delete-confirm-text"
+                type="text"
                 placeholder="DELETE"
                 value={delState.confirmText}
                 onChange={(e) => delDispatch({ type: "set_text", text: e.target.value })}
-                className="rounded-lg bg-muted/40 border-border/60 text-xs h-8.5 font-mono"
+                className={cn(cleanInputClass, "font-mono")}
               />
             </div>
 
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Your current password:
+            <div className="space-y-1.5">
+              <label htmlFor="delete-confirm-pw" className="text-xs font-medium text-foreground block">
+                Current password
               </label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={delState.password}
-                onChange={(e) => delDispatch({ type: "set_pw", pw: e.target.value })}
-                className="rounded-lg bg-muted/40 border-border/60 text-xs h-8.5 font-mono"
-              />
+              <div className="relative">
+                <input
+                  id="delete-confirm-pw"
+                  type={showPw ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={delState.password}
+                  onChange={(e) => delDispatch({ type: "set_pw", pw: e.target.value })}
+                  className={cn(cleanInputClass, "pr-10")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 size-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 cursor-pointer"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  {showPw ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+              </div>
             </div>
           </div>
 
-          <AlertDialogFooter className="gap-2 sm:gap-2">
+          <AlertDialogFooter className="gap-2 sm:gap-2 pt-2">
             <AlertDialogCancel
               onClick={() => delDispatch({ type: "close" })}
-              className="h-8 rounded-lg text-xs font-medium border-border/80 cursor-pointer"
+              className="h-9 px-3.5 rounded-xl text-xs font-medium border-border/80 cursor-pointer"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={onDeleteAccount}
               disabled={delState.confirmText !== "DELETE" || !delState.password || delState.loading}
-              className="h-8 rounded-lg text-xs font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer disabled:opacity-50"
+              className="h-9 px-4 rounded-xl text-xs font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer disabled:opacity-50"
             >
-              {delState.loading && <Loader2 className="size-3 mr-1 animate-spin" />}
-              Delete Permanently
+              {delState.loading && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+              Delete permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

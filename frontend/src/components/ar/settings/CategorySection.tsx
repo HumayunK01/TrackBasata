@@ -1,7 +1,6 @@
 import { useState, useMemo, type Dispatch, type DragEvent } from "react";
 import { colorForKey } from "@/lib/cat-colors";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -22,14 +21,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus,
-  MoreVertical,
+  MoreHorizontal,
   Pencil,
   Trash2,
   GripVertical,
   Tag,
   Loader2,
   Info,
-  HelpCircle,
   ChevronUp,
   ChevronDown,
   Search,
@@ -91,6 +89,13 @@ interface CategorySectionProps {
   isAdmin?: boolean;
 }
 
+function previewKey(label: string) {
+  return label.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+}
+
+const cleanInputClass =
+  "w-full h-10 rounded-xl bg-background dark:bg-white/[0.03] border border-border/80 hover:border-border focus:border-primary px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-colors duration-150";
+
 export function CategorySection({
   categories,
   isLoading,
@@ -115,76 +120,86 @@ export function CategorySection({
     if (!search.trim()) return categories;
     const q = search.toLowerCase().trim();
     return categories.filter(
-      (c) => c.label.toLowerCase().includes(q) || c.short.toLowerCase().includes(q) || c.key.toLowerCase().includes(q)
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.short.toLowerCase().includes(q) ||
+        c.key.toLowerCase().includes(q)
     );
   }, [categories, search]);
 
+  const derivedKey = cat.editingKey ?? (previewKey(cat.form.label) || "category_key");
+  const previewColor = colorForKey(derivedKey);
+
   return (
     <>
-      <div className="bg-card/80 border border-border/65 rounded-xl shadow-2xs overflow-hidden transition-all">
+      <div className="rounded-2xl border border-border/65 bg-card/85 shadow-2xs overflow-hidden">
         {/* Header Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-5 border-b border-border/60 gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-500">
-              <Tag className="size-4.5" strokeWidth={1.75} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between p-5 sm:p-6 border-b border-border/55 gap-4">
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm sm:text-base font-semibold text-foreground">
+                Document Categories
+              </h2>
+              <span className="text-[11px] font-mono tabular-nums font-semibold px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25">
+                {String(categories.length).padStart(2, "0")} active
+              </span>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs sm:text-sm font-semibold text-foreground truncate">Categories</h2>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono shrink-0">
-                  {categories.length} total
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                Drag to reorder across your daily log and counter
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              {canManage
+                ? "Drag cards or use the action menu to set the display order across Counter and Daily Log."
+                : "Shared workspace catalog · Administrator access is required to add or edit categories."}
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* Quick search input */}
-            <div className="relative w-full sm:w-60">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search categories..."
+            {/* Search input */}
+            <div className="relative flex-1 sm:w-60">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Filter categories…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-8 h-9 text-xs w-full bg-background border-border/60 focus:border-primary/50 rounded-xl"
+                className="pl-8 pr-8 h-9 text-xs w-full rounded-xl bg-background dark:bg-white/[0.03] border border-border/75 hover:border-border focus:border-primary text-foreground placeholder:text-muted-foreground/55 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-colors"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="size-5 rounded-full hover:bg-muted text-muted-foreground flex items-center justify-center cursor-pointer transition-colors absolute right-2.5 top-1/2 -translate-y-1/2"
-                  title="Clear search"
-                  aria-label="Clear search"
+                  className="size-5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors absolute right-2 top-1/2 -translate-y-1/2"
+                  title="Clear filter"
+                  aria-label="Clear filter"
                 >
                   <X className="size-3.5" />
                 </button>
               )}
             </div>
 
-            <Button
-              onClick={canManage ? onAdd : undefined}
-              disabled={!canManage}
-              title={!canManage ? "Admin access required to add categories" : undefined}
-              className="bg-primary hover:bg-primary/95 text-primary-foreground shadow-xs shadow-primary/20 h-9 px-3.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Plus className="size-3.5 mr-1.5" />
-              <span>Add Category</span>
-            </Button>
+            {canManage && (
+              <Button
+                type="button"
+                onClick={onAdd}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 px-3.5 text-xs font-semibold rounded-xl cursor-pointer shrink-0"
+              >
+                <Plus className="size-3.5 mr-1.5" />
+                <span>Add Category</span>
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Content list / grid */}
+        {/* Category Grid */}
         {isLoading ? (
-          <div className="p-4 sm:p-5 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+          <div className="p-5 sm:p-6 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(265px,1fr))]">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-border/60 p-3.5 bg-muted/20">
-                <Skeleton circle width={14} height={14} />
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-xl border border-border/60 p-3.5 bg-muted/20"
+              >
+                <Skeleton circle width={12} height={12} />
                 <div className="flex-1 space-y-1.5">
-                  <Skeleton width="75%" height={14} borderRadius={6} />
-                  <Skeleton width={48} height={10} borderRadius={4} />
+                  <Skeleton width="70%" height={13} borderRadius={6} />
+                  <Skeleton width={52} height={10} borderRadius={4} />
                 </div>
               </div>
             ))}
@@ -192,129 +207,164 @@ export function CategorySection({
         ) : categories.length === 0 ? (
           <EmptyState
             icon={Tag}
-            title="No Categories Yet"
-            hint="Click Add Category to create your first document key."
+            title="No Categories Configured"
+            hint={
+              canManage
+                ? "Create your first document category to start logging daily counts."
+                : "Ask a workspace administrator to configure document categories."
+            }
           />
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center space-y-2">
-            <p className="text-sm font-semibold text-foreground">No matching categories found</p>
-            <p className="text-xs text-muted-foreground">Try searching with a different label or short name</p>
+          <div className="p-10 text-center space-y-2.5">
+            <p className="text-sm font-semibold text-foreground">
+              No categories match &ldquo;{search}&rdquo;
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Try filtering by another label, short code, or key.
+            </p>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => setSearch("")}
-              className="rounded-xl border-border/60 text-xs mt-2"
+              className="h-8 px-3 rounded-lg border-border/75 text-xs mt-1 cursor-pointer"
             >
-              Reset search
+              Clear filter
             </Button>
           </div>
         ) : (
-          <div className="p-4 sm:p-5 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
-            {filtered.map((c, index) => {
+          <div className="p-5 sm:p-6 grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(265px,1fr))]">
+            {filtered.map((c) => {
               const clr = colorForKey(c.key);
               const originalIndex = categories.findIndex((item) => item.key === c.key);
               const isFirst = originalIndex === 0;
               const isLast = originalIndex === categories.length - 1;
+              const canDrag = canManage && !search;
 
               return (
                 <div
                   key={c.key}
-                  draggable={!search}
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData("text/plain", c.key);
-                    e.dataTransfer.effectAllowed = "move";
-                    setTimeout(() => onDragStart(c.key), 0);
-                  }}
-                  onDragOver={(e) => onDragOver(e, c.key)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    onDrop(c.key);
-                  }}
-                  onDragEnd={() => catDispatch({ type: "drag_end" })}
+                  draggable={canDrag}
+                  onDragStart={
+                    canDrag
+                      ? (e) => {
+                          e.dataTransfer.setData("text/plain", c.key);
+                          e.dataTransfer.effectAllowed = "move";
+                          setTimeout(() => onDragStart(c.key), 0);
+                        }
+                      : undefined
+                  }
+                  onDragOver={canDrag ? (e) => onDragOver(e, c.key) : undefined}
+                  onDrop={
+                    canDrag
+                      ? (e) => {
+                          e.preventDefault();
+                          onDrop(c.key);
+                        }
+                      : undefined
+                  }
+                  onDragEnd={canDrag ? () => catDispatch({ type: "drag_end" }) : undefined}
                   className={cn(
-                    "group relative flex items-center gap-3 rounded-xl border p-3 select-none touch-manipulation transition-all duration-150",
+                    "group relative flex items-center gap-3 rounded-xl border px-3.5 py-3 select-none touch-manipulation transition-colors duration-150",
                     cat.dragOver === c.key && cat.dragging !== c.key
-                      ? "border-emerald-500/60 bg-emerald-500/10 scale-[0.99] shadow-xs ring-2 ring-emerald-500/30"
-                      : "border-border/60 bg-card hover:bg-muted/40 hover:border-border/90 shadow-2xs",
-                    cat.dragging === c.key ? "opacity-35 scale-[0.98] border-dashed border-emerald-500" : ""
+                      ? "border-primary bg-primary/10"
+                      : "border-border/60 bg-card hover:bg-muted/35 hover:border-border",
+                    cat.dragging === c.key && "opacity-35 border-dashed border-primary"
                   )}
                 >
-                  {/* Drag Grip Handle */}
-                  {!search ? (
+                  {/* Position / Drag Handle */}
+                  {canDrag ? (
                     <div
-                      className="cursor-grab active:cursor-grabbing shrink-0 -ml-0.5 text-muted-foreground/50 hover:text-foreground transition-colors p-0.5"
+                      className="cursor-grab active:cursor-grabbing shrink-0 -ml-1 text-muted-foreground/45 hover:text-foreground transition-colors p-0.5"
                       title="Drag to reorder"
                     >
                       <GripVertical className="size-4" />
                     </div>
                   ) : (
-                    <span className="text-2xs font-mono text-muted-foreground/60 w-4 text-center">#{index + 1}</span>
+                    <span className="text-[11px] font-mono tabular-nums text-muted-foreground/65 shrink-0 w-5">
+                      {String(originalIndex + 1).padStart(2, "0")}
+                    </span>
                   )}
 
-                  {/* Category Color Dot */}
+                  {/* Color Dot */}
                   <span
-                    className="size-3.5 rounded-full shrink-0 ring-2 ring-background shadow-xs transition-transform group-hover:scale-110"
+                    className="size-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: clr }}
-                    aria-hidden
+                    aria-hidden="true"
                   />
 
-                  {/* Label & Short code */}
+                  {/* Label + Short Code */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-foreground truncate leading-snug" title={c.label}>
+                    <p
+                      className="text-xs sm:text-[13px] font-semibold text-foreground truncate leading-snug"
+                      title={c.label}
+                    >
                       {c.label}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="inline-block text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                      <span className="text-[10px] font-mono font-semibold text-foreground/80 bg-muted px-1.5 py-0.5 rounded leading-none shrink-0">
                         {c.short}
                       </span>
-                      <span className="text-[10px] font-mono text-muted-foreground truncate opacity-70">
+                      <span className="text-[10px] font-mono text-muted-foreground/70 truncate">
                         {c.key}
                       </span>
                     </div>
                   </div>
 
-                  {/* Actions Dropdown */}
-                  <div className="flex items-center shrink-0">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
-                          aria-label={`Actions for ${c.label}`}
+                  {/* Admin Actions Menu */}
+                  {canManage && (
+                    <div className="flex items-center shrink-0">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
+                            aria-label={`Actions for ${c.label}`}
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-44 rounded-xl border border-border/70 bg-popover/95 backdrop-blur-xl shadow-xl p-1 font-sans"
                         >
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44 rounded-xl border border-border/70 bg-popover/95 backdrop-blur-xl shadow-xl p-1 font-sans">
-                        <DropdownMenuItem className="text-xs font-medium rounded-lg gap-2 cursor-pointer" onClick={() => onEdit(c)}>
-                          <Pencil className="size-3.5 text-muted-foreground" /> Edit Label
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1" />
-                        <DropdownMenuItem
-                          className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
-                          disabled={isFirst}
-                          onClick={() => onMove(c.key, -1)}
-                        >
-                          <ChevronUp className="size-3.5 text-muted-foreground" /> Move Up
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
-                          disabled={isLast}
-                          onClick={() => onMove(c.key, 1)}
-                        >
-                          <ChevronDown className="size-3.5 text-muted-foreground" /> Move Down
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1" />
-                        <DropdownMenuItem
-                          className="text-xs font-medium rounded-lg gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-                          onClick={() => catDispatch({ type: "set_delete_target", cat: c })}
-                        >
-                          <Trash2 className="size-3.5" /> Delete Category
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                          <DropdownMenuItem
+                            className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
+                            onClick={() => onEdit(c)}
+                          >
+                            <Pencil className="size-3.5 text-muted-foreground" />
+                            Edit category
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="my-1" />
+                          <DropdownMenuItem
+                            className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
+                            disabled={isFirst}
+                            onClick={() => onMove(c.key, -1)}
+                          >
+                            <ChevronUp className="size-3.5 text-muted-foreground" />
+                            Move up
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-xs font-medium rounded-lg gap-2 cursor-pointer"
+                            disabled={isLast}
+                            onClick={() => onMove(c.key, 1)}
+                          >
+                            <ChevronDown className="size-3.5 text-muted-foreground" />
+                            Move down
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="my-1" />
+                          <DropdownMenuItem
+                            className="text-xs font-medium rounded-lg gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                            onClick={() => catDispatch({ type: "set_delete_target", cat: c })}
+                          >
+                            <Trash2 className="size-3.5" />
+                            Archive category
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -322,106 +372,136 @@ export function CategorySection({
         )}
       </div>
 
-      {/* Add / Edit dialog */}
+      {/* Add / Edit Category Dialog */}
       <Dialog open={cat.dialogOpen} onOpenChange={(o) => !o && catDispatch({ type: "close_dialog" })}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border border-border/70 rounded-2xl p-6 shadow-xl">
+        <DialogContent className="sm:max-w-md bg-card border border-border/75 rounded-2xl p-6 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2.5">
-              <div className="size-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <Tag className="size-4" strokeWidth={1.75} />
-              </div>
-              {cat.editingKey ? "Edit Category" : "Add New Category"}
+            <DialogTitle className="text-base font-bold text-foreground">
+              {cat.editingKey ? "Edit Category" : "New Document Category"}
             </DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 py-2">
-            {!cat.editingKey && (
-              <div className="flex gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs leading-normal">
-                <HelpCircle className="size-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="text-foreground leading-relaxed">
-                  Category names automatically generate unique database keys (e.g. <strong>&ldquo;Worked on NG&rdquo;</strong> creates <strong>&ldquo;worked_on_ng&rdquo;</strong>).
+            {/* Live Preview Strip */}
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="size-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: previewColor }}
+                />
+                <span className="text-xs font-semibold text-foreground truncate">
+                  {cat.form.label.trim() || "Category preview"}
                 </span>
               </div>
-            )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-background border border-border/60 text-foreground">
+                  {cat.form.short.trim() || "SHORT"}
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground max-w-[110px] truncate">
+                  {derivedKey}
+                </span>
+              </div>
+            </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cat-label" className="text-xs font-semibold text-foreground">Category Label</Label>
-              <Input
+              <Label htmlFor="cat-label" className="text-xs font-semibold text-foreground">
+                Category label
+              </Label>
+              <input
                 id="cat-label"
+                type="text"
                 placeholder="e.g. Worked on NG"
                 value={cat.form.label}
-                className="font-medium rounded-xl bg-muted/40 border-border/60 text-sm focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60 h-10"
+                autoFocus
+                className={cleanInputClass}
                 onChange={(e) => catDispatch({ type: "set_form", patch: { label: e.target.value } })}
                 onKeyDown={(e) => e.key === "Enter" && onSave()}
               />
             </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="cat-short" className="text-xs font-semibold text-foreground">Abbreviation / Short Name</Label>
-              <Input
+              <Label htmlFor="cat-short" className="text-xs font-semibold text-foreground">
+                Short code
+              </Label>
+              <input
                 id="cat-short"
+                type="text"
                 placeholder="e.g. NG"
                 maxLength={10}
                 value={cat.form.short}
-                className="font-semibold rounded-xl bg-muted/40 border-border/60 text-sm focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60 h-10 font-mono"
+                className={cn(cleanInputClass, "font-mono")}
                 onChange={(e) => catDispatch({ type: "set_form", patch: { short: e.target.value } })}
                 onKeyDown={(e) => e.key === "Enter" && onSave()}
               />
-              <p className="text-[11px] text-muted-foreground">Displayed on counters, pills, and mobile screens (Max 10 chars)</p>
+              <p className="text-[11px] text-muted-foreground">
+                Compact column header used in Daily Log and mobile views (max 10 characters).
+              </p>
             </div>
-            
+
             {cat.formError && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2 animate-in fade-in-50 font-medium">
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2 font-medium">
                 <Info className="size-3.5 shrink-0" />
                 <span>{cat.formError}</span>
               </div>
             )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
-            <Button variant="outline" className="rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium h-8.5" onClick={() => catDispatch({ type: "close_dialog" })}>
+
+          <DialogFooter className="gap-2 sm:gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-border/80 h-9 px-3.5 text-xs font-medium cursor-pointer"
+              onClick={() => catDispatch({ type: "close_dialog" })}
+            >
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={onSave}
               disabled={isBusy}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs shadow-emerald-600/20 active:scale-[0.98] h-8.5"
+              className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 px-4 cursor-pointer"
             >
               {isBusy && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
-              {cat.editingKey ? "Save Changes" : "Create Category"}
+              {cat.editingKey ? "Save changes" : "Create category"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete category confirm */}
+      {/* Archive Category Confirm */}
       <AlertDialog
         open={!!cat.deleteTarget}
         onOpenChange={(o) => !o && catDispatch({ type: "set_delete_target", cat: null })}
       >
-        <AlertDialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border border-destructive/30 rounded-2xl p-6 shadow-xl">
+        <AlertDialogContent className="sm:max-w-md bg-card border border-destructive/30 rounded-2xl p-6 shadow-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2 text-base font-bold">
-              <Info className="size-5 shrink-0" />
-              Remove Document Category?
+            <AlertDialogTitle className="text-base font-bold text-foreground">
+              Archive &ldquo;{cat.deleteTarget?.label}&rdquo;?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3 mt-2 text-sm leading-relaxed text-foreground">
-              <span>
-                Removing <strong>&ldquo;{cat.deleteTarget?.label}&rdquo;</strong> (`{cat.deleteTarget?.short}`) will delete it from counters and form selections.
+            <AlertDialogDescription className="space-y-3 mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+              <span className="block">
+                Archiving{" "}
+                <strong className="text-foreground">{cat.deleteTarget?.label}</strong>{" "}
+                <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted text-foreground">
+                  {cat.deleteTarget?.short}
+                </code>{" "}
+                hides it from active counters and new daily log entries.
               </span>
-              
-              <span className="flex gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs leading-normal">
-                <Info className="size-4 text-amber-500 shrink-0 mt-0.5" />
-                <span className="text-foreground leading-relaxed">
-                  Existing logging history in your daily tables is preserved, but this category will no longer appear on your active Counter or daily form.
-                </span>
+              <span className="block rounded-xl bg-muted/40 border border-border/60 p-3 text-xs text-muted-foreground">
+                Historical counts already recorded under this category remain intact in your logs and reports.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
-            <AlertDialogCancel className="rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium h-8.5">Cancel</AlertDialogCancel>
+
+          <AlertDialogFooter className="gap-2 sm:gap-2 pt-2">
+            <AlertDialogCancel className="rounded-xl border-border/80 h-9 px-3.5 text-xs font-medium cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={onDelete}
-              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs shadow-destructive/20 font-semibold text-xs active:scale-[0.98] h-8.5"
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold text-xs h-9 px-4 cursor-pointer"
             >
-              Remove Category
+              Archive category
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
